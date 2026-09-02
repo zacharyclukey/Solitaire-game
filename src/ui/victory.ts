@@ -81,6 +81,11 @@ export function playVictory(layer: HTMLElement, cards: VictoryCard[], opts: Vict
   // it actually leaves the tableau, so the outlines stay legible over a board
   // that is still full; `finish` grants the rest their place immediately.
   let stacking: VictoryCard[] = [];
+  const applyStacking = (): void => {
+    stacking.forEach((c, i) => {
+      c.el.style.zIndex = String(400 + i);
+    });
+  };
   const flights: Animation[] = [];
   const timers: ReturnType<typeof setTimeout>[] = [];
   let raf = 0;
@@ -127,9 +132,7 @@ export function playVictory(layer: HTMLElement, cards: VictoryCard[], opts: Vict
       }
     }
     flights.length = 0;
-    stacking.forEach((c, i) => {
-      c.el.style.zIndex = String(400 + i);
-    });
+    applyStacking();
     for (const c of cards) {
       c.el.classList.remove('v-fly', 'v-crown', 'just-flipped');
       c.el.classList.remove('down');
@@ -179,6 +182,7 @@ export function playVictory(layer: HTMLElement, cards: VictoryCard[], opts: Vict
         c.el.classList.add('up');
       });
     }
+    applyStacking();
     opts.onLand?.();
     timers.push(setTimeout(finish, REDUCED));
     return { done, skip: finish };

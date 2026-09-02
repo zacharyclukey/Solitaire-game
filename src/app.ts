@@ -523,12 +523,15 @@ export class App {
     run.stats.cardsTurned += level.sim.revealed;
     this.tally.spare = Math.max(0, level.sim.movesLeft);
     this.tally.wasteLeft = waste(level.sim).length;
+    this.tally.underPar = level.par - level.sim.movesUsed;
     this.tally.secondsLeft = level.timeLimit ? Math.max(0, this.timeLeft) : 0;
     this.streak.cleanLevels = this.tally.hints === 0 ? this.streak.cleanLevels + 1 : 0;
     this.streak.patientLevels = this.tally.undos === 0 ? this.streak.patientLevels + 1 : 0;
 
     const spare = Math.max(0, level.sim.movesLeft);
-    let gold = level.baseGold + level.sim.gold;
+    // Beating the solver's own line is the real skill test, so it pays.
+    const underPar = level.par - level.sim.movesUsed;
+    let gold = level.baseGold + level.sim.gold + Math.max(0, underPar) * 3;
     if (run.charms.includes('thrift')) gold += spare * 2;
     const gained = gainGold(run, gold);
     run.score = computeScore(run);
@@ -558,8 +561,12 @@ export class App {
 
     renderReward(this.ctx, run, rewards, [
       `+${gained} gold`,
+      underPar > 0
+        ? `${underPar} under par`
+        : underPar === 0
+          ? 'exactly par'
+          : `${-underPar} over par`,
       `${spare} ${spare === 1 ? 'move' : 'moves'} to spare`,
-      `${level.sim.revealed} turned`,
     ]);
     show('reward');
   }

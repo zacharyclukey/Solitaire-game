@@ -430,3 +430,14 @@ html.left-handed .actions { flex-direction: row-reverse; }
   letter-spacing: 0.2em;
   color: var(--gold);
 }
+
+.hud-par {
+  display: block;
+  margin-top: 2px;
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-faint);
+}
+.hud-par.over { color: var(--gold); }

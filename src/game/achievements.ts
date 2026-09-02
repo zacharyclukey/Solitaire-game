@@ -19,6 +19,8 @@ export interface LevelTally {
   maxFlips: number;
   spare: number;
   secondsLeft: number;
+  /** Moves saved against the solver's own line; negative means over par. */
+  underPar: number;
 }
 
 /** Counters for the run as a whole. Reset when a run starts. */
@@ -43,7 +45,7 @@ export interface Achievement {
 }
 
 export function emptyTally(): LevelTally {
-  return { hints: 0, undos: 0, wasteLeft: 0, maxFlips: 0, spare: 0, secondsLeft: 0 };
+  return { hints: 0, undos: 0, wasteLeft: 0, maxFlips: 0, spare: 0, secondsLeft: 0, underPar: 0 };
 }
 
 export function emptyStreak(): RunStreak {
@@ -76,6 +78,12 @@ export const ACHIEVEMENTS: Achievement[] = [
     name: 'Read the Room',
     text: 'Clear a level playing every single card you drew.',
     test: (c) => c.level !== null && c.level.stockSize > 0 && c.tally.wasteLeft === 0,
+  },
+  {
+    id: 'underpar',
+    name: 'Better Than the Machine',
+    text: 'Clear a level in fewer moves than the solver needed.',
+    test: (c) => c.level !== null && c.tally.underPar > 0,
   },
   {
     id: 'unaided',

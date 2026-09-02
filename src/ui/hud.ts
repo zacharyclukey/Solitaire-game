@@ -16,6 +16,7 @@ export class Hud {
   readonly root: HTMLElement;
   readonly boardHost: HTMLElement;
   private moves!: HTMLElement;
+  private par!: HTMLElement;
   private movesBox!: HTMLElement;
   private turned!: HTMLElement;
   private depth!: HTMLElement;
@@ -30,9 +31,11 @@ export class Hud {
   private coach!: HTMLElement;
 
   constructor(actions: HudActions) {
+    this.par = el('span', { class: 'hud-par' }, ['']);
     this.movesBox = el('div', { class: 'hud-moves' }, [
       (this.moves = el('b', {}, ['0'])),
       el('span', {}, ['moves left']),
+      this.par,
     ]);
     this.depth = el('b', {}, ['1']);
     this.depthBox = el('div', { class: 'hud-depth' }, ['LV ', this.depth]);
@@ -125,6 +128,10 @@ export class Hud {
 
   update(level: Level, sim: Sim, opts: { hintCost: number; canUndo: boolean }): void {
     this.moves.textContent = String(Math.max(0, sim.movesLeft));
+    // Par is the length of the line the solver actually found on this board.
+    // Showing it turns a comfortable clear into a score rather than a shrug.
+    this.par.textContent = `${sim.movesUsed} of par ${level.par}`;
+    this.par.classList.toggle('over', sim.movesUsed > level.par);
     const total = sim.defs.length;
     this.turned.textContent = String(sim.hidden);
     (this.bar.firstElementChild as HTMLElement).style.width = `${((total - sim.hidden) / total) * 100}%`;
