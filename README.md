@@ -28,6 +28,9 @@ Every deal is verified before you see it: a solver plays the board first, and th
 allowance you get is derived from the length of the line it actually found. Every
 board you are given is clearable. The question is whether you find the line.
 
+There is a two-minute guided board the first time you open the game: fourteen
+cards and five lessons, each arriving at the moment it is needed.
+
 ## Playing
 
 | Action | How |
@@ -54,6 +57,10 @@ run moves as one unit for one move. Uncovering a face-down card turns it.
 Twelve card enchantments, four curses, fifteen charms and twenty-two level rules
 combine into the difficulty; the in-game **Codex** documents all of them.
 
+Twenty achievements, lifetime statistics and the last twenty-five runs — with
+their seeds, so a good one can be played again — live behind **Records** on the
+title screen.
+
 ## Running it
 
 ```bash
@@ -68,6 +75,7 @@ npm test           # rules engine + run generation + a simulated 10-level run
 npm run typecheck
 npm run qa         # drives a real run in a mobile browser, fails on any page error
 npm run balance    # difficulty telemetry: par vs. allowance by depth
+npm run screenshots  # store screenshots at every required device size
 ```
 
 ### iOS and Android
@@ -113,7 +121,8 @@ src/app.ts    the controller that ties them together
   JavaScript, all sounds synthesised at runtime, all art drawn in CSS and SVG.
 
 `docs/DESIGN.md` covers the design reasoning and the balance model in more
-detail.
+detail. `docs/store/` holds the listing copy, the privacy policy and an ordered
+release runbook for both stores.
 
 ## Licence
 

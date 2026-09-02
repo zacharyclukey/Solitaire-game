@@ -189,6 +189,36 @@ table per level.
 
 ---
 
+## 5b. Teaching it, and the reason to come back
+
+**The guided board.** The first level a new player sees is hand-authored, not
+generated, because the teaching order matters more than the variety. Fourteen
+cards, five columns, three reserve cells, and five lessons in the order the
+game actually needs them: stack a card, park one in the reserve, empty a
+column, move an ordered run, and only then the move allowance.
+
+Two properties make it work, and both are asserted by tests so a future edit to
+the layout cannot quietly break the script:
+
+- At the start there is **exactly one** stacking move available, and taking it
+  turns a card — so the first lesson demonstrates the goal, not just the rule.
+- Two moves later the 9 is **genuinely stranded**, because nothing in the deck
+  is a ten. The reserve lesson lands because the board forces it, not because
+  the text asks for it.
+
+The coaching highlight is derived by matching the lesson rather than by asking
+the solver, so the arrow can never contradict the sentence beside it, and it
+re-derives after every move — improvise and the lessons still advance on what
+you actually did.
+
+**Achievements.** Depth alone is a thin reason to start run number two. Twenty
+achievements pull in other directions: clear a level with two moves to spare,
+or without parking a single card, or carrying three cursed cards; cut the deck
+to eighteen or grow it to forty; turn four cards with one move. Each is a pure
+predicate over a context the controller assembles at three moments, so the set
+is testable without a browser. Records also keep the last twenty-five runs with
+their seeds, because "that was a good one" should be replayable.
+
 ## 6. Technical shape
 
 | Concern | Decision |
@@ -205,6 +235,8 @@ table per level.
 
 | What | Where |
 | --- | --- |
+| The guided board and its lessons | `src/game/tutorial.ts` |
+| Achievements | `src/game/achievements.ts` |
 | Difficulty curve | `slackFor` / `flatBonus` in `src/game/deal.ts` |
 | Reserve size | `BASE_CELLS`, `cellsFor` in `src/game/deal.ts` |
 | Modifier threat and availability | `MODIFIERS` in `src/game/content.ts` |
@@ -216,9 +248,9 @@ table per level.
 
 ## 7. Known gaps
 
-- No leaderboards, achievements or cloud save — every one of those needs a
-  backend, and the game is deliberately offline for now. The daily deal is
-  seeded from the date, so a leaderboard is a small addition later.
+- No leaderboards or cloud save — both need a backend, and the game is
+  deliberately offline for now. The daily deal is seeded from the date, so a
+  leaderboard is a small addition later.
 - No localisation pass; all copy is English and hard-coded.
 - Difficulty at the shallow end is set by `slack`, not by search quality (see
   the measurement in §2). Whether level 1 at ~1.9× is the right welcome is a
