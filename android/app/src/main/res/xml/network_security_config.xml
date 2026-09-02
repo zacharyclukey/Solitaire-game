@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Facedown makes no network requests at runtime.
+
+  The game is served from the APK's own assets by Capacitor's WebViewAssetLoader
+  under the `https://localhost` scheme (see `server.androidScheme` in
+  capacitor.config.json). Those requests never reach the network stack — they
+  are answered by WebViewClient.shouldInterceptRequest from
+  android_asset/public — so this policy does not affect them.
+
+  Everything else is denied: no cleartext HTTP anywhere, and only the system
+  trust store is honoured (user-installed CAs are ignored), which makes the app
+  resistant to on-device interception even though it has nothing to intercept.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

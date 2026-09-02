@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!--
+	  Facedown privacy manifest.
+
+	  The app is entirely offline: no accounts, no network requests at runtime,
+	  no analytics, no advertising, no third-party SDKs. All progress is stored
+	  on the device. Nothing leaves the device, so nothing is collected and
+	  nothing is used for tracking.
+
+	  Required-reason API declarations below are limited to what this app
+	  actually reaches. The linked Capacitor frameworks (Capacitor and
+	  CapacitorCordova, 8.5.1) ship their own privacy manifests that declare an
+	  empty NSPrivacyAccessedAPITypes array, and none of the four bundled
+	  plugins (App, Haptics, SplashScreen, StatusBar) touch a required-reason
+	  API, so no declaration is inherited from or needed for them.
+	-->
+
+	<!-- The app does not track users as Apple defines tracking (ATT). -->
+	<key>NSPrivacyTracking</key>
+	<false/>
+
+	<!-- No domains are contacted for tracking (no domains are contacted at all). -->
+	<key>NSPrivacyTrackingDomains</key>
+	<array/>
+
+	<!-- No data of any kind is collected from the device. -->
+	<key>NSPrivacyCollectedDataTypes</key>
+	<array/>
+
+	<key>NSPrivacyAccessedAPITypes</key>
+	<array>
+		<!--
+		  Game progress (the current run, unlocks and settings) is written to
+		  localStorage from the WKWebView that hosts the game. WebKit backs that
+		  storage with the app's own user-defaults/preferences store, so the
+		  User Defaults required-reason category applies.
+
+		  CA92.1 — "Declare this reason to access user defaults to read and
+		  write information that is only accessible to the app itself."
+		  The data is read and written only by this app, is never shared with a
+		  group container or another app, and is never transmitted anywhere.
+		-->
+		<dict>
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategoryUserDefaults</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<string>CA92.1</string>
+			</array>
+		</dict>
+	</array>
+</dict>
+</plist>

@@ -1,5 +1,50 @@
 apply plugin: 'com.android.application'
 
+// ---------------------------------------------------------------------------
+// Release signing.
+//
+// Credentials are read from `android/keystore.properties` (never committed —
+// see the repo .gitignore) and fall back to environment variables so CI can
+// sign without a file on disk:
+//
+//   android/keystore.properties          |  environment variable
+//   -------------------------------------|--------------------------------
+//   storeFile=../../facedown-release.jks  |  FACEDOWN_KEYSTORE
+//   storePassword=...                     |  FACEDOWN_KEYSTORE_PASSWORD
+//   keyAlias=facedown                     |  FACEDOWN_KEY_ALIAS
+//   keyPassword=...                       |  FACEDOWN_KEY_PASSWORD
+//
+// `storeFile` is resolved relative to the `android/` directory.
+// If neither source supplies a complete set, no release signing config is
+// created at all: `assembleDebug` / `installDebug` keep working exactly as
+// before and `bundleRelease` simply produces an unsigned artifact rather than
+// failing the configuration phase.
+// ---------------------------------------------------------------------------
+def keystorePropertiesFile = rootProject.file('keystore.properties')
+def keystoreProperties = new Properties()
+if (keystorePropertiesFile.exists()) {
+    keystorePropertiesFile.withInputStream { keystoreProperties.load(it) }
+}
+
+def keystoreSetting = { String propertyKey, String envKey ->
+    def value = keystoreProperties.getProperty(propertyKey) ?: System.getenv(envKey)
+    return (value != null && !value.trim().isEmpty()) ? value.trim() : null
+}
+
+def releaseStorePath = keystoreSetting('storeFile', 'FACEDOWN_KEYSTORE')
+def releaseStorePassword = keystoreSetting('storePassword', 'FACEDOWN_KEYSTORE_PASSWORD')
+def releaseKeyAlias = keystoreSetting('keyAlias', 'FACEDOWN_KEY_ALIAS')
+def releaseKeyPassword = keystoreSetting('keyPassword', 'FACEDOWN_KEY_PASSWORD')
+
+def releaseStoreFile = releaseStorePath != null ? rootProject.file(releaseStorePath) : null
+def hasReleaseSigning = releaseStoreFile != null && releaseStoreFile.exists() &&
+        releaseStorePassword != null && releaseKeyAlias != null && releaseKeyPassword != null
+
+if (releaseStorePath != null && !hasReleaseSigning) {
+    logger.warn("Facedown: release keystore settings are incomplete or the keystore file is missing " +
+            "(${releaseStoreFile}); release builds will be unsigned.")
+}
+
 android {
     namespace = "com.facedown.game"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -8,7 +53,7 @@ android {
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
-        versionName "1.0"
+        versionName "1.0.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -16,10 +61,30 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        if (hasReleaseSigning) {
+            release {
+                storeFile releaseStoreFile
+                storePassword releaseStorePassword
+                keyAlias releaseKeyAlias
+                keyPassword releaseKeyPassword
+                // Play requires v1+v2 at minimum; v3/v4 are harmless and enable
+                // key rotation / incremental install where supported.
+                enableV1Signing true
+                enableV2Signing true
+                enableV3Signing true
+                enableV4Signing true
+            }
+        }
+    }
     buildTypes {
         release {
-            minifyEnabled false
+            minifyEnabled true
+            shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            if (hasReleaseSigning) {
+                signingConfig signingConfigs.release
+            }
         }
     }
 }

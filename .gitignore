@@ -8,3 +8,10 @@ dist/
 # Screenshot/QA output
 qa-out/
 dist-standalone/
+store/screenshots/
+
+# Android release signing — never commit these
+android/keystore.properties
+keystore.properties
+*.jks
+*.keystore
