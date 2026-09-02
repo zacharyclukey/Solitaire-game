@@ -27,6 +27,7 @@ export interface MetaStats {
   dailyDate: string;
   dailyDepth: number;
   seenHelp: boolean;
+  tutorialDone: boolean;
 }
 
 export interface SaveData {
@@ -57,6 +58,7 @@ export const DEFAULT_STATS: MetaStats = {
   dailyDate: '',
   dailyDepth: 0,
   seenHelp: false,
+  tutorialDone: false,
 };
 
 function blank(): SaveData {

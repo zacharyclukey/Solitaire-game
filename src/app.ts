@@ -27,6 +27,14 @@ import {
   type ShopItem,
 } from './game/run.ts';
 import { applyMove, cloneSim, isWon, legalMoves, settle, type Sim, type SimEvent } from './game/sim.ts';
+import {
+  buildTutorialLevel,
+  coachMove,
+  COACH_STEPS,
+  emptyTally,
+  stepFor,
+  type CoachTally,
+} from './game/tutorial.ts';
 import type { Move } from './game/types.ts';
 import { haptic } from './haptics.ts';
 import { hideSplash, initNative } from './native.ts';
@@ -77,6 +85,7 @@ export class App {
   private timeLeft = 0;
   private freeHints = 0;
   private dealing = false;
+  private tutorial: { tally: CoachTally; step: number } | null = null;
   private ctx: MenuCtx;
 
   constructor(root: HTMLElement) {
@@ -87,6 +96,7 @@ export class App {
       newRun: () => void this.startRun(randomSeed(), false),
       continueRun: () => void this.resume(),
       daily: () => void this.startDaily(),
+      tutorial: () => void this.startTutorial(),
       pickNode: (spec) => void this.enterNode(spec),
       takeReward: (r) => void this.takeReward(r),
       buy: (item, i) => this.buy(item, i),
@@ -138,7 +148,7 @@ export class App {
     if (!store.stats().seenHelp) {
       store.stats().seenHelp = true;
       store.save();
-      openHelp();
+      void this.offerTutorial();
     }
   }
 
@@ -157,15 +167,33 @@ export class App {
     return s !== 'title';
   }
 
+  private async offerTutorial(): Promise<void> {
+    const choice = await modal({
+      title: 'First time?',
+      body: 'Two minutes on a small board and you will know the whole game.',
+      actions: [
+        { label: 'Learn to play', kind: 'primary', value: 'go' },
+        { label: 'I know solitaire', kind: 'ghost', value: 'skip' },
+      ],
+    });
+    if (choice === 'go') void this.startTutorial();
+    else if (choice === 'skip') openHelp();
+  }
+
   /* --------------------------------------------------------------- routing */
 
   private toTitle(): void {
     this.stopTimer();
+    this.tutorial = null;
+    this.hud.setCoach(null);
     renderTitle(this.ctx, !!store.getRun());
     show('title');
   }
 
   private async startRun(seed: number, daily: boolean): Promise<void> {
+    this.tutorial = null;
+    this.hud.setCoach(null);
+    this.hud.setHintEnabled(store.settings().showHint);
     const run = newRun(seed, daily);
     store.stats().runs += 1;
     this.run = run;
@@ -311,11 +339,12 @@ export class App {
     const level = this.level;
     if (!level || this.board.busy) return;
     const sim = level.sim;
-    const run = this.run!;
+    const run = this.run;
 
     let cost = mv.cost;
     if (level.freeFirstMove && sim.movesUsed === 0) cost = 0;
     const applied: Move = { ...mv, cost };
+    const toWasOccupied = applied.kind === 'm' && applied.to < sim.cellStart && sim.cols[applied.to].length > 0;
 
     this.history.push({ sim: cloneSim(sim), undosLeft: level.undosLeft, peeksLeft: level.peeksLeft });
     if (this.history.length > 400) this.history.shift();
@@ -323,8 +352,10 @@ export class App {
     const events: SimEvent[] = [];
     const before = sim.movesLeft;
     applyMove(sim, applied, events);
-    run.levelMoves.push(applied);
-    run.stats.movesSpent += Math.max(0, before - sim.movesLeft);
+    if (run) {
+      run.levelMoves.push(applied);
+      run.stats.movesSpent += Math.max(0, before - sim.movesLeft);
+    }
 
     this.board.clearSelection();
     this.board.clearHint();
@@ -362,6 +393,15 @@ export class App {
     this.refresh();
     this.persist();
 
+    if (this.tutorial) {
+      if (isWon(sim)) {
+        await this.finishTutorial();
+        return;
+      }
+      this.advanceTutorial(applied, events, toWasOccupied);
+      return;
+    }
+
     if (isWon(sim)) {
       await this.onWin();
       return;
@@ -378,12 +418,13 @@ export class App {
     level.undosLeft = snap.undosLeft - 1;
     level.peeksLeft = snap.peeksLeft;
     if (level.undoCostsMove) level.sim.movesLeft -= 1;
-    this.run!.levelMoves.pop();
+    this.run?.levelMoves.pop();
     this.board.clearSelection();
     this.board.clearHint();
     this.board.layout(true);
     this.refresh();
     this.persist();
+    if (this.tutorial) this.paintCoach();
     sfx.tap();
     haptic('light');
   }
@@ -405,7 +446,7 @@ export class App {
     }
     if (cost > 0) {
       level.sim.movesLeft -= cost;
-      this.run!.stats.movesSpent += cost;
+      if (this.run) this.run.stats.movesSpent += cost;
       this.hud.flashMoves(-1);
     } else {
       this.freeHints -= 1;
@@ -681,6 +722,94 @@ export class App {
     this.showFork();
   }
 
+  /* ------------------------------------------------------------ tutorial */
+
+  private async startTutorial(): Promise<void> {
+    this.stopTimer();
+    this.run = null;
+    this.tutorial = { tally: emptyTally(), step: 0 };
+    const level = buildTutorialLevel();
+    this.level = level;
+    this.history = [];
+    this.freeHints = 0;
+
+    // The board must be on screen before it is measured, or every card is
+    // laid out against a zero-width container.
+    this.hud.setDealing(false);
+    show('play');
+    await new Promise((r) => requestAnimationFrame(() => r(null)));
+    this.hud.mount(level);
+    this.hud.setHintEnabled(false);
+    this.board.mount(level);
+
+    if (!store.settings().reduceMotion) {
+      this.board.busy = true;
+      sfx.deal();
+      await this.board.dealIn();
+      this.board.busy = false;
+    }
+    this.refresh();
+    this.paintCoach();
+  }
+
+  private paintCoach(): void {
+    const t = this.tutorial;
+    const level = this.level;
+    if (!t || !level) return;
+    const step = COACH_STEPS[t.step];
+    this.hud.setCoach(step.text);
+    this.board.layout(true); // the banner changed how much room the tableau has
+    this.board.setCoachMove(step.coach ? coachMove(level.sim, t.step) : null);
+  }
+
+  /** Folds one move into the tutorial's tally and advances the lesson. */
+  private advanceTutorial(mv: Move, events: SimEvent[], toWasOccupied: boolean): void {
+    const t = this.tutorial;
+    const level = this.level;
+    if (!t || !level) return;
+    const sim = level.sim;
+    if (mv.kind === 'm') {
+      if (mv.to >= sim.cellStart) t.tally.reserved += 1;
+      else if (toWasOccupied) t.tally.stacked += 1;
+      const moved = events.find((e) => e.t === 'move');
+      if (moved && moved.t === 'move' && moved.ids.length >= 2) t.tally.grouped += 1;
+    }
+    for (let c = 0; c < sim.cellStart; c++) if (sim.cols[c].length === 0) t.tally.emptied += 1;
+
+    const next = stepFor(sim, t.tally);
+    if (next !== t.step) {
+      t.step = next;
+      sfx.boon();
+    }
+    this.paintCoach();
+  }
+
+  private async finishTutorial(): Promise<void> {
+    this.board.busy = true;
+    this.board.celebrate();
+    this.hud.setCoach(null);
+    this.board.setCoachMove(null);
+    sfx.win();
+    haptic('success');
+    store.stats().tutorialDone = true;
+    store.save();
+    await new Promise((r) => setTimeout(r, 1100));
+    this.board.busy = false;
+    this.tutorial = null;
+    const choice = await modal({
+      title: 'Board cleared',
+      body: 'Real runs stack extra rules on top of that, and the move allowance actually bites. See how deep you get.',
+      dismissable: false,
+      actions: [
+        { label: 'Begin a run', kind: 'primary', value: 'run' },
+        { label: 'Back to the title', kind: 'ghost', value: 'title' },
+      ],
+    });
+    this.hud.setHintEnabled(store.settings().showHint);
+    if (choice === 'run') void this.startRun(randomSeed(), false);
+    else this.toTitle();
+  }
+
   /** Plays the solver's own line. Only reachable through the `?qa=1` bridge. */
   async qaSolve(limit = 999): Promise<void> {
     const line = this.level?.solution;
@@ -719,8 +848,26 @@ export class App {
   /* ---------------------------------------------------------------- misc */
 
   private openPlayMenu(): void {
-    const run = this.run!;
     const level = this.level!;
+    if (!this.run) {
+      menuSheet('Paused', [
+        { label: 'How to play', fn: () => openHelp() },
+        { label: 'Settings', fn: () => openSettings() },
+        {
+          label: 'Leave the tutorial',
+          kind: 'danger',
+          fn: () => {
+            this.tutorial = null;
+            this.hud.setCoach(null);
+            this.board.setCoachMove(null);
+            this.hud.setHintEnabled(store.settings().showHint);
+            this.toTitle();
+          },
+        },
+      ]);
+      return;
+    }
+    const run = this.run;
     const facts = el('div', { class: 'level-facts' }, [
       el('p', {}, [
         `Level ${level.spec.depth} · ${level.columns} columns · ${level.cells} reserve · ${level.sim.defs.length} cards`,

@@ -19,6 +19,7 @@ export class Hud {
   private movesBox!: HTMLElement;
   private turned!: HTMLElement;
   private depth!: HTMLElement;
+  private depthBox!: HTMLElement;
   private timer!: HTMLElement;
   private strip!: HTMLElement;
   private bar!: HTMLElement;
@@ -26,6 +27,7 @@ export class Hud {
   private hintBtn!: HTMLButtonElement;
   private peekBtn!: HTMLButtonElement;
   private banner!: HTMLElement;
+  private coach!: HTMLElement;
 
   constructor(actions: HudActions) {
     this.movesBox = el('div', { class: 'hud-moves' }, [
@@ -33,12 +35,14 @@ export class Hud {
       el('span', {}, ['moves left']),
     ]);
     this.depth = el('b', {}, ['1']);
+    this.depthBox = el('div', { class: 'hud-depth' }, ['LV ', this.depth]);
     this.turned = el('b', {}, ['0/0']);
     this.timer = el('div', { class: 'hud-timer hidden' }, ['']);
     this.strip = el('div', { class: 'mods-strip' });
     this.bar = el('div', { class: 'progress' }, [el('i')]);
     this.boardHost = el('div', { class: 'board', id: 'board' });
     this.banner = el('div', { class: 'deal-banner' }, ['Dealing…']);
+    this.coach = el('div', { class: 'coach' }, [el('p', { class: 'coach-text' })]);
 
     const menuBtn = el('button', { class: 'icon-btn', type: 'button', 'aria-label': 'Menu' }, ['☰']);
     menuBtn.addEventListener('click', actions.menu);
@@ -67,14 +71,14 @@ export class Hud {
     this.root = el('div', { class: 'play' }, [
       el('header', { class: 'hud' }, [
         menuBtn,
-        el('div', { class: 'hud-depth' }, ['LV ', this.depth]),
+        this.depthBox,
         this.movesBox,
         el('div', { class: 'hud-turned' }, [this.turned, el('span', {}, ['face down'])]),
         this.timer,
       ]),
       this.bar,
       this.strip,
-      el('div', { class: 'board-wrap' }, [this.boardHost, this.banner]),
+      el('div', { class: 'board-wrap' }, [this.boardHost, this.banner, this.coach]),
       el('footer', { class: 'actions' }, [this.undoBtn, this.hintBtn, this.peekBtn]),
     ]);
   }
@@ -83,8 +87,25 @@ export class Hud {
     this.banner.classList.toggle('on', on);
   }
 
+  /**
+   * The tutorial's coaching line. The board is shortened by exactly the
+   * banner's height so the cards it is teaching about never sit behind it.
+   */
+  setCoach(text: string | null): void {
+    this.coach.classList.toggle('on', text !== null);
+    if (text === null) {
+      this.boardHost.style.bottom = '';
+      return;
+    }
+    this.coach.firstElementChild!.textContent = text;
+    this.boardHost.style.bottom = `${this.coach.offsetHeight + 10}px`;
+  }
+
   mount(level: Level): void {
-    this.depth.textContent = String(level.spec.depth);
+    const lesson = level.spec.kind === 'tutorial';
+    this.depthBox.classList.toggle('lesson', lesson);
+    this.depthBox.firstChild!.textContent = lesson ? 'LESSON' : 'LV ';
+    this.depth.textContent = lesson ? '' : String(level.spec.depth);
     this.strip.replaceChildren(
       ...level.modifiers.map((m) => {
         const c = modChip(m);
@@ -109,7 +130,8 @@ export class Hud {
     (this.bar.firstElementChild as HTMLElement).style.width = `${((total - sim.hidden) / total) * 100}%`;
     this.movesBox.classList.toggle('low', sim.movesLeft <= 5);
     this.movesBox.classList.toggle('critical', sim.movesLeft <= 2);
-    this.undoBtn.querySelector('.act-count')!.textContent = String(level.undosLeft);
+    this.undoBtn.querySelector('.act-count')!.textContent =
+      level.undosLeft > 20 ? '∞' : String(level.undosLeft);
     this.undoBtn.disabled = !opts.canUndo || level.undosLeft <= 0;
     this.hintBtn.querySelector('.act-count')!.textContent = opts.hintCost ? `−${opts.hintCost}` : 'free';
     this.hintBtn.disabled = sim.movesLeft < opts.hintCost;

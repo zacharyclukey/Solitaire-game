@@ -19,6 +19,7 @@ export interface MenuCtx {
   newRun(): void;
   continueRun(): void;
   daily(): void;
+  tutorial(): void;
   pickNode(spec: LevelSpec): void;
   takeReward(r: Reward): void;
   buy(item: ShopItem, index: number): void;
@@ -34,6 +35,7 @@ const KIND_LABEL: Record<NodeKind, string> = {
   boss: 'Warden',
   shop: 'Market',
   respite: 'Respite',
+  tutorial: 'First Deal',
 };
 
 const KIND_BLURB: Record<NodeKind, string> = {
@@ -43,6 +45,7 @@ const KIND_BLURB: Record<NodeKind, string> = {
   boss: 'The floor’s keeper. Everything at once.',
   shop: '',
   respite: '',
+  tutorial: 'A short board with a guide.',
 };
 
 /* ------------------------------------------------------------------ title */
@@ -66,7 +69,10 @@ export function renderTitle(ctx: MenuCtx, hasRun: boolean): void {
         btn(hasRun ? 'New run' : 'Begin a run', hasRun ? 'ghost' : 'primary', () => ctx.newRun()),
         btn('Daily deal', 'ghost', () => ctx.daily()),
         el('div', { class: 'menu-row' }, [
+          btn(m.tutorialDone ? 'Tutorial' : 'Learn to play', 'small', () => ctx.tutorial()),
           btn('How to play', 'small', () => openHelp()),
+        ]),
+        el('div', { class: 'menu-row' }, [
           btn('Codex', 'small', () => openCodex()),
           btn('Settings', 'small', () => openSettings()),
         ]),
@@ -108,6 +114,7 @@ const KIND_REWARD: Record<NodeKind, string> = {
   boss: 'A charm, guaranteed',
   shop: '',
   respite: '',
+  tutorial: '',
 };
 
 export function runBar(run: RunState, opts: { onDeck: () => void } = { onDeck: () => {} }): HTMLElement {

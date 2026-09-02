@@ -368,3 +368,50 @@ html.left-handed .actions { flex-direction: row-reverse; }
   background: linear-gradient(90deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0));
   pointer-events: none;
 }
+
+/* ------------------------------------------------------- coaching banner */
+
+.coach {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 6px;
+  display: none;
+  padding: 13px 15px;
+  border-radius: var(--r-md);
+  background: linear-gradient(180deg, rgba(40, 48, 74, 0.95), rgba(27, 33, 51, 0.95));
+  border: 1px solid var(--line-strong);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  z-index: 950;
+  animation: coach-in calc(0.3s * var(--dur)) cubic-bezier(0.2, 0.8, 0.3, 1) both;
+}
+.coach.on { display: block; }
+.coach-text {
+  white-space: pre-line;
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: var(--ink-dim);
+}
+.coach-text::first-line { color: var(--ink); }
+
+@keyframes coach-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+
+.card.coach-src .face { animation: coachglow calc(1.4s * var(--dur)) ease-in-out infinite; }
+.card.coach-dst .face.front { box-shadow: 0 0 0 2px var(--gold), 0 0 16px rgba(227, 178, 98, 0.45); }
+.slot.coach-dst { border-color: var(--gold); background: rgba(227, 178, 98, 0.14); opacity: 1; }
+
+@keyframes coachglow {
+  0%, 100% { box-shadow: 0 0 0 2.5px rgba(255, 255, 255, 0.95), 0 0 20px rgba(255, 255, 255, 0.4); }
+  50% { box-shadow: 0 0 0 2.5px rgba(255, 255, 255, 0.4), 0 0 8px rgba(255, 255, 255, 0.15); }
+}
+
+.hud-depth.lesson {
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  color: var(--gold);
+}

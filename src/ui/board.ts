@@ -504,16 +504,21 @@ export class BoardView {
 
   /* ----------------------------------------------------------- affordances */
 
+  /** Paints a move onto the board: `src` on the card being moved, `dst` on
+   *  whatever it would land on. Shared by the hint button and the tutorial. */
+  private mark(move: Move, src: string, dst: string): void {
+    const fromCol = this.sim.cols[move.from];
+    const head = fromCol[move.fromIdx] ?? fromCol[fromCol.length - 1];
+    if (head !== undefined) this.cardEls[head]?.classList.add(src);
+    if (move.kind !== 'm') return;
+    const tcol = this.sim.cols[move.to];
+    if (tcol.length === 0) this.slots[move.to].classList.add(dst);
+    else this.cardEls[tcol[tcol.length - 1]].classList.add(dst);
+  }
+
   showHint(move: Move): void {
     this.clearHint();
-    const fromCol = this.sim.cols[move.from];
-    const src = fromCol[move.fromIdx] ?? fromCol[fromCol.length - 1];
-    if (src !== undefined) this.cardEls[src].classList.add('hint-src');
-    if (move.kind === 'm') {
-      const tcol = this.sim.cols[move.to];
-      if (tcol.length === 0) this.slots[move.to].classList.add('hint-dst');
-      else this.cardEls[tcol[tcol.length - 1]].classList.add('hint-dst');
-    }
+    this.mark(move, 'hint-src', 'hint-dst');
     this.hintTimer = window.setTimeout(() => this.clearHint(), 2600);
   }
 
@@ -524,6 +529,13 @@ export class BoardView {
     }
     for (const e of this.cardEls) e.classList.remove('hint-src', 'hint-dst');
     for (const s of this.slots) s.classList.remove('hint-dst');
+  }
+
+  /** Persistent coaching highlight, redrawn after every move by the tutorial. */
+  setCoachMove(move: Move | null): void {
+    for (const e of this.cardEls) e.classList.remove('coach-src', 'coach-dst');
+    for (const s of this.slots) s.classList.remove('coach-dst');
+    if (move) this.mark(move, 'coach-src', 'coach-dst');
   }
 
   setPeek(on: boolean): void {

@@ -12,7 +12,7 @@ import { findSolution } from './solver.ts';
 import { createSim, type Sim } from './sim.ts';
 import { DEFAULT_RULES, makeCardDef, type CardDef, type CurseId, type DeckCard, type Move, type RuleSet, type Suit } from './types.ts';
 
-export type NodeKind = 'trial' | 'gauntlet' | 'cache' | 'boss' | 'shop' | 'respite';
+export type NodeKind = 'trial' | 'gauntlet' | 'cache' | 'boss' | 'shop' | 'respite' | 'tutorial';
 
 export interface LevelSpec {
   depth: number;
