@@ -27,6 +27,7 @@ import {
   type ShopItem,
 } from './game/run.ts';
 import { analyse, type PostMortem } from './game/postmortem.ts';
+import { resolveUndo } from './game/resources.ts';
 import { applyMove, cloneSim, isWon, legalMoves, settle, waste, type Sim, type SimEvent } from './game/sim.ts';
 import { findSolution } from './game/solver.ts';
 import {
@@ -83,8 +84,9 @@ import {
 
 interface Snapshot {
   sim: Sim;
-  undosLeft: number;
-  peeksLeft: number;
+  /** Off-the-books spend when this snapshot was taken, so an undo can refund
+   *  the move it reverses without also refunding hints taken since. */
+  offBook: number;
 }
 
 export class App {
@@ -332,7 +334,7 @@ export class App {
       // Rebuild the undo stack as we replay, so a resumed level plays exactly
       // like one that was never interrupted.
       for (const m of replay) {
-        this.history.push({ sim: cloneSim(level.sim), undosLeft: level.undosLeft, peeksLeft: level.peeksLeft });
+        this.history.push({ sim: cloneSim(level.sim), offBook: this.offBookSpend });
         applyMove(level.sim, m as Move, null);
       }
       this.board.layout(false);
@@ -373,7 +375,7 @@ export class App {
     const applied: Move = { ...mv, cost };
     const toWasOccupied = applied.kind === 'm' && sim.cols[applied.to].length > 0;
 
-    this.history.push({ sim: cloneSim(sim), undosLeft: level.undosLeft, peeksLeft: level.peeksLeft });
+    this.history.push({ sim: cloneSim(sim), offBook: this.offBookSpend });
     if (this.history.length > 400) this.history.shift();
 
     const events: SimEvent[] = [];
@@ -444,12 +446,17 @@ export class App {
     const snap = this.history.pop()!;
     this.tally.undos += 1;
     restoreSim(level.sim, snap.sim);
-    level.undosLeft = snap.undosLeft - 1;
-    level.peeksLeft = snap.peeksLeft;
-    if (level.undoCostsMove) {
-      level.sim.movesLeft -= 1;
-      this.offBookSpend += 1;
-    }
+    // Glasswork's surcharge goes on the books before the sums are done, so it
+    // is charged like any other off-the-books spend and cannot be undone away.
+    if (level.undoCostsMove) this.offBookSpend += 1;
+    const after = resolveUndo({
+      restoredMovesLeft: level.sim.movesLeft,
+      offBookAtSnapshot: snap.offBook,
+      offBookNow: this.offBookSpend,
+      undosLeft: level.undosLeft,
+    });
+    level.sim.movesLeft = after.movesLeft;
+    level.undosLeft = after.undosLeft;
     this.run?.levelMoves.pop();
     this.board.clearSelection();
     this.board.clearHint();
