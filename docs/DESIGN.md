@@ -39,6 +39,11 @@ all:
 | Draw pile of 11, 5 columns | 6 / 10 |
 | Draw pile of 11, 6 columns | 0 / 10 |
 | Draw pile of 8, 7 columns, 1 face-up | 0 / 10, solver cleared 10 / 10 |
+| Staircase deal, 7 columns | 0 / 10, solver cleared 9-10 / 10 |
+| Staircase deal, 6 columns | 0 / 10, solver cleared 6 / 10 |
+
+The last row looks worse than it plays: three candidates are tried before any
+easing, so ~94% of six-column deals still land at full difficulty.
 
 The headline is the third row. **Column count dominates, not pile size.** Empty
 columns are the only true sink in the game — the one place any card can go —
@@ -48,9 +53,20 @@ it could only ever deliver one fewer column while promising two), and why
 relaxation now *widens the pile*, which shortens the tableau, rather than
 handing out more parking space.
 
-The pile is 30% of the deck. That leaves the tableau wide and shallow: more
-columns to work with, fewer cards buried in each, and a steady trickle of new
-destinations from the waste.
+### The shape of the deal
+
+The tableau deals in the Klondike silhouette: one card in the first column
+rising to a deep pile in the last, with exactly one card face-up per column.
+An earlier version dealt even columns with two face-up cards each and a
+playtester's reaction was immediate — it read as a grid rather than a game of
+solitaire. The staircase is not decoration; the shape is what makes the board
+legible at a glance.
+
+It also carries the early-game difficulty curve. The draw pile's share of the
+deck falls from 46% to 30% over the first six levels, so the staircase visibly
+deepens as you descend — a shorter climb at the start, not a board that looks
+half-finished. Buried cards per board went from about 14 under the old even
+deal to about 21 under this one.
 
 ### The move allowance
 
@@ -93,6 +109,15 @@ depth   cards cols pile hidden   par budget slack
 ```
 
 `npm run balance` regenerates this table.
+
+### The allowance floor is absolute
+
+Austerity, gauntlets and wardens all scale the allowance down. Once slack got
+as tight as 1.05, those multipliers could push the budget *below* par —
+handing out a board that provably could not be cleared. The allowance is now
+clamped above par unconditionally and the modifier sweep asserts it. A loss has
+to be the player's line, never the deal's; that is the one property the whole
+design rests on.
 
 ### Guaranteed playability
 

@@ -380,3 +380,16 @@ html.four-colour .mini.s3 { color: var(--suit-green); }
 }
 .record-body strong { display: block; font-size: 13.5px; font-weight: 600; }
 .record-body span { font-size: 11.5px; color: var(--ink-faint); }
+
+/* The solver's account of how the run actually ended. */
+.epitaph {
+  text-align: left;
+  margin: 18px 0 20px;
+  padding: 14px 16px;
+  border-radius: var(--r-md);
+  background: rgba(229, 103, 95, 0.07);
+  border: 1px solid rgba(229, 103, 95, 0.22);
+}
+.epitaph-verdict { font-size: 14.5px; line-height: 1.5; color: var(--ink); }
+.epitaph-lines { margin-top: 8px; padding-left: 16px; }
+.epitaph-lines li { font-size: 12.5px; color: var(--ink-faint); margin-bottom: 3px; }

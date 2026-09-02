@@ -297,11 +297,18 @@ function shopFace(item: ShopItem): { glyph: string; title: string; text: string 
 
 /* ------------------------------------------------------------------- over */
 
+/** What the solver worked out about how the run actually ended. */
+export interface Epitaph {
+  verdict: string;
+  lines: string[];
+}
+
 export function renderOver(
   run: RunState,
   reason: string,
   isBest: boolean,
   actions: { again(): void; replay(): void; title(): void },
+  epitaph: Epitaph | null = null,
 ): void {
   const s = screen('over');
   const score = computeScore(run);
@@ -313,6 +320,14 @@ export function renderOver(
         el('p', { class: 'depth-lbl' }, [run.depth === 1 ? 'level cleared' : 'levels cleared']),
         isBest ? el('p', { class: 'record' }, ['New personal best']) : null,
       ]),
+      epitaph
+        ? el('div', { class: 'epitaph' }, [
+            el('p', { class: 'epitaph-verdict' }, [epitaph.verdict]),
+            epitaph.lines.length
+              ? el('ul', { class: 'epitaph-lines' }, epitaph.lines.map((l) => el('li', {}, [l])))
+              : null,
+          ])
+        : null,
       el('div', { class: 'over-stats' }, [
         statRow('Score', score.toLocaleString()),
         statRow('Cards turned', String(run.stats.cardsTurned)),
