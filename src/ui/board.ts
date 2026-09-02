@@ -10,7 +10,7 @@
  * highlight code too; only their on-screen placement differs.
  */
 import type { Level } from '../game/deal.ts';
-import { legalMoves, stock, stockIdx, wasteIdx, type Sim } from '../game/sim.ts';
+import { legalMoves, stock, stockIdx, waste, wasteIdx, type Sim } from '../game/sim.ts';
 import type { CardDef, Move } from '../game/types.ts';
 import { makeCardEl } from './cardview.ts';
 import { el } from './dom.ts';
@@ -227,8 +227,11 @@ export class BoardView {
         if (!animate) e.style.transition = 'none';
         e.style.transform = `translate3d(${x}px, ${y}px, 0)`;
         e.style.zIndex = String(10 + i);
-        e.classList.toggle('up', this.sim.up[id] === 1);
-        e.classList.toggle('down', this.sim.up[id] === 0);
+        // Cards in the draw pile always show their back, even on a later pass
+        // when the simulation already counts them as seen.
+        const shown = tableauCol || isWaste ? this.sim.up[id] === 1 : false;
+        e.classList.toggle('up', shown);
+        e.classList.toggle('down', !shown);
         e.classList.toggle('tail', i === col.length - 1);
         e.classList.toggle('in-pile', !tableauCol);
         if (!animate) {
@@ -245,8 +248,11 @@ export class BoardView {
     this.slots.forEach((sl, c) => sl.classList.toggle('open', this.sim.cols[c].length === 0));
 
     const left = stock(this.sim).length;
-    this.stockBadge.textContent = String(left);
-    this.stockBadge.classList.toggle('empty', left === 0);
+    const canTurn = left === 0 && waste(this.sim).length > 0 && this.sim.passesLeft > 0;
+    this.stockBadge.textContent = canTurn ? `↻ ${this.sim.passesLeft}` : String(left);
+    this.stockBadge.classList.toggle('empty', left === 0 && !canTurn);
+    this.stockBadge.classList.toggle('recycle', canTurn);
+    this.slots[stockIdx(this.sim)].classList.toggle('recyclable', canTurn);
     this.stockBadge.style.transform = `translate3d(${this.zoneX(stockIdx(this.sim))}px, 0, 0)`;
   }
 
@@ -354,11 +360,12 @@ export class BoardView {
     this.clearHint();
 
     // Anywhere on the draw pile — the slot or the cards stacked on it — turns
-    // the next card. It never participates in selection or dragging.
+    // the next card, or turns the waste back over once the pile is dry. It
+    // never participates in selection or dragging.
     if (this.zoneAt(e.clientX, e.clientY) === stockIdx(this.sim)) {
       this.clearSelection();
-      const draw = legalMoves(this.sim, true).find((m) => m.kind === 'd');
-      if (draw) this.cb.onMove(draw);
+      const act = legalMoves(this.sim, true).find((m) => m.kind === 'd' || m.kind === 'r');
+      if (act) this.cb.onMove(act);
       else this.cb.onIllegal();
       return;
     }

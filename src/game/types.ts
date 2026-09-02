@@ -80,6 +80,8 @@ export interface RuleSet {
   drawCost: number;
   /** Cards turned per draw. */
   drawCount: number;
+  /** How many times the waste may be turned back into the draw pile. */
+  passes: number;
   /** Largest sequence that may be moved at once; 0 = unlimited (Gridlock). */
   maxGroup: number;
   /** Column height cap; 0 = unlimited (Low Ceiling). */
@@ -102,6 +104,7 @@ export const DEFAULT_RULES: RuleSet = {
   emptyCost: 0,
   drawCost: 1,
   drawCount: 1,
+  passes: 2,
   maxGroup: 0,
   maxHeight: 0,
   baseRank: 13,
@@ -114,8 +117,9 @@ export const DEFAULT_RULES: RuleSet = {
  *  - `b` burn (Ember) the top card of column `from`
  *  - `f` pay to flip a face-down Shrouded card sitting on top of column `from`
  *  - `d` turn the next card off the draw pile onto the waste
+ *  - `r` turn the waste back over to form a fresh draw pile
  */
-export type MoveKind = 'm' | 'b' | 'f' | 'd';
+export type MoveKind = 'm' | 'b' | 'f' | 'd' | 'r';
 
 export interface Move {
   kind: MoveKind;

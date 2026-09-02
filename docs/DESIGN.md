@@ -7,8 +7,8 @@ and where the knobs are.
 
 ## 1. The core loop
 
-**Goal of a level:** turn every face-down card. Nothing else. There are no
-foundations, no stock and no waste — the tableau is the entire game.
+**Goal of a level:** get every card face-up in a tableau column. Not merely
+turned — *placed*. There are no foundations, so nothing ever leaves the board.
 
 That single subtraction changes solitaire completely. In Klondike, the
 foundations are a sink: any card can eventually leave the board, which is what
@@ -21,11 +21,25 @@ Two mechanisms fix it, and both became central to the design.
 
 ### The draw pile
 
-A stock and a waste, in the Klondike shape but with one pass and no recycle.
-Turning a card off the pile costs a move; pile cards count as face-down, so the
-pile has to be emptied to win. The waste's top card is playable and everything
-under it is buried until you play it off — so the real decision is *when* to
-draw, not whether.
+A stock and a waste in the Klondike shape. Turning a card off the pile costs a
+move, and the waste's top card is playable while everything under it is buried
+until you play it off — so the real decision is *when* to draw, not whether.
+
+**A card on the waste is seen, not sorted.** The first version counted a drawn
+card as revealed, which meant a third of the goal could be bought by tapping
+the pile with no thought at all — a playtester spotted it immediately. The win
+condition now requires the waste to be empty as well: every card the pile hands
+you has to find a home in a column. `remaining = hidden + waste` is what the
+HUD counts down, and draining the whole pile moves it by exactly zero.
+
+That change would strand a level permanently the first time a card came up
+with nowhere to go, so the waste can be turned back over — twice by default,
+each turn costing a move. Cards keep their face on a second pass; they have
+been seen, and the pile is drawn as backs regardless because a pile is a pile.
+
+Re-measured after the change: still 10/10 solvable at seven columns, with par
+rising from about 26 to about 32 because every drawn card now has to be
+placed rather than merely flipped.
 
 An earlier version used a FreeCell-style reserve of free cells instead. Both
 were chosen the same way — by exhaustively searching the reachable state space
@@ -41,6 +55,7 @@ all:
 | Draw pile of 8, 7 columns, 1 face-up | 0 / 10, solver cleared 10 / 10 |
 | Staircase deal, 7 columns | 0 / 10, solver cleared 9-10 / 10 |
 | Staircase deal, 6 columns | 0 / 10, solver cleared 6 / 10 |
+| Waste must be emptied too, 7 columns | 0 / 10, solver cleared 10 / 10 |
 
 The last row looks worse than it plays: three candidates are tried before any
 easing, so ~94% of six-column deals still land at full difficulty.

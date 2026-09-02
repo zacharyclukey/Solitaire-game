@@ -3,7 +3,8 @@
 **A solitaire roguelite. Turn every card.**
 
 Facedown is a mobile-first single-player card game. Each level deals your whole
-deck into a tableau and asks one thing: turn every face-down card. There are no
+deck into a tableau and a draw pile, and asks one thing: get every card face-up
+in a column. There are no
 foundation piles — nothing ever leaves the board. Between levels you enchant,
 add and cut cards, buy charms, and choose which set of broken rules to take on
 next. Your score is how deep you got.
@@ -18,9 +19,11 @@ Klondike ends when the foundations are full. Facedown removes the foundations
 entirely, so the tableau is the whole game and the only goal is excavation. That
 alone would lock up constantly, so the game adds two things:
 
-- **A draw pile.** One pass, no recycle. Turning a card off it costs a move, and
-  every card in it has to be turned, so the pile is a resource you spend rather
-  than a safety net. Play what you draw while you can — the next draw buries it.
+- **A draw pile.** Turning a card off it costs a move, and a card sitting on the
+  waste is seen but not sorted — it still has to be played into a column, so
+  dealing the pile out is not progress. Play what you draw while you can; the
+  next draw buries it. Once the pile runs dry you can turn the waste back over,
+  twice.
 - **A move allowance.** Every level gives you a fixed number of moves. Spend them
   all and the run is over. Moves, not luck, are the resource you manage.
 
@@ -44,7 +47,8 @@ cards and five lessons, each arriving at the moment it is needed.
 | Inspect a card | Press and hold. |
 
 Stacks build down in alternating colours — 7♥ onto 8♠ — and a correctly ordered
-run moves as one unit for one move. Uncovering a face-down card turns it.
+run moves as one unit for one move. Uncovering a face-down card turns it. The
+counter at the top is what is left to place, not what is left to turn.
 
 ## The run
 

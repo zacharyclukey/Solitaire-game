@@ -1,7 +1,7 @@
 /** The in-level chrome: counters, rule strip and the action bar. */
 import type { Level } from '../game/deal.ts';
 import { MODIFIERS } from '../game/content.ts';
-import type { Sim } from '../game/sim.ts';
+import { remaining, type Sim } from '../game/sim.ts';
 import { el } from './dom.ts';
 import { modChip, sheetPanel } from './shell.ts';
 
@@ -76,7 +76,7 @@ export class Hud {
         menuBtn,
         this.depthBox,
         this.movesBox,
-        el('div', { class: 'hud-turned' }, [this.turned, el('span', {}, ['face down'])]),
+        el('div', { class: 'hud-turned' }, [this.turned, el('span', {}, ['to place'])]),
         this.timer,
       ]),
       this.bar,
@@ -133,8 +133,11 @@ export class Hud {
     this.par.textContent = `${sim.movesUsed} of par ${level.par}`;
     this.par.classList.toggle('over', sim.movesUsed > level.par);
     const total = sim.defs.length;
-    this.turned.textContent = String(sim.hidden);
-    (this.bar.firstElementChild as HTMLElement).style.width = `${((total - sim.hidden) / total) * 100}%`;
+    // What is actually left to do: face-down cards plus everything stranded on
+    // the waste, which has been seen but not sorted into a column.
+    const left = remaining(sim);
+    this.turned.textContent = String(left);
+    (this.bar.firstElementChild as HTMLElement).style.width = `${((total - left) / total) * 100}%`;
     this.movesBox.classList.toggle('low', sim.movesLeft <= 5);
     this.movesBox.classList.toggle('critical', sim.movesLeft <= 2);
     this.undoBtn.querySelector('.act-count')!.textContent =

@@ -25,12 +25,15 @@ export interface Sim {
   movesUsed: number;
   revealed: number; // cards turned during play; drives Frozen thaw
   gold: number;
+  /** Times the waste may still be turned back into the draw pile. */
+  passesLeft: number;
   rules: RuleSet;
 }
 
 export type SimEvent =
   | { t: 'move'; ids: number[]; from: number; to: number }
   | { t: 'draw'; ids: number[] }
+  | { t: 'recycle'; n: number }
   | { t: 'flip'; id: number; col: number; idx: number }
   | { t: 'burn'; id: number; from: number }
   | { t: 'gold'; n: number }
@@ -66,6 +69,7 @@ export function createSim(
     movesUsed: 0,
     revealed: 0,
     gold: 0,
+    passesLeft: rules.passes,
     rules,
   };
 }
@@ -82,12 +86,22 @@ export function cloneSim(s: Sim): Sim {
     movesUsed: s.movesUsed,
     revealed: s.revealed,
     gold: s.gold,
+    passesLeft: s.passesLeft,
     rules: s.rules,
   };
 }
 
+/**
+ * Cards not yet face-up in a tableau column — the real measure of what is left
+ * to do. A card sitting on the waste has been seen but not sorted, and turning
+ * the whole draw pile over is not progress.
+ */
+export function remaining(s: Sim): number {
+  return s.hidden + waste(s).length;
+}
+
 export function isWon(s: Sim): boolean {
-  return s.hidden === 0;
+  return remaining(s) === 0;
 }
 
 /**
@@ -102,7 +116,7 @@ export function simKey(s: Sim): string {
     t.push(p);
   }
   t.sort();
-  return `${t.join('|')}#${stock(s).join(',')}#${waste(s).join(',')}`;
+  return `${t.join('|')}#${stock(s).join(',')}#${waste(s).join(',')}#${s.passesLeft}`;
 }
 
 /* ------------------------------------------------------------------ rules */
@@ -175,6 +189,12 @@ export function legalMoves(s: Sim, affordableOnly = true): Move[] {
   // cards, which is why a board is rarely "stuck" before the pile runs dry.
   if (stock(s).length > 0 && (!affordableOnly || R.drawCost <= s.movesLeft)) {
     out.push({ kind: 'd', from: stockIdx(s), fromIdx: stock(s).length - 1, to: wasteIdx(s), cost: R.drawCost });
+  } else if (stock(s).length === 0 && waste(s).length > 0 && s.passesLeft > 0) {
+    // Turning the waste back over. Without this a card drawn with nowhere to
+    // go would strand the level permanently, since every card has to be placed.
+    if (!affordableOnly || R.drawCost <= s.movesLeft) {
+      out.push({ kind: 'r', from: wasteIdx(s), fromIdx: 0, to: stockIdx(s), cost: R.drawCost });
+    }
   }
 
   // Empty tableau columns are interchangeable: only ever offer the first.
@@ -331,7 +351,16 @@ export function applyMove(s: Sim, mv: Move, ev: SimEvent[] | null = null): void 
       ids.push(id);
     }
     ev?.push({ t: 'draw', ids });
+    // A card coming round on a later pass is already known, so it turns only
+    // the first time it is seen.
     for (const id of ids) flipCard(s, id, wasteIdx(s), to.indexOf(id), ev);
+  } else if (mv.kind === 'r') {
+    const from = waste(s);
+    const to = stock(s);
+    const n = from.length;
+    while (from.length) to.push(from.pop()!);
+    s.passesLeft -= 1;
+    ev?.push({ t: 'recycle', n });
   } else if (mv.kind === 'f') {
     const col = s.cols[mv.from];
     flipCard(s, col[col.length - 1], mv.from, col.length - 1, ev);

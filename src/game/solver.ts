@@ -7,7 +7,7 @@
  *      scales with the board rather than with a hand-tuned constant.
  *   3. Power the in-game Hint button from the live position.
  */
-import { applyMove, cloneSim, isWon, legalMoves, simKey, type Sim } from './sim.ts';
+import { applyMove, cloneSim, isWon, legalMoves, remaining, simKey, type Sim } from './sim.ts';
 import type { Move } from './types.ts';
 
 export interface SolveOptions {
@@ -90,7 +90,9 @@ export function heuristic(s: Sim): number {
     }
     if (topmostDown >= 0) blockers += col.length - 1 - topmostDown;
   }
-  return s.hidden + 0.5 * blockers;
+  // Every card on the waste still has to find a home in a column, so it counts
+  // as work left exactly like a face-down card does.
+  return remaining(s) + 0.5 * blockers;
 }
 
 /** Torch and Twin can turn several cards in one move, which breaks the
@@ -155,7 +157,7 @@ export function solve(start: Sim, opts: SolveOptions = {}): SolveResult | null {
       const g = node.g + mv.cost;
       if (respect && next.movesLeft < 0) continue;
       if (g >= bound) continue;
-      if (g + next.hidden >= bound && !hasCascades(next)) continue;
+      if (g + remaining(next) >= bound && !hasCascades(next)) continue;
       const k = simKey(next);
       const prev = best.get(k);
       if (prev !== undefined && prev <= g) continue;

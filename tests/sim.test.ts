@@ -10,6 +10,7 @@ import {
   settle,
   simKey,
   status,
+  remaining,
   stock,
   waste,
   wasteIdx,
@@ -279,16 +280,51 @@ describe('the draw pile', () => {
     expect(waste(s)).toHaveLength(0);
     expect(s.cols[0].map((id) => s.defs[id].rank)).toEqual([9, 8]);
 
-    // Draw the 2, then bury nothing: it is the only waste card and is stuck.
+    // Draw the 2, which has nowhere to go: no play comes off the waste.
     applyMove(s, legalMoves(s).find((m) => m.kind === 'd')!);
-    expect(legalMoves(s).some((m) => m.from === wasteIdx(s))).toBe(false);
+    expect(legalMoves(s).some((m) => m.kind === 'm' && m.from === wasteIdx(s))).toBe(false);
   });
 
-  it('counts pile cards as face-down, so a board is not won until it is empty', () => {
+  it('does not count turning the pile over as progress — the card must be placed', () => {
+    // The whole point of the goal: a card seen on the waste is not a card
+    // sorted into a column, so dealing the pile out cannot win a level.
     const s = build([[card(9, 1)]], [[true]], DEFAULT_RULES, 10, [card(3, 2)]);
     expect(isWon(s)).toBe(false);
     applyMove(s, legalMoves(s).find((m) => m.kind === 'd')!);
+    expect(s.hidden).toBe(0); // nothing is face-down any more...
+    expect(waste(s)).toHaveLength(1); // ...but it is sitting on the waste
+    expect(isWon(s)).toBe(false);
+    expect(remaining(s)).toBe(1);
+  });
+
+  it('is won once every card sits face-up in a column', () => {
+    const s = build([[card(9, 1)]], [[true]], DEFAULT_RULES, 10, [card(8, 0)]);
+    applyMove(s, legalMoves(s).find((m) => m.kind === 'd')!);
+    expect(isWon(s)).toBe(false);
+    applyMove(s, legalMoves(s).find((m) => m.kind === 'm' && m.from === wasteIdx(s))!);
+    expect(waste(s)).toHaveLength(0);
     expect(isWon(s)).toBe(true);
+  });
+
+  it('turns the waste back over when the pile runs dry, a limited number of times', () => {
+    const R = { ...DEFAULT_RULES, passes: 1 };
+    const s = build([[card(9, 1)]], [[true]], R, 20, [card(3, 2), card(2, 3)]);
+    applyMove(s, legalMoves(s).find((m) => m.kind === 'd')!);
+    applyMove(s, legalMoves(s).find((m) => m.kind === 'd')!);
+    expect(stock(s)).toHaveLength(0);
+    expect(waste(s)).toHaveLength(2);
+
+    const recycle = legalMoves(s).find((m) => m.kind === 'r')!;
+    expect(recycle).toBeTruthy();
+    applyMove(s, recycle);
+    expect(stock(s)).toHaveLength(2);
+    expect(waste(s)).toHaveLength(0);
+    expect(s.passesLeft).toBe(0);
+
+    // Passes are finite: once spent, the waste stays where it is.
+    applyMove(s, legalMoves(s).find((m) => m.kind === 'd')!);
+    applyMove(s, legalMoves(s).find((m) => m.kind === 'd')!);
+    expect(legalMoves(s).some((m) => m.kind === 'r')).toBe(false);
   });
 
   it('never lets anything be placed onto the pile or the waste', () => {

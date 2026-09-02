@@ -123,7 +123,7 @@ export interface CoachStep {
 
 export const COACH_STEPS: CoachStep[] = [
   {
-    text: 'Turn every face-down card and the level is won. Nothing ever leaves the board.\n\nStack the 6♠ on the 7♥ — one rank lower, opposite colour.',
+    text: 'Get every card face-up in a column and the level is won. Nothing ever leaves the board.\n\nStack the 6♠ on the 7♥ — one rank lower, opposite colour.',
     coach: true,
     done: (_s, t) => t.stacked > 0,
   },
@@ -133,7 +133,7 @@ export const COACH_STEPS: CoachStep[] = [
     done: (_s, t) => t.drew > 0,
   },
   {
-    text: 'Every card in that pile has to be turned too, and each turn costs a move. Play what you draw while you can — the next one buries it.\n\nNow empty a column.',
+    text: 'Every card in that pile has to end up in a column too — turning one over is not enough. Play what you draw while you can; the next draw buries it.\n\nNow empty a column.',
     coach: true,
     done: (_s, t) => t.emptied > 0,
   },

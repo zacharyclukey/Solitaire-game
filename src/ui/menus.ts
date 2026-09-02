@@ -437,13 +437,14 @@ export function openRecords(): void {
 export function openHelp(): void {
   const body = el('div', { class: 'prose' }, [
     el('h3', {}, ['The goal']),
-    el('p', {}, ['Turn every card face up. There are no foundation piles — nothing leaves the board. A level is won the instant the last face-down card turns.']),
+    el('p', {}, ['Get every card face-up in a column. There are no foundation piles — nothing leaves the board, and a card seen on the waste is not a card sorted, so the draw pile has to be played out onto the tableau, not just turned over.']),
     el('h3', {}, ['Moving cards']),
     el('ul', {}, [
       el('li', {}, ['Stack a card on one that is one rank higher and the opposite colour — 7♥ onto 8♠.']),
       el('li', {}, ['A properly ordered run moves as a single unit for a single move.']),
       el('li', {}, ['Tap a card to pick it up and see where it can go, then tap a target. Tap it twice to send it to the obvious place. Or just drag it.']),
       el('li', {}, ['Uncovering a face-down card turns it automatically.']),
+      el('li', {}, ['Tap the draw pile to turn its next card. Once it runs dry you can turn the waste back over, but only a couple of times.']),
     ]),
     el('h3', {}, ['Moves are the clock']),
     el('p', {}, ['Every level gives you a fixed allowance of moves. Run out and the run ends. The allowance is set by actually solving the board first, so every deal you are given can be cleared — the question is whether you find the line.']),
@@ -452,6 +453,7 @@ export function openHelp(): void {
       el('li', {}, ['Each level offers a choice of boards. Safer ones pay less; gauntlets bite harder and pay more.']),
       el('li', {}, ['Clearing a level lets you enchant, add or remove a card, or take a charm.']),
       el('li', {}, ['Your deck IS the board. Thin it and levels get short and brittle; grow it and you get more cards carrying more power.']),
+      el('li', {}, ['Par is the length of a line that exists. Beating it pays.']),
       el('li', {}, ['Every third level the market opens. Every fifth, a Warden.']),
     ]),
     el('h3', {}, ['Your score']),
