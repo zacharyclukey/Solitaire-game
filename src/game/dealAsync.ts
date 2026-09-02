@@ -9,7 +9,10 @@ let broken = false;
 let nextId = 1;
 const pending = new Map<number, { resolve: (v: any) => void; reject: (e: unknown) => void }>();
 
+declare const __STANDALONE__: boolean;
+
 function getWorker(): Worker | null {
+  if (typeof __STANDALONE__ !== 'undefined' && __STANDALONE__) return null;
   if (broken) return null;
   if (worker) return worker;
   try {

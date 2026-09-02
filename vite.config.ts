@@ -73,15 +73,25 @@ self.addEventListener('fetch', (e) => {
   };
 }
 
+/**
+ * `FACEDOWN_STANDALONE=1` produces a build meant to be inlined into a single
+ * HTML file: no service worker and no Web Worker, so it runs anywhere a page
+ * can, at the cost of solving on the main thread.
+ */
+const standalone = process.env.FACEDOWN_STANDALONE === '1';
+
 export default defineConfig({
   base: './',
-  plugins: [offlinePlugin()],
+  define: { __STANDALONE__: JSON.stringify(standalone) },
+  plugins: standalone ? [] : [offlinePlugin()],
   build: {
     target: 'es2020',
     outDir: 'dist',
     assetsInlineLimit: 8192,
     cssCodeSplit: false,
     sourcemap: false,
+    // One chunk, so the standalone build can be a single inline <script>.
+    rollupOptions: standalone ? { output: { inlineDynamicImports: true } } : {},
   },
   server: { host: true, port: 5173 },
   test: {

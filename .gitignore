@@ -7,3 +7,4 @@ dist/
 
 # Screenshot/QA output
 qa-out/
+dist-standalone/
