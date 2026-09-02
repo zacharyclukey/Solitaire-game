@@ -59,6 +59,10 @@ run moves as one unit for one move. Uncovering a face-down card turns it.
 Twelve card enchantments, four curses, fifteen charms and twenty-two level rules
 combine into the difficulty; the in-game **Codex** documents all of them.
 
+When a run ends, the solver replays it and tells you where the line actually
+closed, how many moves short you finished, and which enchantment would have
+covered the gap.
+
 Twenty achievements, lifetime statistics and the last twenty-five runs — with
 their seeds, so a good one can be played again — live behind **Records** on the
 title screen.

@@ -263,6 +263,35 @@ predicate over a context the controller assembles at three moments, so the set
 is testable without a browser. Records also keep the last twenty-five runs with
 their seeds, because "that was a good one" should be replayable.
 
+## 5c. Losing well
+
+The design goal from playtesting was that a loss should feel like a near miss
+you can diagnose — "I could have made that with one different move" — rather
+than an arbitrary wall. The solver already knows the answer, so it is asked.
+
+On a loss the run is replayed and two questions are settled:
+
+- **Where did the line close?** Binary search for the last position from which
+  a win was still reachable inside the allowance that remained. The search is
+  exact, not a heuristic: if a position cannot be won inside its remaining
+  allowance then neither can any position after it, since any winning line from
+  the successor, prefixed by the move that produced it, would have won from the
+  predecessor with more to spend. "Unwinnable" is monotone along the played
+  line, so the boundary falls out in log time.
+- **How short was the finish?** Solve the final position ignoring the
+  allowance and compare.
+
+Those two numbers become a sentence that names the move that cost the run and
+the enchantment that would have covered the gap — three moves short reads as a
+Beacon, a Kickback or a Spare Sleeve; a line thrown away well before the end
+reads as Loaded Dice. The whole analysis runs in about 350ms, after the screen
+is already up.
+
+One subtlety that had to be fixed to make it honest: hints, and undos under
+Glasswork, spend moves without appearing in the replayed move list. Left
+uncorrected the analysis would have started from a budget the player never had
+and cleared them of a loss that was genuinely theirs.
+
 ## 6. Technical shape
 
 | Concern | Decision |
@@ -281,6 +310,7 @@ their seeds, because "that was a good one" should be replayable.
 | --- | --- |
 | The guided board and its lessons | `src/game/tutorial.ts` |
 | Achievements | `src/game/achievements.ts` |
+| Loss analysis and its copy | `src/game/postmortem.ts` |
 | Difficulty curve | `slackFor` / `flatBonus` in `src/game/deal.ts` |
 | Tableau / pile split | `STOCK_SHARE`, `stockFor`, `MIN_COLUMNS` in `src/game/deal.ts` |
 | Modifier threat and availability | `MODIFIERS` in `src/game/content.ts` |
