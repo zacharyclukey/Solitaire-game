@@ -11,6 +11,7 @@ import {
   type RunState,
   type ShopItem,
 } from '../game/run.ts';
+import { QUESTIONS, type Answer, type QuestionId } from '../game/oracle.ts';
 import { RANK_LABEL, SUIT_GLYPH, type DeckCard } from '../game/types.ts';
 import { ACHIEVEMENTS, ACHIEVEMENT_COUNT } from '../game/achievements.ts';
 import { DEFAULT_SETTINGS, load, save, settings, stats, wipe, type RunRecord } from '../storage.ts';
@@ -493,6 +494,58 @@ export function openRecords(): void {
   sheetPanel({ title: 'Records', body });
 }
 
+/**
+ * The Oracle's sheet. Questions stay on screen with their answers beneath, so a
+ * reading reads like a consultation rather than a popup.
+ */
+export function openOracle(opts: {
+  insight: () => number;
+  ask: (id: QuestionId) => Promise<Answer>;
+  rewind: (moves: number) => void;
+  undosLeft: () => number;
+}): void {
+  const tally = el('p', { class: 'oracle-insight' });
+  const answer = el('div', { class: 'oracle-answer' });
+  const rows = el('div', { class: 'oracle-questions' });
+
+  const paint = (): void => {
+    const left = opts.insight();
+    tally.textContent = `${left} ${left === 1 ? 'reading' : 'readings'} left`;
+    rows.replaceChildren(
+      ...QUESTIONS.map((q) => {
+        const b = el('button', { class: 'oracle-q', type: 'button' }, [
+          el('span', {}, [el('strong', {}, [q.label]), el('span', {}, [q.blurb])]),
+          el('span', { class: 'oracle-cost' }, [String(q.cost)]),
+        ]) as HTMLButtonElement;
+        b.disabled = left < q.cost;
+        b.addEventListener('click', () => {
+          void (async () => {
+            b.disabled = true;
+            answer.replaceChildren(el('p', { class: 'oracle-thinking' }, ['Reading…']));
+            const a = await opts.ask(q.id);
+            paint();
+            const parts: (Node | null)[] = [el('p', { class: `oracle-said ${a.tone}` }, [a.text])];
+            if (a.rewind && a.rewind > 0) {
+              const need = a.rewind;
+              const rb = el('button', { class: 'btn ghost', type: 'button' }, [
+                `Step back ${need} ${need === 1 ? 'move' : 'moves'} (${need} ${need === 1 ? 'undo' : 'undos'})`,
+              ]) as HTMLButtonElement;
+              rb.disabled = opts.undosLeft() < need;
+              rb.addEventListener('click', () => opts.rewind(need));
+              parts.push(rb);
+            }
+            answer.replaceChildren(...(parts.filter(Boolean) as Node[]));
+          })();
+        });
+        return b;
+      }),
+    );
+  };
+  paint();
+
+  sheetPanel({ title: 'The Oracle', body: el('div', {}, [tally, rows, answer]) });
+}
+
 export function openHelp(): void {
   const body = el('div', { class: 'prose' }, [
     el('h3', {}, ['The goal']),
@@ -505,6 +558,8 @@ export function openHelp(): void {
       el('li', {}, ['Uncovering a face-down card turns it automatically.']),
       el('li', {}, ['Tap the draw pile to turn its next card. Once it runs dry you can turn the waste back over, but only a couple of times.']),
     ]),
+    el('h3', {}, ['The Oracle']),
+    el('p', {}, ['Every board was solved before it was dealt to you, so the game knows things it can be asked. Readings are spent on questions — whether a line still exists from where you are standing, what the next move of it is, or which move threw it away and how far back to step. Readings are their own currency, not moves, so asking never eats the margin you need to finish. You start each level with two, and clearing a board under par earns you another for good.']),
     el('h3', {}, ['Moves are the clock']),
     el('p', {}, ['Every level gives you a fixed allowance of moves. Run out and the run ends. The allowance is set by actually solving the board first, so every deal you are given can be cleared — the question is whether you find the line.']),
     el('h3', {}, ['The run']),
@@ -537,6 +592,7 @@ export function openCodex(): void {
     section('Enchantments', Object.values(ENCHANTS).map((e) => ({ glyph: e.glyph, name: e.name, text: e.text, tag: e.rarity }))),
     section('Curses', Object.values(CURSES).map((c) => ({ glyph: c.glyph, name: c.name, text: c.text }))),
     section('Charms', Object.values(CHARMS).map((c) => ({ glyph: c.glyph, name: c.name, text: c.text, tag: c.rarity }))),
+    section('Readings', QUESTIONS.map((q) => ({ glyph: String(q.cost), name: q.label, text: q.blurb }))),
     section('Level rules', MODIFIER_LIST.map((m) => ({ glyph: m.glyph, name: m.name, text: m.text, tag: m.threat < 0 ? 'boon' : undefined }))),
   ]);
   sheetPanel({ title: 'Codex', body });

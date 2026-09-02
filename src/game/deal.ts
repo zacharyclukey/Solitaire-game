@@ -12,6 +12,9 @@ import { findSolution } from './solver.ts';
 import { createSim, type Sim } from './sim.ts';
 import { DEFAULT_RULES, makeCardDef, type CardDef, type CurseId, type DeckCard, type Move, type RuleSet, type Suit } from './types.ts';
 
+/** Readings every level starts with, before anything earned. */
+export const BASE_INSIGHT = 2;
+
 export type NodeKind = 'trial' | 'gauntlet' | 'cache' | 'boss' | 'shop' | 'respite' | 'tutorial';
 
 export interface LevelSpec {
@@ -37,6 +40,8 @@ export interface Level {
   undoCostsMove: boolean;
   timeLimit: number; // seconds; 0 = untimed
   peeksLeft: number;
+  /** Readings available from the Oracle this level. */
+  insight: number;
   solution: Move[] | null;
   par: number; // the solver's own move count
   budget: number;
@@ -256,6 +261,8 @@ export interface DealOptions {
   bonusMoves: number;
   /** Extra reserve cells bought during the run. */
   bonusCells: number;
+  /** Extra Oracle readings earned by clearing boards under par. */
+  insightBonus: number;
   attempts?: number;
   /** Wall-clock budget for dealing, including every solver attempt. */
   budgetMs?: number;
@@ -382,6 +389,7 @@ export function dealLevel(opts: DealOptions): Level {
     undoCostsMove: has(m, 'glass'),
     timeLimit: has(m, 'rush') ? 120 : 0,
     peeksLeft: charms.includes('xray') ? 1 : 0,
+    insight: BASE_INSIGHT + opts.insightBonus,
     solution: bestSolution,
     par,
     budget,

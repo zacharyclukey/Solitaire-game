@@ -32,7 +32,7 @@ function deal(depth: number, mods: ModifierId[] = [], seed = 999) {
     charms: [],
     spec: spec(depth, mods, seed),
     bonusMoves: 0,
-    bonusCells: 0,
+    bonusCells: 0, insightBonus: 0,
   });
 }
 
@@ -277,7 +277,7 @@ describe('a full simulated run', () => {
         charms: run.charms,
         spec: node,
         bonusMoves: run.bonusMoves,
-        bonusCells: run.bonusCells,
+        bonusCells: run.bonusCells, insightBonus: 0,
       });
       expect(level.solution).not.toBeNull();
       for (const mv of level.solution!) applyMove(level.sim, mv, null);

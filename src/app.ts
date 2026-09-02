@@ -4,7 +4,7 @@
  */
 import { sfx, unlock } from './audio.ts';
 import { CHARMS, MODIFIERS } from './game/content.ts';
-import { dealLevelAsync, hintAsync, warmUp } from './game/dealAsync.ts';
+import { dealLevelAsync, warmUp } from './game/dealAsync.ts';
 import type { Level, LevelSpec } from './game/deal.ts';
 import { Rng, randomSeed, seedFromString, seedToCode } from './game/rng.ts';
 import {
@@ -18,6 +18,7 @@ import {
   makeQueue,
   makeRewards,
   makeShop,
+  MAX_INSIGHT_BONUS,
   newRun,
   nextWarden,
   removeCard,
@@ -31,6 +32,7 @@ import {
   type ShopItem,
 } from './game/run.ts';
 import { analyse, type PostMortem } from './game/postmortem.ts';
+import { ask, questionById, type Answer } from './game/oracle.ts';
 import { resolveUndo } from './game/resources.ts';
 import { applyMove, cloneSim, isWon, legalMoves, settle, waste, type Sim, type SimEvent } from './game/sim.ts';
 import { findSolution } from './game/solver.ts';
@@ -63,6 +65,7 @@ import {
   applySettingsToDocument,
   openDeck,
   openHelp,
+  openOracle,
   openSettings,
   openCodex,
   renderQueue,
@@ -101,7 +104,6 @@ export class App {
   private hud!: Hud;
   private timerId = 0;
   private timeLeft = 0;
-  private freeHints = 0;
   private dealing = false;
   private tutorial: { tally: CoachTally; step: number } | null = null;
   private tally: LevelTally = emptyTally();
@@ -137,7 +139,7 @@ export class App {
     this.hud = new Hud({
       menu: () => this.openPlayMenu(),
       undo: () => this.undo(),
-      hint: () => void this.hint(),
+      hint: () => this.openOracle(),
       peek: () => this.peek(),
     });
     screen('play').append(this.hud.root);
@@ -344,6 +346,7 @@ export class App {
       spec,
       bonusMoves: run.bonusMoves,
       bonusCells: run.bonusCells,
+      insightBonus: run.insightBonus,
     });
     rehydrate(level);
 
@@ -352,7 +355,6 @@ export class App {
     this.history = [];
     this.tally = emptyTally();
     this.offBookSpend = 0;
-    this.freeHints = spec.stage <= 2 ? 3 : 0;
     this.hud.mount(level);
     this.hud.setHintEnabled(store.settings().showHint);
     this.board.mount(level);
@@ -386,10 +388,7 @@ export class App {
 
   private refresh(): void {
     const level = this.level!;
-    this.hud.update(level, level.sim, {
-      hintCost: this.freeHints > 0 ? 0 : 1,
-      canUndo: this.history.length > 0,
-    });
+    this.hud.update(level, level.sim, { canUndo: this.history.length > 0 });
   }
 
   private async doMove(mv: Move): Promise<void> {
@@ -416,6 +415,7 @@ export class App {
 
     this.board.clearSelection();
     this.board.clearHint();
+    if (!this.tutorial) this.board.setCoachMove(null); // the Oracle's mark is spent
     if (applied.kind === 'b') {
       const burned = events.find((e) => e.t === 'burn');
       if (burned && burned.t === 'burn') this.board.flashBurn(burned.id);
@@ -496,34 +496,44 @@ export class App {
     haptic('light');
   }
 
-  private async hint(): Promise<void> {
+  /**
+   * The Oracle. Questions are paid for in Insight rather than moves, so asking
+   * for help never eats the margin you need to finish — and the readings are
+   * earned by clearing boards under par, which makes foresight something you
+   * play your way into.
+   */
+  private openOracle(): void {
     const level = this.level;
     if (!level || this.board.busy) return;
-    const cost = this.freeHints > 0 ? 0 : 1;
-    if (level.sim.movesLeft < cost) return;
-    this.board.busy = true;
-    this.hud.setDealing(true);
-    const mv = await hintAsync(level.sim);
-    this.hud.setDealing(false);
-    this.board.busy = false;
-    if (!mv) {
-      toast('No line found from here.', 'bad');
-      sfx.deny();
-      return;
-    }
-    if (cost > 0) {
-      level.sim.movesLeft -= cost;
-      this.offBookSpend += cost;
-      if (this.run) this.run.stats.movesSpent += cost;
-      this.hud.flashMoves(-1);
-    } else {
-      this.freeHints -= 1;
-    }
-    this.tally.hints += 1;
-    this.board.showHint(mv);
-    sfx.boon();
-    this.refresh();
-    this.persist();
+    openOracle({
+      insight: () => level.insight,
+      undosLeft: () => level.undosLeft,
+      ask: async (id) => {
+        const q = questionById(id);
+        level.insight -= q.cost;
+        this.tally.hints += 1;
+        this.refresh();
+        this.persist();
+        const from = this.initialSim ? cloneSim(this.initialSim) : null;
+        if (from) from.movesLeft -= this.offBookSpend;
+        // Off the main thread would be nicer, but a reading is a deliberate
+        // pause the player asked for and the sheet says it is thinking.
+        const answer = await new Promise<Answer>((resolve) =>
+          setTimeout(() => resolve(ask(id, { sim: level.sim, start: from, played: this.run?.levelMoves as Move[] ?? [], budgetMs: 420 })), 30),
+        );
+        // Persist it rather than using the timed hint flash: the sheet is
+        // covering the board while you read, and a suggestion that expires
+        // before you can look at it is no suggestion at all.
+        if (answer.move) this.board.setCoachMove(answer.move);
+        sfx.boon();
+        return answer;
+      },
+      rewind: (moves) => {
+        closeTopOverlay();
+        for (let i = 0; i < moves; i++) this.undo();
+        toast(`Stepped back ${moves} ${moves === 1 ? 'move' : 'moves'}`, 'good');
+      },
+    });
   }
 
   private peek(): void {
@@ -618,6 +628,10 @@ export class App {
     const spare = Math.max(0, level.sim.movesLeft);
     // Beating the solver's own line is the real skill test, so it pays.
     const underPar = level.par - level.sim.movesUsed;
+    if (underPar > 0 && run.insightBonus < MAX_INSIGHT_BONUS) {
+      run.insightBonus += 1;
+      toast('The Oracle grants you another reading', 'good');
+    }
     let gold = level.baseGold + level.sim.gold + Math.max(0, underPar) * 3;
     if (run.charms.includes('thrift')) gold += spare * 2;
     const gained = gainGold(run, gold);
@@ -879,7 +893,6 @@ export class App {
     this.offBookSpend = 0;
     this.history = [];
     this.tally = emptyTally();
-    this.freeHints = 0;
 
     // The board must be on screen before it is measured, or every card is
     // laid out against a zero-width container.

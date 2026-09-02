@@ -58,9 +58,9 @@ export class Hud {
     this.undoBtn.addEventListener('click', actions.undo);
 
     this.hintBtn = el('button', { class: 'act', type: 'button' }, [
-      el('span', { class: 'act-glyph' }, ['✧']),
-      el('span', { class: 'act-label' }, ['Hint']),
-      el('em', { class: 'act-count' }, ['−1']),
+      el('span', { class: 'act-glyph' }, ['◈']),
+      el('span', { class: 'act-label' }, ['Oracle']),
+      el('em', { class: 'act-count' }, ['2']),
     ]) as HTMLButtonElement;
     this.hintBtn.addEventListener('click', actions.hint);
 
@@ -126,7 +126,7 @@ export class Hud {
     this.timer.classList.toggle('hidden', level.timeLimit === 0);
   }
 
-  update(level: Level, sim: Sim, opts: { hintCost: number; canUndo: boolean }): void {
+  update(level: Level, sim: Sim, opts: { canUndo: boolean }): void {
     this.moves.textContent = String(Math.max(0, sim.movesLeft));
     // Par is the length of the line the solver actually found on this board.
     // Showing it turns a comfortable clear into a score rather than a shrug.
@@ -143,8 +143,8 @@ export class Hud {
     this.undoBtn.querySelector('.act-count')!.textContent =
       level.undosLeft > 20 ? '∞' : String(level.undosLeft);
     this.undoBtn.disabled = !opts.canUndo || level.undosLeft <= 0;
-    this.hintBtn.querySelector('.act-count')!.textContent = opts.hintCost ? `−${opts.hintCost}` : 'free';
-    this.hintBtn.disabled = sim.movesLeft < opts.hintCost;
+    this.hintBtn.querySelector('.act-count')!.textContent = String(level.insight);
+    this.hintBtn.disabled = level.insight <= 0;
     this.peekBtn.querySelector('.act-count')!.textContent = String(level.peeksLeft);
     this.peekBtn.disabled = level.peeksLeft <= 0;
   }

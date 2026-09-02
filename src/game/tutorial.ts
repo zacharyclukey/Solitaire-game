@@ -91,6 +91,7 @@ export function buildTutorialLevel(): Level {
     undoCostsMove: false,
     timeLimit: 0,
     peeksLeft: 0,
+    insight: 3,
     solution: null,
     par: 16,
     budget: TUTORIAL_BUDGET,

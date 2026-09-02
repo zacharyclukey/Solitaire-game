@@ -285,6 +285,39 @@ table per level.
 
 ---
 
+## 5a. The Oracle
+
+Every board is solved before it is dealt, which means this game knows things no
+other card game can know: whether you are still winning, what the line is, and
+exactly which move threw it away. Spending that on a hint button was a waste of
+the only genuinely unusual thing in the design.
+
+Readings are questions put to the solver, paid for in **Insight**:
+
+| Question | Cost | What it runs |
+| --- | --- | --- |
+| Am I still winning? | 1 | `winnableInBudget` at the current position, and if not, how many moves short |
+| What should I play? | 2 | the next move of a found line, marked on the board until you move |
+| Where did I go wrong? | 2 | the post-mortem's binary search, plus an offer to step back to it |
+
+Three things make this work rather than being a cheat button:
+
+- **Insight is its own currency, not moves.** The old hint cost a move, which
+  at the depth-10 slack of 1.05 meant help was unaffordable exactly when it was
+  needed. Separating them means asking never eats the margin you need to finish.
+- **You earn it by playing well.** Two per level, plus one permanently for each
+  board cleared under par, capped at three. Foresight is something you play your
+  way into.
+- **The cheapest question is the most interesting one.** "Am I still winning?"
+  costs one and tells you nothing about *what* to do — only whether the run is
+  already over. Knowing you are dead and choosing whether to spend undos is a
+  better decision than being handed a move.
+
+The third question closes the loop with the post-mortem: the same analysis that
+explains a loss afterwards can be bought *during* the level, and it offers to
+rewind to the last position that was still winnable. A run that would have
+ended can be recovered, if you have the undos and thought to ask.
+
 ## 5b. Teaching it, and the reason to come back
 
 **The guided board.** The first level a new player sees is hand-authored, not
@@ -363,6 +396,7 @@ and cleared them of a loss that was genuinely theirs.
 | The guided board and its lessons | `src/game/tutorial.ts` |
 | Achievements | `src/game/achievements.ts` |
 | Loss analysis and its copy | `src/game/postmortem.ts` |
+| The Oracle's questions and prices | `src/game/oracle.ts` |
 | Difficulty curve | `slackFor` / `flatBonus` in `src/game/deal.ts` |
 | Tableau / pile split | `STOCK_SHARE`, `stockFor`, `MIN_COLUMNS` in `src/game/deal.ts` |
 | Modifier threat and availability | `MODIFIERS` in `src/game/content.ts` |

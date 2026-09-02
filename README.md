@@ -68,6 +68,12 @@ counter at the top is what is left to place, not what is left to turn.
 Twelve card enchantments, four curses, fifteen charms and twenty-two level rules
 combine into the difficulty; the in-game **Codex** documents all of them.
 
+Because every board is solved before it is dealt, the game can be *asked
+things*. The **Oracle** answers three questions — am I still winning, what
+should I play, where did I go wrong — paid for in Insight, which is its own
+currency and which you earn by clearing boards under par. The last of those
+will offer to step you back to the last position that was still winnable.
+
 When a run ends, the solver replays it and tells you where the line actually
 closed, how many moves short you finished, and which enchantment would have
 covered the gap.

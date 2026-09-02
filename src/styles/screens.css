@@ -486,3 +486,55 @@ html.four-colour .mini.s3 { color: var(--suit-green); }
   background: rgba(227, 178, 98, 0.06);
 }
 .shop-item.set-aside .shop-glyph { color: var(--gold); }
+
+/* ------------------------------------------------------------- the Oracle */
+
+.oracle-insight {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--gold);
+  margin-bottom: 12px;
+}
+.oracle-questions { display: grid; gap: 8px; }
+.oracle-q {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  text-align: left;
+  padding: 12px 14px;
+  border-radius: var(--r-md);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--line);
+}
+.oracle-q:disabled { opacity: 0.35; }
+.oracle-q strong { display: block; font-size: 14.5px; font-weight: 650; color: var(--ink); }
+.oracle-q span span { font-size: 12px; color: var(--ink-faint); }
+.oracle-cost {
+  margin-left: auto;
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--gold);
+  background: var(--gold-soft);
+  border: 1px solid rgba(227, 178, 98, 0.4);
+}
+.oracle-answer { margin-top: 14px; display: grid; gap: 10px; }
+.oracle-thinking { font-size: 13px; color: var(--ink-faint); }
+.oracle-said {
+  font-size: 14.5px;
+  line-height: 1.5;
+  padding: 12px 14px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.03);
+}
+.oracle-said.good { color: #b6efcd; border-color: rgba(110, 209, 149, 0.3); background: rgba(110, 209, 149, 0.07); }
+.oracle-said.bad { color: #f3bab6; border-color: rgba(229, 103, 95, 0.3); background: rgba(229, 103, 95, 0.07); }
