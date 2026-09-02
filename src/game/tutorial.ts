@@ -8,10 +8,15 @@
  *
  * The intended line, in order:
  *   6♠ onto 7♥      — stacking, and the card underneath turns
- *   9♠ to reserve   — nothing is a ten, so the reserve is the only home
+ *   draw            — the board deliberately locks solid until you do
  *   2♦ onto 3♠      — which empties a column
  *   8♠ run to empty — an ordered run travels as one move
- *   ...then nine moves of free play to finish.
+ *   ...then free play to finish.
+ *
+ * Two properties of this layout are load-bearing and asserted by tests: at the
+ * start there is exactly one stacking move and it turns a card, and after it
+ * there is no tableau move at all, so the draw lesson is forced by the board
+ * rather than merely asked for by the text.
  */
 import type { Level, LevelSpec } from './deal.ts';
 import { createSim, legalMoves, type Sim } from './sim.ts';
@@ -35,13 +40,15 @@ const down = (rank: number, suit: Suit): Slot => ({ rank, suit, up: false });
 const LAYOUT: Slot[][] = [
   [down(4, C), up(8, S), up(7, H)],
   [down(2, D), up(6, S)],
-  [down(5, H), up(3, S), up(9, S)],
-  [down(1, C), up(8, H), up(4, D)],
-  [down(6, D), up(2, C), up(7, S)],
+  [down(5, H), up(4, S)],
+  [down(1, C), up(4, D)],
+  [down(6, D), up(7, S)],
 ];
 
-export const TUTORIAL_CELLS = 3;
-export const TUTORIAL_BUDGET = 30;
+/** The draw pile, bottom first — so the last entry is turned first. */
+const STOCK: Slot[] = [down(8, H), down(2, C), down(5, D), down(3, S)];
+
+export const TUTORIAL_BUDGET = 34;
 
 export const TUTORIAL_SPEC: LevelSpec = {
   depth: 0,
@@ -55,26 +62,25 @@ export function buildTutorialLevel(): Level {
   const cols: number[][] = [];
   const flags: boolean[] = [];
 
-  for (const column of LAYOUT) {
-    const ids: number[] = [];
-    for (const slot of column) {
-      const id = defs.length;
-      defs.push(makeCardDef({ uid: id + 1, rank: slot.rank, suit: slot.suit, ench: null, curse: null }));
-      flags.push(slot.up);
-      ids.push(id);
-    }
-    cols.push(ids);
-  }
+  const add = (slot: Slot): number => {
+    const id = defs.length;
+    defs.push(makeCardDef({ uid: id + 1, rank: slot.rank, suit: slot.suit, ench: null, curse: null }));
+    flags.push(slot.up);
+    return id;
+  };
+
+  for (const column of LAYOUT) cols.push(column.map(add));
+  const stockCards = STOCK.map(add);
 
   const faceUp = Uint8Array.from(flags, (v) => (v ? 1 : 0));
-  const rules = { ...DEFAULT_RULES, baseRank: 9 };
-  const sim = createSim(defs, cols, faceUp, rules, TUTORIAL_BUDGET, TUTORIAL_CELLS);
+  const rules = { ...DEFAULT_RULES, baseRank: 8 };
+  const sim = createSim(defs, cols, stockCards, faceUp, rules, TUTORIAL_BUDGET);
 
   return {
     spec: TUTORIAL_SPEC,
     sim,
     columns: LAYOUT.length,
-    cells: TUTORIAL_CELLS,
+    stockSize: STOCK.length,
     relaxed: 0,
     modifiers: [],
     undosLeft: 99,
@@ -82,7 +88,7 @@ export function buildTutorialLevel(): Level {
     timeLimit: 0,
     peeksLeft: 0,
     solution: null,
-    par: 14,
+    par: 16,
     budget: TUTORIAL_BUDGET,
     baseGold: 0,
     freeFirstMove: false,
@@ -94,13 +100,13 @@ export function buildTutorialLevel(): Level {
 /** Running tally of the kinds of move the player has made. */
 export interface CoachTally {
   stacked: number; // placed a card onto another card
-  reserved: number; // parked a card in the reserve
+  drew: number; // turned a card off the draw pile
   emptied: number; // left a tableau column empty
   grouped: number; // moved two or more cards at once
 }
 
 export function emptyTally(): CoachTally {
-  return { stacked: 0, reserved: 0, emptied: 0, grouped: 0 };
+  return { stacked: 0, drew: 0, emptied: 0, grouped: 0 };
 }
 
 export interface CoachStep {
@@ -118,12 +124,12 @@ export const COACH_STEPS: CoachStep[] = [
     done: (_s, t) => t.stacked > 0,
   },
   {
-    text: 'Uncovering a card turns it. Four still face down.\n\nNothing here is a ten, so the 9♠ has nowhere to stack. Park it in the reserve.',
+    text: 'Uncovering a card turns it — that is the whole goal.\n\nNothing on the table can move now. Turn a card off the draw pile.',
     coach: true,
-    done: (_s, t) => t.reserved > 0,
+    done: (_s, t) => t.drew > 0,
   },
   {
-    text: 'Reserve cards come back out whenever you want them.\n\nNow empty a column: the 2♦ goes on the 3♠.',
+    text: 'Every card in that pile has to be turned too, and each turn costs a move. Play what you draw while you can — the next one buries it.\n\nNow empty a column.',
     coach: true,
     done: (_s, t) => t.emptied > 0,
   },
@@ -148,20 +154,15 @@ export const COACH_STEPS: CoachStep[] = [
  */
 export function coachMove(sim: Sim, step: number): Move | null {
   const moves = legalMoves(sim, true);
-  const onto = (m: Move): boolean => m.kind === 'm' && m.to < sim.cellStart && sim.cols[m.to].length > 0;
-  const toCell = (m: Move): boolean => m.kind === 'm' && m.to >= sim.cellStart;
-  const toEmpty = (m: Move): boolean => m.kind === 'm' && m.to < sim.cellStart && sim.cols[m.to].length === 0;
+  const onto = (m: Move): boolean => m.kind === 'm' && m.to < sim.tableau && sim.cols[m.to].length > 0;
+  const toEmpty = (m: Move): boolean => m.kind === 'm' && m.to < sim.tableau && sim.cols[m.to].length === 0;
   const size = (m: Move): number => sim.cols[m.from].length - m.fromIdx;
 
   switch (step) {
     case 0:
       return moves.find(onto) ?? null;
     case 1:
-      return (
-        moves.find((m) => toCell(m) && sim.defs[sim.cols[m.from][m.fromIdx]].rank === 9) ??
-        moves.find(toCell) ??
-        null
-      );
+      return moves.find((m) => m.kind === 'd') ?? null;
     case 2:
       return moves.find((m) => onto(m) && m.fromIdx === 0) ?? moves.find(onto) ?? null;
     case 3:

@@ -26,7 +26,7 @@ import {
   type RunState,
   type ShopItem,
 } from './game/run.ts';
-import { applyMove, cloneSim, isWon, legalMoves, settle, type Sim, type SimEvent } from './game/sim.ts';
+import { applyMove, cloneSim, isWon, legalMoves, settle, waste, type Sim, type SimEvent } from './game/sim.ts';
 import {
   emptyStreak,
   emptyTally,
@@ -357,7 +357,7 @@ export class App {
     let cost = mv.cost;
     if (level.freeFirstMove && sim.movesUsed === 0) cost = 0;
     const applied: Move = { ...mv, cost };
-    const toWasOccupied = applied.kind === 'm' && applied.to < sim.cellStart && sim.cols[applied.to].length > 0;
+    const toWasOccupied = applied.kind === 'm' && sim.cols[applied.to].length > 0;
 
     this.history.push({ sim: cloneSim(sim), undosLeft: level.undosLeft, peeksLeft: level.peeksLeft });
     if (this.history.length > 400) this.history.shift();
@@ -376,14 +376,12 @@ export class App {
       const burned = events.find((e) => e.t === 'burn');
       if (burned && burned.t === 'burn') this.board.flashBurn(burned.id);
       sfx.burn();
-    } else if (applied.kind === 'f') {
+    } else if (applied.kind === 'f' || applied.kind === 'd') {
       sfx.flip();
     } else {
       sfx.place();
     }
     haptic('light');
-
-    if (applied.kind === 'm' && applied.to >= sim.cellStart) this.tally.reserveMoves += 1;
 
     this.board.layout(true);
     const flips = events.filter((e) => e.t === 'flip').map((e) => (e.t === 'flip' ? e.id : -1));
@@ -524,6 +522,7 @@ export class App {
     run.stats.levelsCleared += 1;
     run.stats.cardsTurned += level.sim.revealed;
     this.tally.spare = Math.max(0, level.sim.movesLeft);
+    this.tally.wasteLeft = waste(level.sim).length;
     this.tally.secondsLeft = level.timeLimit ? Math.max(0, this.timeLeft) : 0;
     this.streak.cleanLevels = this.tally.hints === 0 ? this.streak.cleanLevels + 1 : 0;
     this.streak.patientLevels = this.tally.undos === 0 ? this.streak.patientLevels + 1 : 0;
@@ -802,13 +801,13 @@ export class App {
     const level = this.level;
     if (!t || !level) return;
     const sim = level.sim;
+    if (mv.kind === 'd') t.tally.drew += 1;
     if (mv.kind === 'm') {
-      if (mv.to >= sim.cellStart) t.tally.reserved += 1;
-      else if (toWasOccupied) t.tally.stacked += 1;
+      if (toWasOccupied) t.tally.stacked += 1;
       const moved = events.find((e) => e.t === 'move');
       if (moved && moved.t === 'move' && moved.ids.length >= 2) t.tally.grouped += 1;
     }
-    for (let c = 0; c < sim.cellStart; c++) if (sim.cols[c].length === 0) t.tally.emptied += 1;
+    for (let c = 0; c < sim.tableau; c++) if (sim.cols[c].length === 0) t.tally.emptied += 1;
 
     const next = stepFor(sim, t.tally);
     if (next !== t.step) {
@@ -905,7 +904,7 @@ export class App {
     const run = this.run;
     const facts = el('div', { class: 'level-facts' }, [
       el('p', {}, [
-        `Level ${level.spec.depth} · ${level.columns} columns · ${level.cells} reserve · ${level.sim.defs.length} cards`,
+        `Level ${level.spec.depth} · ${level.columns} columns · ${level.stockSize} in the pile · ${level.sim.defs.length} cards`,
       ]),
       el('p', {}, [`Allowance ${level.budget} moves · seed ${seedToCode(level.spec.seed)}`]),
       ...level.modifiers.map((m) =>

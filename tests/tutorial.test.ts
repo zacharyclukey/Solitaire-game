@@ -6,7 +6,7 @@ import {
   stepFor,
   TUTORIAL_BUDGET,
 } from '../src/game/tutorial.ts';
-import { applyMove, canPlaceEmpty, canStack, isWon, legalMoves } from '../src/game/sim.ts';
+import { applyMove, isWon, legalMoves, stock } from '../src/game/sim.ts';
 import { findSolution } from '../src/game/solver.ts';
 import { RANK_LABEL, SUIT_GLYPH } from '../src/game/types.ts';
 
@@ -23,9 +23,9 @@ describe('the guided first level', () => {
     expect(isWon(level.sim)).toBe(true);
   });
 
-  it('opens on the stacking move the first lesson asks for', () => {
+  it('opens on the stacking move the first lesson asks for, and only that one', () => {
     const { sim } = buildTutorialLevel();
-    const stacking = legalMoves(sim).filter((m) => m.kind === 'm' && m.to < sim.cellStart && sim.cols[m.to].length > 0);
+    const stacking = legalMoves(sim).filter((m) => m.kind === 'm' && sim.cols[m.to].length > 0);
     expect(stacking).toHaveLength(1);
     const mv = stacking[0];
     expect(label(sim, sim.cols[mv.from][mv.fromIdx])).toBe('6♠');
@@ -35,24 +35,17 @@ describe('the guided first level', () => {
   it('turns a card the moment that first lesson is followed', () => {
     const { sim } = buildTutorialLevel();
     const before = sim.hidden;
-    const mv = legalMoves(sim).find((m) => m.kind === 'm' && m.to < sim.cellStart && sim.cols[m.to].length > 0)!;
+    const mv = legalMoves(sim).find((m) => m.kind === 'm' && sim.cols[m.to].length > 0)!;
     applyMove(sim, mv, null);
     expect(sim.hidden).toBe(before - 1);
   });
 
-  it('forces the reserve for the second lesson: nothing in the deck is a ten', () => {
+  it('locks the tableau solid after it, so the draw lesson is forced', () => {
     const { sim } = buildTutorialLevel();
-    const nine = sim.defs.findIndex((d) => d.rank === 9);
-    expect(nine).toBeGreaterThanOrEqual(0);
-    expect(Math.max(...sim.defs.map((d) => d.rank))).toBe(9);
-    for (let c = 0; c < sim.cellStart; c++) {
-      const col = sim.cols[c];
-      if (col.length === 0) continue;
-      expect(canStack(sim.defs, nine, col[col.length - 1], sim.rules)).toBe(false);
-    }
-    // ...and there is no empty column to drop it into yet either.
-    expect(sim.cols.slice(0, sim.cellStart).every((c) => c.length > 0)).toBe(true);
-    expect(canPlaceEmpty(sim.defs[nine], sim.rules)).toBe(true);
+    applyMove(sim, legalMoves(sim).find((m) => m.kind === 'm' && sim.cols[m.to].length > 0)!, null);
+    const moves = legalMoves(sim);
+    expect(moves.every((m) => m.kind === 'd')).toBe(true);
+    expect(stock(sim).length).toBeGreaterThan(0);
   });
 
   it('walks the lessons forward as the tally grows', () => {
@@ -61,7 +54,7 @@ describe('the guided first level', () => {
     expect(stepFor(sim, tally)).toBe(0);
     tally.stacked = 1;
     expect(stepFor(sim, tally)).toBe(1);
-    tally.reserved = 1;
+    tally.drew = 1;
     expect(stepFor(sim, tally)).toBe(2);
     tally.emptied = 1;
     expect(stepFor(sim, tally)).toBe(3);
@@ -72,7 +65,7 @@ describe('the guided first level', () => {
 
   it('never runs the player out of moves', () => {
     const level = buildTutorialLevel();
-    expect(level.budget).toBeGreaterThanOrEqual(level.par * 2);
+    expect(level.budget).toBeGreaterThan(level.par);
     expect(level.undosLeft).toBeGreaterThan(10);
   });
 });

@@ -79,7 +79,7 @@ class Heap {
  *  stacked above the shallowest hidden card needs relocating. */
 export function heuristic(s: Sim): number {
   let blockers = 0;
-  for (let c = 0; c < s.cellStart; c++) {
+  for (let c = 0; c < s.tableau; c++) {
     const col = s.cols[c];
     let topmostDown = -1;
     for (let i = col.length - 1; i >= 0; i--) {
@@ -90,9 +90,7 @@ export function heuristic(s: Sim): number {
     }
     if (topmostDown >= 0) blockers += col.length - 1 - topmostDown;
   }
-  let clogged = 0;
-  for (let c = s.cellStart; c < s.cols.length; c++) if (s.cols[c].length) clogged++;
-  return s.hidden + 0.5 * blockers + 0.3 * clogged;
+  return s.hidden + 0.5 * blockers;
 }
 
 /** Torch and Twin can turn several cards in one move, which breaks the

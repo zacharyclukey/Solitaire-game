@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cellsFor, columnsFor, dealLevel, slackFor, type LevelSpec } from '../src/game/deal.ts';
+import { columnsFor, dealLevel, slackFor, stockFor, type LevelSpec } from '../src/game/deal.ts';
 import { MODIFIERS, type ModifierId } from '../src/game/content.ts';
 import { Rng } from '../src/game/rng.ts';
 import {
@@ -50,8 +50,8 @@ describe('dealing', () => {
   });
 
   it('is deterministic for a given seed', () => {
-    const a = deal(6, ['buried'], 4242);
-    const b = deal(6, ['buried'], 4242);
+    const a = deal(6, ['thindraw'], 4242);
+    const b = deal(6, ['thindraw'], 4242);
     expect(simKey(a.sim)).toBe(simKey(b.sim));
     expect(a.budget).toBe(b.budget);
   });
@@ -60,7 +60,7 @@ describe('dealing', () => {
     for (const id of Object.keys(MODIFIERS) as ModifierId[]) {
       const level = deal(Math.max(1, MODIFIERS[id].minDepth), [id], 77);
       expect(level.solution ?? []).toBeTruthy();
-      expect(level.sim.cols.length).toBe(level.columns + level.cells);
+      expect(level.sim.cols.length).toBe(level.columns + 2); // tableau + pile + waste
       expect(status(level.sim)).not.toBe('lost');
     }
   });
@@ -68,14 +68,18 @@ describe('dealing', () => {
   it('scales columns and reserve with modifiers', () => {
     expect(columnsFor(28, ['narrow'], [])).toBeLessThan(columnsFor(28, [], []));
     expect(columnsFor(28, ['wide'], [])).toBeGreaterThan(columnsFor(28, [], []));
-    expect(cellsFor(['tight'], [], 0)).toBe(cellsFor([], [], 0) - 1);
-    expect(cellsFor([], ['casing'], 0)).toBe(cellsFor([], [], 0) + 1);
+    expect(stockFor(28, ['thindraw'], [], 0)).toBe(stockFor(28, [], [], 0) - 4);
+    expect(stockFor(28, ['deepdraw'], [], 0)).toBe(stockFor(28, [], [], 0) + 4);
+    expect(stockFor(28, [], ['casing'], 0)).toBe(stockFor(28, [], [], 0) + 2);
   });
 
-  it('tightens the allowance as the run goes deeper', () => {
-    expect(slackFor(1)).toBeGreaterThan(slackFor(10));
-    expect(slackFor(10)).toBeGreaterThan(slackFor(20));
-    expect(slackFor(40)).toBeGreaterThanOrEqual(1);
+  it('tightens the allowance as the run goes deeper, then holds at the floor', () => {
+    // Never rises, and is meaningfully tighter by the time a run is ten deep.
+    for (let d = 1; d < 40; d++) expect(slackFor(d + 1)).toBeLessThanOrEqual(slackFor(d));
+    expect(slackFor(10)).toBeLessThan(slackFor(1) - 0.25);
+    // The floor stays above 1: the line the solver found must always fit, or a
+    // loss would be the deal's fault rather than the player's.
+    expect(slackFor(40)).toBeGreaterThan(1);
   });
 });
 

@@ -1,28 +1,41 @@
-/** Diagnoses why a deal is unsolved: exhausted search space vs. node/time cap. */
-import { buildRules, columnsFor } from '../src/game/deal.ts';
+/**
+ * Solvability probe.
+ *
+ * Builds raw boards — no relaxation, no retries — and asks whether they can be
+ * won at all, by exhaustive breadth-first search over the reachable state
+ * space. This is the measurement that decided the reserve, and now the draw
+ * pile: a rules change that quietly makes boards unwinnable is the one failure
+ * this game cannot ship.
+ *
+ *   node --experimental-strip-types scripts/probe.ts [stockSize] [faceUp] [columns]
+ */
+import { buildRules } from '../src/game/deal.ts';
 import { Rng, randomSeed } from '../src/game/rng.ts';
-import { cloneSim, createSim, isWon, legalMoves, applyMove, simKey, type Sim } from '../src/game/sim.ts';
-import { heuristic } from '../src/game/solver.ts';
+import { applyMove, cloneSim, createSim, isWon, legalMoves, simKey, type Sim } from '../src/game/sim.ts';
+import { findSolution } from '../src/game/solver.ts';
 import { starterDeck } from '../src/game/run.ts';
-import { makeCardDef, RANK_LABEL, SUIT_GLYPH } from '../src/game/types.ts';
+import { makeCardDef } from '../src/game/types.ts';
 
-const CELLS = Number(process.argv[2] ?? 2);
+const STOCK = Number(process.argv[2] ?? 11);
+const FACE_UP = Number(process.argv[3] ?? 2);
+const COLUMNS = Number(process.argv[4] ?? 6);
+const TRIALS = Number(process.argv[5] ?? 12);
 
-function deal(seed: number, faceUp: number): Sim {
+function deal(seed: number): Sim {
   const rng = new Rng(seed);
   const defs = starterDeck().map(makeCardDef);
-  const cols = columnsFor(28, [], []);
   const order = rng.shuffle(defs.map((_, i) => i));
-  const columns: number[][] = Array.from({ length: cols }, () => []);
-  order.forEach((id, i) => columns[i % cols].push(id));
+  const stock = order.slice(0, STOCK);
+  const cols: number[][] = Array.from({ length: COLUMNS }, () => []);
+  order.slice(STOCK).forEach((id, i) => cols[i % COLUMNS].push(id));
   const up = new Uint8Array(defs.length);
-  for (const col of columns) for (let i = Math.max(0, col.length - faceUp); i < col.length; i++) up[col[i]] = 1;
-  return createSim(defs, columns, up, buildRules([], [], 7), Number.MAX_SAFE_INTEGER / 4, CELLS);
+  for (const col of cols) for (let i = Math.max(0, col.length - FACE_UP); i < col.length; i++) up[col[i]] = 1;
+  const rules = buildRules([], [], defs.map((d) => d.rank));
+  return createSim(defs, cols, stock, up, rules, Number.MAX_SAFE_INTEGER / 4);
 }
 
-/** Exhaustive BFS over reachable states, ignoring cost. Tells us definitively
- *  whether a board is winnable at all. */
-function reachable(start: Sim, cap = 400000): { won: boolean; states: number; capped: boolean } {
+/** Definitive answer, ignoring cost: is a win reachable at all? */
+function reachable(start: Sim, cap = 200000): { won: boolean; states: number; capped: boolean } {
   const seen = new Set<string>([simKey(start)]);
   let frontier = [start];
   let states = 1;
@@ -46,21 +59,30 @@ function reachable(start: Sim, cap = 400000): { won: boolean; states: number; ca
   return { won: false, states, capped: false };
 }
 
-function render(s: Sim): string {
-  return s.cols
-    .map((c) => c.map((id) => (s.up[id] ? `${RANK_LABEL[s.defs[id].rank]}${SUIT_GLYPH[s.defs[id].suit]}` : '##')).join(' '))
-    .join('\n');
+let unwinnable = 0;
+let capped = 0;
+let solverFound = 0;
+const costs: number[] = [];
+const solverMs: number[] = [];
+
+for (let i = 0; i < TRIALS; i++) {
+  const seed = randomSeed();
+  const s = deal(seed);
+  const t0 = Date.now();
+  const sol = findSolution(cloneSim(s), 400);
+  solverMs.push(Date.now() - t0);
+  if (sol) {
+    solverFound++;
+    costs.push(sol.cost);
+  }
+  const r = sol ? { won: true, states: 0, capped: false } : reachable(cloneSim(s));
+  if (!r.won && !r.capped) unwinnable++;
+  if (r.capped) capped++;
 }
 
-let unsolvable = 0;
-for (let i = 0; i < 10; i++) {
-  const seed = randomSeed();
-  const s = deal(seed, Number(process.argv[3] ?? 3));
-  const r = reachable(cloneSim(s), 250000);
-  console.log(`seed ${seed}: won=${r.won} states=${r.states} capped=${r.capped} h0=${heuristic(s).toFixed(1)} moves0=${legalMoves(s, false).length}`);
-  if (!r.won && !r.capped) {
-    unsolvable++;
-    if (unsolvable === 1) console.log(render(s));
-  }
-}
-console.log('provably unsolvable:', unsolvable, '/10');
+const avg = (x: number[]): string => (x.length ? (x.reduce((a, b) => a + b, 0) / x.length).toFixed(1) : '—');
+console.log(
+  `stock ${STOCK}  faceUp ${FACE_UP}  cols ${COLUMNS}  |  ` +
+    `solver found ${solverFound}/${TRIALS}  provably unwinnable ${unwinnable}  search-capped ${capped}  ` +
+    `| par ${avg(costs)}  solveMs ${avg(solverMs)}`,
+);

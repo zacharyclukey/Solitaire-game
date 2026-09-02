@@ -5,12 +5,12 @@
  * browser animates every relayout on the compositor. Input supports both
  * tap-to-select and direct dragging, because on a phone people expect either.
  *
- * The reserve cells share the simulation's column array (indices at and above
- * `sim.cellStart`), so they share all the hit-testing and highlight code too;
- * only their on-screen placement differs.
+ * The draw pile and the waste share the simulation's column array (the two
+ * indices at and above `sim.tableau`), so they share all the hit-testing and
+ * highlight code too; only their on-screen placement differs.
  */
 import type { Level } from '../game/deal.ts';
-import { legalMoves, type Sim } from '../game/sim.ts';
+import { legalMoves, stock, stockIdx, wasteIdx, type Sim } from '../game/sim.ts';
 import type { CardDef, Move } from '../game/types.ts';
 import { makeCardEl } from './cardview.ts';
 import { el } from './dom.ts';
@@ -38,7 +38,7 @@ export class BoardView {
   readonly root: HTMLElement;
   private cardsLayer: HTMLElement;
   private slotsLayer: HTMLElement;
-  private reserveLabel: HTMLElement;
+  private stockBadge: HTMLElement;
   private sim!: Sim;
   private level!: Level;
   private cardEls: HTMLElement[] = [];
@@ -71,8 +71,8 @@ export class BoardView {
     this.cb = cb;
     this.slotsLayer = el('div', { class: 'slots' });
     this.cardsLayer = el('div', { class: 'cards' });
-    this.reserveLabel = el('div', { class: 'reserve-label' }, ['RESERVE']);
-    this.root.append(this.reserveLabel, this.slotsLayer, this.cardsLayer);
+    this.stockBadge = el('div', { class: 'stock-count' });
+    this.root.append(this.slotsLayer, this.cardsLayer, this.stockBadge);
     this.attach();
   }
 
@@ -83,8 +83,8 @@ export class BoardView {
     this.locked = v;
   }
 
-  private get cellStart(): number {
-    return this.sim.cellStart;
+  private get tableauCount(): number {
+    return this.sim.tableau;
   }
 
   mount(level: Level): void {
@@ -94,12 +94,12 @@ export class BoardView {
     this.cardsLayer.replaceChildren();
     this.slotsLayer.replaceChildren();
     this.cardEls = this.sim.defs.map((def, i) => makeCardEl(def, i));
-    this.slots = this.sim.cols.map((_, c) =>
-      el('div', { class: c < level.columns ? 'slot' : 'slot cell', 'data-col': String(c) }),
-    );
+    this.slots = this.sim.cols.map((_, c) => {
+      const kind = c < level.columns ? 'slot' : c === stockIdx(this.sim) ? 'slot stock' : 'slot waste';
+      return el('div', { class: kind, 'data-col': String(c) });
+    });
     this.slotsLayer.append(...this.slots);
     this.cardsLayer.append(...this.cardEls);
-    this.reserveLabel.classList.toggle('hidden', level.cells === 0);
     this.measure();
     this.layout(false);
   }
@@ -138,7 +138,7 @@ export class BoardView {
     const gap = Math.max(3, Math.round(w * 0.011));
     const cardW = Math.floor((w - pad * 2 - gap * (cols - 1)) / cols);
     const cardH = Math.round(cardW * RATIO);
-    const tableauTop = this.level.cells > 0 ? cardH + Math.round(cardH * 0.28) : 0;
+    const tableauTop = cardH + Math.round(cardH * 0.3);
     this.geom = { ...this.geom, pad, gap, cardW, cardH, tableauTop };
     this.root.style.setProperty('--card-w', `${cardW}px`);
     this.root.style.setProperty('--card-h', `${cardH}px`);
@@ -156,7 +156,7 @@ export class BoardView {
     const avail = Math.max(cardH, this.root.clientHeight - tableauTop - 2);
     const tallest = (u: number, d: number): number => {
       let best = cardH;
-      for (let c = 0; c < this.cellStart; c++) {
+      for (let c = 0; c < this.tableauCount; c++) {
         const col = this.sim.cols[c];
         let y = 0;
         for (let i = 0; i < col.length - 1; i++) y += this.sim.up[col[i]] ? u : d;
@@ -185,46 +185,68 @@ export class BoardView {
 
   private zoneX(c: number): number {
     const { pad, cardW, gap } = this.geom;
-    const i = c < this.cellStart ? c : c - this.cellStart;
+    // Draw pile far left, waste beside it; the rest of the top strip is air.
+    const i = c < this.tableauCount ? c : c - this.tableauCount;
     return pad + i * (cardW + gap);
   }
 
   private zoneTop(c: number): number {
-    return c < this.cellStart ? this.offsetY : 0;
+    return c < this.tableauCount ? this.offsetY : 0;
+  }
+
+  /** Horizontal fan for the last few waste cards, so recent draws stay visible. */
+  private wasteFan(idx: number, len: number): number {
+    const shown = Math.min(3, len);
+    const rank = idx - (len - shown);
+    // Wide enough that each card's rank and suit stay legible; the top strip
+    // has the room, since only the pile and the waste live up there.
+    return rank <= 0 ? 0 : rank * Math.round(this.geom.cardW * 0.52);
   }
 
   layout(animate = true): void {
     this.computeFan();
     const { upStep, downStep } = this.geom;
-    this.slots.forEach((s, c) => {
-      s.style.transform = `translate3d(${this.zoneX(c)}px, ${this.zoneTop(c)}px, 0)`;
+    this.slots.forEach((sl, c) => {
+      sl.style.transform = `translate3d(${this.zoneX(c)}px, ${this.zoneTop(c)}px, 0)`;
     });
     this.positions = new Array(this.sim.defs.length).fill(null).map(() => ({ x: 0, y: 0 }));
     const onBoard = new Set<number>();
+
     this.sim.cols.forEach((col, c) => {
+      const tableauCol = c < this.tableauCount;
+      const isWaste = c === wasteIdx(this.sim);
       let y = this.zoneTop(c);
       col.forEach((id, i) => {
         onBoard.add(id);
         const e = this.cardEls[id];
-        this.positions[id] = { x: this.zoneX(c), y };
+        // The draw pile is a neat stack; the waste fans sideways; the tableau
+        // fans down by the amount computeFan settled on.
+        const x = this.zoneX(c) + (isWaste ? this.wasteFan(i, col.length) : 0);
+        this.positions[id] = { x, y };
         if (!animate) e.style.transition = 'none';
-        e.style.transform = `translate3d(${this.zoneX(c)}px, ${y}px, 0)`;
+        e.style.transform = `translate3d(${x}px, ${y}px, 0)`;
         e.style.zIndex = String(10 + i);
         e.classList.toggle('up', this.sim.up[id] === 1);
         e.classList.toggle('down', this.sim.up[id] === 0);
         e.classList.toggle('tail', i === col.length - 1);
-        e.classList.toggle('in-cell', c >= this.cellStart);
+        e.classList.toggle('in-pile', !tableauCol);
         if (!animate) {
           void e.offsetHeight;
           e.style.transition = '';
         }
-        y += this.sim.up[id] ? upStep : downStep;
+        if (tableauCol) y += this.sim.up[id] ? upStep : downStep;
       });
     });
+
     for (let id = 0; id < this.cardEls.length; id++) {
       this.cardEls[id].classList.toggle('burned', !onBoard.has(id));
     }
-    this.slots.forEach((s, c) => s.classList.toggle('open', this.sim.cols[c].length === 0));
+    this.slots.forEach((sl, c) => sl.classList.toggle('open', this.sim.cols[c].length === 0));
+
+    const left = stock(this.sim).length;
+    this.stockBadge.textContent = String(left);
+    this.stockBadge.classList.toggle('empty', left === 0);
+    this.stockBadge.style.transform = `translate3d(${this.zoneX(stockIdx(this.sim))}px, 0, 0)`;
   }
 
   /* --------------------------------------------------------------- lookup */
@@ -245,23 +267,16 @@ export class BoardView {
     );
   }
 
-  /** Resolves a drop zone to a legal move, tolerating "any empty cell". */
+  /** Resolves a drop zone to a legal move. Cards only ever land on the tableau. */
   private moveTo(moves: Move[], zone: number): Move | undefined {
-    const exact = moves.find((m) => m.kind === 'm' && m.to === zone);
-    if (exact) return exact;
-    if (zone >= this.cellStart) return moves.find((m) => m.kind === 'm' && m.to >= this.cellStart);
-    return undefined;
+    return moves.find((m) => m.kind === 'm' && m.to === zone);
   }
 
-  /** Best automatic destination: cheapest, preferring the tableau over the
-   *  reserve and a real card over bare ground. */
+  /** Best automatic destination: onto a card before bare ground, then cheapest. */
   private bestMove(moves: Move[]): Move | null {
     const stacking = moves.filter((m) => m.kind === 'm');
-    if (!stacking.length) return moves[0] ?? null;
-    const rank = (m: Move): number => {
-      if (m.to >= this.cellStart) return 3;
-      return this.sim.cols[m.to].length === 0 ? 2 : 1;
-    };
+    if (!stacking.length) return moves.find((m) => m.kind !== 'd') ?? null;
+    const rank = (m: Move): number => (this.sim.cols[m.to].length === 0 ? 2 : 1);
     return [...stacking].sort((a, b) => rank(a) - rank(b) || a.cost - b.cost || a.to - b.to)[0];
   }
 
@@ -271,17 +286,8 @@ export class BoardView {
     for (const m of moves) {
       if (m.kind !== 'm') continue;
       const tcol = this.sim.cols[m.to];
-      if (tcol.length === 0) {
-        if (m.to >= this.cellStart) {
-          for (let c = this.cellStart; c < this.sim.cols.length; c++) {
-            if (this.sim.cols[c].length === 0) this.slots[c].classList.add('target');
-          }
-        } else {
-          this.slots[m.to].classList.add('target');
-        }
-      } else {
-        this.cardEls[tcol[tcol.length - 1]].classList.add('target');
-      }
+      if (tcol.length === 0) this.slots[m.to].classList.add('target');
+      else this.cardEls[tcol[tcol.length - 1]].classList.add('target');
     }
   }
 
@@ -324,10 +330,10 @@ export class BoardView {
     const x = clientX - r.left;
     const y = clientY - r.top;
     const { pad, cardW, gap, tableauTop } = this.geom;
-    const cells = this.sim.cols.length - this.cellStart;
-    if (cells > 0 && y < tableauTop) {
-      const i = Math.floor((x - pad) / (cardW + gap));
-      return this.cellStart + Math.min(cells - 1, Math.max(0, i));
+    if (y < tableauTop) {
+      // Top strip: the draw pile occupies the first column slot, the waste the
+      // second; everything to the right of them counts as the waste too.
+      return x < pad + cardW + gap * 0.5 ? stockIdx(this.sim) : wasteIdx(this.sim);
     }
     const band = r.width / this.level.columns;
     return Math.min(this.level.columns - 1, Math.max(0, Math.floor(x / band)));
@@ -345,6 +351,16 @@ export class BoardView {
     if (this.locked) return;
     const target = (e.target as HTMLElement).closest('.card') as HTMLElement | null;
     this.clearHint();
+
+    // Anywhere on the draw pile — the slot or the cards stacked on it — turns
+    // the next card. It never participates in selection or dragging.
+    if (this.zoneAt(e.clientX, e.clientY) === stockIdx(this.sim)) {
+      this.clearSelection();
+      const draw = legalMoves(this.sim, true).find((m) => m.kind === 'd');
+      if (draw) this.cb.onMove(draw);
+      else this.cb.onIllegal();
+      return;
+    }
 
     if (!target) {
       if (this.selection) {
@@ -438,7 +454,7 @@ export class BoardView {
     if (!mv) return;
     const to = mv.to;
     const tcol = this.sim.cols[to];
-    if (tcol.length === 0) this.slots[to >= this.cellStart ? zone : to].classList.add('hover');
+    if (tcol.length === 0) this.slots[to].classList.add('hover');
     else this.cardEls[tcol[tcol.length - 1]].classList.add('hover');
   }
 

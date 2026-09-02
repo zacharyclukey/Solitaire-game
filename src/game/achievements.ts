@@ -13,7 +13,8 @@ import type { RunState } from './run.ts';
 export interface LevelTally {
   hints: number;
   undos: number;
-  reserveMoves: number;
+  /** Cards still stranded on the waste when the board was cleared. */
+  wasteLeft: number;
   /** Most cards turned by a single move — Torch and Twin can cascade. */
   maxFlips: number;
   spare: number;
@@ -42,7 +43,7 @@ export interface Achievement {
 }
 
 export function emptyTally(): LevelTally {
-  return { hints: 0, undos: 0, reserveMoves: 0, maxFlips: 0, spare: 0, secondsLeft: 0 };
+  return { hints: 0, undos: 0, wasteLeft: 0, maxFlips: 0, spare: 0, secondsLeft: 0 };
 }
 
 export function emptyStreak(): RunStreak {
@@ -72,9 +73,9 @@ export const ACHIEVEMENTS: Achievement[] = [
   },
   {
     id: 'clean',
-    name: 'Untouched Reserve',
-    text: 'Clear a level without parking a single card.',
-    test: (c) => c.level !== null && c.level.cells > 0 && c.tally.reserveMoves === 0,
+    name: 'Read the Room',
+    text: 'Clear a level playing every single card you drew.',
+    test: (c) => c.level !== null && c.level.stockSize > 0 && c.tally.wasteLeft === 0,
   },
   {
     id: 'unaided',

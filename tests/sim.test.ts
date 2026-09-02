@@ -10,6 +10,9 @@ import {
   settle,
   simKey,
   status,
+  stock,
+  waste,
+  wasteIdx,
 } from '../src/game/sim.ts';
 import { DEFAULT_RULES, makeCardDef, type DeckCard, type EnchantId, type CurseId, type Suit } from '../src/game/types.ts';
 
@@ -17,13 +20,20 @@ function card(rank: number, suit: Suit, ench: EnchantId | null = null, curse: Cu
   return { uid: rank * 10 + suit, rank, suit, ench, curse };
 }
 
-function build(cols: DeckCard[][], up: boolean[][], rules = DEFAULT_RULES, budget = 50) {
-  const defs = cols.flat().map(makeCardDef);
+function build(
+  cols: DeckCard[][],
+  up: boolean[][],
+  rules = DEFAULT_RULES,
+  budget = 50,
+  stockCards: DeckCard[] = [],
+) {
+  const defs = [...cols.flat(), ...stockCards].map(makeCardDef);
   let n = 0;
   const idx: number[][] = cols.map((c) => c.map(() => n++));
+  const stockIds = stockCards.map(() => n++);
   const flags = new Uint8Array(defs.length);
   up.forEach((col, ci) => col.forEach((v, i) => { if (v) flags[idx[ci][i]] = 1; }));
-  return createSim(defs, idx, flags, rules, budget);
+  return createSim(defs, idx, stockIds, flags, rules, budget);
 }
 
 describe('stacking rules', () => {
@@ -236,5 +246,61 @@ describe('Ember', () => {
     expect(s.gone[1]).toBe(1);
     expect(s.up[0]).toBe(1);
     expect(isWon(s)).toBe(true);
+  });
+});
+
+describe('the draw pile', () => {
+  it('turns the top card onto the waste for a move', () => {
+    const s = build([[card(9, 1)]], [[true]], DEFAULT_RULES, 10, [card(4, 0), card(3, 2)]);
+    expect(s.hidden).toBe(2);
+    const draw = legalMoves(s).find((m) => m.kind === 'd')!;
+    expect(draw.cost).toBe(1);
+    applyMove(s, draw);
+    expect(stock(s)).toHaveLength(1);
+    expect(waste(s)).toHaveLength(1);
+    // The pile's last entry is its top, so the 3 is turned first.
+    expect(s.defs[waste(s)[0]].rank).toBe(3);
+    expect(s.hidden).toBe(1);
+    expect(s.movesLeft).toBe(9);
+  });
+
+  it('offers no draw once the pile is empty', () => {
+    const s = build([[card(9, 1)]], [[true]], DEFAULT_RULES, 10, [card(3, 2)]);
+    applyMove(s, legalMoves(s).find((m) => m.kind === 'd')!);
+    expect(legalMoves(s).some((m) => m.kind === 'd')).toBe(false);
+  });
+
+  it('plays the top of the waste onto the tableau, and only the top', () => {
+    const s = build([[card(9, 1)]], [[true]], DEFAULT_RULES, 10, [card(2, 0), card(8, 0)]);
+    applyMove(s, legalMoves(s).find((m) => m.kind === 'd')!); // 8♠ to the waste
+    const play = legalMoves(s).find((m) => m.kind === 'm' && m.from === wasteIdx(s))!;
+    expect(play).toBeTruthy();
+    applyMove(s, play);
+    expect(waste(s)).toHaveLength(0);
+    expect(s.cols[0].map((id) => s.defs[id].rank)).toEqual([9, 8]);
+
+    // Draw the 2, then bury nothing: it is the only waste card and is stuck.
+    applyMove(s, legalMoves(s).find((m) => m.kind === 'd')!);
+    expect(legalMoves(s).some((m) => m.from === wasteIdx(s))).toBe(false);
+  });
+
+  it('counts pile cards as face-down, so a board is not won until it is empty', () => {
+    const s = build([[card(9, 1)]], [[true]], DEFAULT_RULES, 10, [card(3, 2)]);
+    expect(isWon(s)).toBe(false);
+    applyMove(s, legalMoves(s).find((m) => m.kind === 'd')!);
+    expect(isWon(s)).toBe(true);
+  });
+
+  it('never lets anything be placed onto the pile or the waste', () => {
+    const s = build([[card(9, 1), card(8, 0)]], [[true, true]], DEFAULT_RULES, 10, [card(3, 2)]);
+    for (const m of legalMoves(s, false)) {
+      if (m.kind === 'm') expect(m.to).toBeLessThan(s.tableau);
+    }
+  });
+
+  it('charges the Stiff Deck surcharge for drawing', () => {
+    const R = { ...DEFAULT_RULES, drawCost: 2 };
+    const s = build([[card(9, 1)]], [[true]], R, 10, [card(3, 2)]);
+    expect(legalMoves(s).find((m) => m.kind === 'd')!.cost).toBe(2);
   });
 });

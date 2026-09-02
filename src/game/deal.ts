@@ -25,7 +25,8 @@ export interface Level {
   spec: LevelSpec;
   sim: Sim;
   columns: number;
-  cells: number;
+  /** Cards that start in the draw pile. */
+  stockSize: number;
   /** How far the deal had to be eased before the solver could clear it. */
   relaxed: number;
   /** Modifiers actually in force (relaxation can drop the placement rules). */
@@ -41,7 +42,9 @@ export interface Level {
   freeFirstMove: boolean;
 }
 
-const MIN_COLUMNS = 5;
+// Measured floor: at five columns better than half of all deals are provably
+// unwinnable, because empty columns are the only true sink in the game.
+const MIN_COLUMNS = 6;
 const MAX_COLUMNS = 9;
 
 export function baseColumnsFor(deckSize: number): number {
@@ -66,7 +69,7 @@ export function buildRules(mods: ModifierId[], charms: CharmId[], ranks: number[
   if (has(mods, 'royal')) r.empty = 'top';
   if (has(mods, 'rust')) r.groups = false;
   if (has(mods, 'tithe')) r.emptyCost = 2;
-  if (has(mods, 'toll')) r.cellCost = 1;
+  if (has(mods, 'heavydraw')) r.drawCost = 2;
   if (has(mods, 'gridlock')) r.maxGroup = 3;
   if (has(mods, 'ceiling')) r.maxHeight = 9;
   if (charms.includes('locksmith')) r.empty = 'any';
@@ -75,29 +78,31 @@ export function buildRules(mods: ModifierId[], charms: CharmId[], ranks: number[
 }
 
 /** Number of cards each column starts with face-up. */
-function faceUpPerColumn(depth: number, mods: ModifierId[]): number {
-  let n = depth <= 2 ? 3 : 2;
-  if (has(mods, 'buried')) n -= 1;
-  return Math.max(1, n);
+function faceUpPerColumn(depth: number, _mods: ModifierId[]): number {
+  return depth <= 4 ? 2 : 1;
 }
 
-export const BASE_CELLS = 3;
-export const MAX_CELLS = 4;
+/** Share of the deck that starts in the draw pile rather than the tableau. */
+export const STOCK_SHARE = 0.3;
 
-/** Reserve cells available on a level. The reserve is the pressure valve that
- *  makes a foundation-less tableau solvable at all, so it is also the sharpest
- *  difficulty dial in the game. */
-export function cellsFor(mods: ModifierId[], charms: CharmId[], bonus: number): number {
-  let n = BASE_CELLS + bonus;
-  if (charms.includes('casing')) n += 1;
-  if (has(mods, 'tight')) n -= 1;
-  return Math.min(MAX_CELLS, Math.max(0, n));
+/**
+ * How many cards start in the draw pile.
+ *
+ * This is the sharpest difficulty dial in the game. A bigger pile means a
+ * shorter tableau — fewer buried cards and easier columns to empty — but every
+ * card in it still has to be turned, and each turn costs a move.
+ */
+export function stockFor(deckSize: number, mods: ModifierId[], charms: CharmId[], bonus: number): number {
+  let n = Math.round(deckSize * STOCK_SHARE) + bonus;
+  if (charms.includes('casing')) n += 2;
+  if (has(mods, 'thindraw')) n -= 4;
+  if (has(mods, 'deepdraw')) n += 4;
+  return Math.min(deckSize - 8, Math.max(0, n));
 }
 
 export function columnsFor(deckSize: number, mods: ModifierId[], charms: CharmId[]): number {
   let c = baseColumnsFor(deckSize);
   if (has(mods, 'narrow')) c -= 1;
-  if (has(mods, 'cramped')) c -= 2;
   if (has(mods, 'wide')) c += 1;
   if (charms.includes('stance')) c += 1;
   return Math.min(MAX_COLUMNS, Math.max(MIN_COLUMNS, c));
@@ -106,34 +111,43 @@ export function columnsFor(deckSize: number, mods: ModifierId[], charms: CharmId
 /**
  * Slack applied to the solver's solution length when setting the allowance.
  *
- * It never drops below 1.0: the board is always clearable inside the budget by
+ * It never drops below 1.05: the board is always clearable inside the budget by
  * the line the solver actually found, so a loss is always the player's line
- * rather than an impossible deal. By depth ~16 the player has to match a
- * searcher move for move, which is where the ceiling of the game sits.
+ * rather than an impossible deal. Since that line is close to optimal (see
+ * DESIGN.md), a slack of 1.05 by depth 10 means near-perfect play — which is
+ * where the ceiling of the game sits.
  */
 export function slackFor(depth: number): number {
-  return Math.min(1.8, Math.max(1.0, 1.8 - depth * 0.05));
+  return Math.min(1.45, Math.max(1.05, 1.45 - depth * 0.04));
 }
 
 function flatBonus(depth: number): number {
-  return Math.max(1, 5 - Math.floor(depth / 3));
+  return Math.max(1, 3 - Math.floor(depth / 5));
 }
 
 interface Candidate {
   defs: CardDef[];
   cols: number[][];
+  stock: number[];
   up: Uint8Array;
 }
 
-function layout(cards: CardDef[], columns: number, faceUp: number, rng: Rng): Candidate {
+function layout(
+  cards: CardDef[],
+  columns: number,
+  faceUp: number,
+  stockSize: number,
+  rng: Rng,
+): Candidate {
   const order = rng.shuffle(cards.map((_, i) => i));
+  const stockCards = order.slice(0, stockSize); // the pile's end is its top
   const cols: number[][] = Array.from({ length: columns }, () => []);
-  order.forEach((id, i) => cols[i % columns].push(id));
+  order.slice(stockSize).forEach((id, i) => cols[i % columns].push(id));
   const up = new Uint8Array(cards.length);
   for (const col of cols) {
     for (let i = Math.max(0, col.length - faceUp); i < col.length; i++) up[col[i]] = 1;
   }
-  return { defs: cards, cols, up };
+  return { defs: cards, cols, stock: stockCards, up };
 }
 
 /** Level-only curses layered on top of whatever the card already carries. */
@@ -205,7 +219,7 @@ export function dealLevel(opts: DealOptions): Level {
   const rng = new Rng(spec.seed);
   const mods = spec.modifiers;
   const columns = columnsFor(deck.length, mods, charms);
-  const baseCells = cellsFor(mods, charms, opts.bonusCells);
+  const baseStock = stockFor(deck.length, mods, charms, opts.bonusCells);
   const baseFaceUp = faceUpPerColumn(spec.depth, mods);
   const attempts = opts.attempts ?? 3;
   const deadline = Date.now() + (opts.budgetMs ?? 1200);
@@ -214,18 +228,19 @@ export function dealLevel(opts: DealOptions): Level {
   let bestSolution: Move[] | null = null;
   let bestCost = Infinity;
   let rules: RuleSet = DEFAULT_RULES;
-  let cells = baseCells;
+  let stockSize = baseStock;
   let faceUp = baseFaceUp;
   let relaxed = 0;
 
   /**
    * A board the solver cannot clear is never handed to the player. If a deal
-   * resists, the reserve is widened and then more cards are turned face up —
-   * a slightly easier level always beats an impossible one.
+   * resists, more of it is moved into the draw pile — shortening the tableau —
+   * and then more cards are turned face up. A slightly easier level always
+   * beats an impossible one.
    */
   let activeMods = mods;
   outer: for (let relax = 0; relax < 5; relax++) {
-    cells = Math.min(MAX_CELLS, baseCells + Math.min(2, relax));
+    stockSize = Math.min(deck.length - 8, baseStock + Math.min(2, relax) * 3);
     faceUp = baseFaceUp + (relax >= 3 ? 1 : 0);
     // Last resort: drop the rules that rewrite placement and keep the flavour
     // modifiers, rather than serving a board nobody can finish.
@@ -238,8 +253,8 @@ export function dealLevel(opts: DealOptions): Level {
       const defs = levelCards(deck, activeMods, rng);
       applyLevelCurses(defs, activeMods, charms, rng);
       rules = buildRules(activeMods, charms, defs.map((d) => d.rank));
-      const trial = layout(defs, columns, faceUp, rng);
-      const probe = createSim(trial.defs, trial.cols, trial.up, rules, Number.MAX_SAFE_INTEGER / 4, cells);
+      const trial = layout(defs, columns, faceUp, stockSize, rng);
+      const probe = createSim(trial.defs, trial.cols, trial.stock, trial.up, rules, Number.MAX_SAFE_INTEGER / 4);
       const sol = findSolution(probe, solveMs);
       if (!sol) continue;
       if (!cand || sol.cost < bestCost) {
@@ -258,9 +273,9 @@ export function dealLevel(opts: DealOptions): Level {
     const defs = levelCards(deck, [], rng);
     activeMods = mods.filter((m) => MODIFIERS[m].tag === 'meta');
     rules = buildRules([], charms, defs.map((d) => d.rank));
-    cells = MAX_CELLS;
+    stockSize = Math.min(defs.length - 8, baseStock + 6);
     faceUp = baseFaceUp + 2;
-    cand = layout(defs, columns, faceUp, rng);
+    cand = layout(defs, columns, faceUp, stockSize, rng);
     bestCost = Math.round(defs.length * 0.9);
     relaxed = 5;
   }
@@ -277,11 +292,11 @@ export function dealLevel(opts: DealOptions): Level {
   if (charms.includes('pact')) budget += CHARM_MOVE_BONUS.pact;
   budget += opts.bonusMoves;
 
-  const sim = createSim(cand.defs, cand.cols, cand.up, rules, budget, cells);
+  const sim = createSim(cand.defs, cand.cols, cand.stock, cand.up, rules, budget);
 
   if (charms.includes('lantern')) {
     const downs: { c: number; i: number }[] = [];
-    for (let c = 0; c < sim.cellStart; c++) sim.cols[c].forEach((id, i) => { if (!sim.up[id]) downs.push({ c, i }); });
+    for (let c = 0; c < sim.tableau; c++) sim.cols[c].forEach((id, i) => { if (!sim.up[id]) downs.push({ c, i }); });
     for (const p of rng.sample(downs, 2)) {
       const id = sim.cols[p.c][p.i];
       if (!sim.up[id]) {
@@ -306,7 +321,7 @@ export function dealLevel(opts: DealOptions): Level {
     spec,
     sim,
     columns,
-    cells,
+    stockSize,
     relaxed,
     modifiers: activeMods,
     undosLeft: undos,

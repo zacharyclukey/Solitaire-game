@@ -1,0 +1,120 @@
+/* The victory cascade: the foundations the game never gives you, and the
+   flourish when all four are full. Geometry (size, position) is written inline
+   by src/ui/victory.ts — everything here is look and light. */
+
+/* The layer stops taking taps while the cards sort themselves; a skip handler
+   belongs on the parent, not on a card. */
+.cards.v-run,
+.v-run { pointer-events: none; }
+
+/* A card in flight is driven by keyframes, so the board's own transition on
+   `transform` must get out of the way. The flip transition on `.flip` is left
+   alone: that is what turns a face-down card over on the way up. */
+.card.v-fly { transition: none; }
+
+/* ---------------------------------------------------------- foundations */
+
+.v-slot {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: grid;
+  place-items: center;
+  /* Above what is left of the tableau — the row has to announce itself over a
+     board that is still full — but below the cards flying into it (400+). */
+  z-index: 300;
+  border: 1.5px dashed rgba(227, 178, 98, 0.42);
+  background:
+    radial-gradient(120% 110% at 50% 0%, rgba(227, 178, 98, 0.08), rgba(227, 178, 98, 0) 72%),
+    rgba(255, 255, 255, 0.02);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3) inset;
+  animation: v-slot-in calc(0.44s * var(--dur)) cubic-bezier(0.2, 0.8, 0.3, 1) both;
+}
+
+.v-pip {
+  line-height: 1;
+  opacity: 0.24;
+  color: var(--ink-faint);
+  transition: opacity calc(0.4s * var(--dur)) ease, color calc(0.4s * var(--dur)) ease;
+}
+.v-slot.s1 .v-pip,
+.v-slot.s2 .v-pip { color: var(--suit-red); opacity: 0.3; }
+html.four-colour .v-slot.s2 .v-pip { color: var(--suit-blue); }
+html.four-colour .v-slot.s3 .v-pip { color: var(--suit-green); }
+
+@keyframes v-slot-in {
+  from { opacity: 0; scale: 0.9; }
+  to { opacity: 1; scale: 1; }
+}
+
+/* Full: the outline turns to gold and holds a soft glow under the pile. */
+.v-slot.lit {
+  border-style: solid;
+  border-color: rgba(227, 178, 98, 0.85);
+  animation: v-slot-lit calc(0.85s * var(--dur)) cubic-bezier(0.2, 0.8, 0.3, 1) both;
+}
+.v-slot.lit .v-pip { opacity: 0; }
+
+@keyframes v-slot-lit {
+  0% { box-shadow: 0 0 0 0 rgba(227, 178, 98, 0), 0 2px 12px rgba(0, 0, 0, 0.3) inset; }
+  30% { box-shadow: 0 0 26px 5px rgba(227, 178, 98, 0.5), 0 0 0 1px var(--gold); }
+  100% { box-shadow: 0 0 16px 1px rgba(227, 178, 98, 0.24), 0 0 0 1px rgba(227, 178, 98, 0.4); }
+}
+
+/* ------------------------------------------------------------ flourish */
+
+/* Both of these are positioned with an inline `transform`, so they bloom on the
+   independent `scale` property instead — the two compose. */
+
+.v-burst {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 0;
+  border-radius: 50%;
+  pointer-events: none;
+  background: radial-gradient(circle at 50% 50%, rgba(227, 178, 98, 0.4), rgba(227, 178, 98, 0.11) 42%, rgba(227, 178, 98, 0) 68%);
+  animation: v-burst calc(0.95s * var(--dur)) cubic-bezier(0.18, 0.72, 0.3, 1) both;
+}
+
+@keyframes v-burst {
+  0% { scale: 0.3; opacity: 0; }
+  18% { opacity: 1; }
+  100% { scale: 1.3; opacity: 0; }
+}
+
+.v-ring {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 900;
+  border-radius: 50%;
+  pointer-events: none;
+  border: 2px solid rgba(227, 178, 98, 0.75);
+  animation: v-ring calc(0.8s * var(--dur)) cubic-bezier(0.1, 0.75, 0.25, 1) both;
+}
+
+@keyframes v-ring {
+  0% { scale: 0.22; opacity: 0; }
+  14% { opacity: 0.9; }
+  100% { scale: 1.08; opacity: 0; }
+}
+
+/* The card crowning each finished pile takes a bow. Above every landed card
+   (400 + deck size), below the ring passing over the top of them. */
+.card.v-crown { z-index: 800; }
+.card.v-crown .face.front {
+  animation: v-crown calc(0.9s * var(--dur)) cubic-bezier(0.2, 0.8, 0.3, 1) both;
+}
+
+@keyframes v-crown {
+  0% {
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.6) inset, 0 0 0 1px rgba(0, 0, 0, 0.22), 0 3px 8px rgba(0, 0, 0, 0.42);
+  }
+  35% {
+    box-shadow: 0 0 0 2.5px var(--gold), 0 0 24px rgba(227, 178, 98, 0.65), 0 10px 22px rgba(0, 0, 0, 0.5);
+  }
+  100% {
+    box-shadow: 0 0 0 1.5px rgba(227, 178, 98, 0.55), 0 0 10px rgba(227, 178, 98, 0.2), 0 3px 8px rgba(0, 0, 0, 0.42);
+  }
+}

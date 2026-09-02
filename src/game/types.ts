@@ -76,8 +76,10 @@ export interface RuleSet {
   groups: boolean;
   /** Extra move cost for entering an empty column (Tithe). */
   emptyCost: number;
-  /** Extra move cost for parking a card in the reserve (Toll). */
-  cellCost: number;
+  /** Move cost of a draw (Heavy Draw makes it dearer). */
+  drawCost: number;
+  /** Cards turned per draw. */
+  drawCount: number;
   /** Largest sequence that may be moved at once; 0 = unlimited (Gridlock). */
   maxGroup: number;
   /** Column height cap; 0 = unlimited (Low Ceiling). */
@@ -98,7 +100,8 @@ export const DEFAULT_RULES: RuleSet = {
   empty: 'any',
   groups: true,
   emptyCost: 0,
-  cellCost: 0,
+  drawCost: 1,
+  drawCount: 1,
   maxGroup: 0,
   maxHeight: 0,
   baseRank: 13,
@@ -110,8 +113,9 @@ export const DEFAULT_RULES: RuleSet = {
  *  - `m` move the run starting at `fromIdx` of column `from` onto column `to`
  *  - `b` burn (Ember) the top card of column `from`
  *  - `f` pay to flip a face-down Shrouded card sitting on top of column `from`
+ *  - `d` turn the next card off the draw pile onto the waste
  */
-export type MoveKind = 'm' | 'b' | 'f';
+export type MoveKind = 'm' | 'b' | 'f' | 'd';
 
 export interface Move {
   kind: MoveKind;

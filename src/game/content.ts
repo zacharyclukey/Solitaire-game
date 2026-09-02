@@ -20,7 +20,7 @@ export const ENCHANTS: Record<EnchantId, EnchantDef> = {
     id: 'torch',
     name: 'Torch',
     glyph: '✦',
-    text: 'When turned, also turns the deepest face-down card in its column.',
+    text: 'When turned, also turns the deepest card of the most buried column.',
     rarity: 'common',
     price: 22,
   },
@@ -60,7 +60,7 @@ export const ENCHANTS: Record<EnchantId, EnchantDef> = {
     id: 'key',
     name: 'Keystone',
     glyph: '⚿',
-    text: 'Always allowed into an empty column, and never pays the entry toll.',
+    text: 'Always allowed into an empty column, and never pays the entry cost.',
     rarity: 'common',
     price: 24,
   },
@@ -279,7 +279,7 @@ export const CHARMS: Record<CharmId, CharmDef> = {
     id: 'casing',
     name: 'Card Case',
     glyph: '▣',
-    text: '+1 reserve cell on every level.',
+    text: 'Two more cards start in the draw pile instead of the tableau.',
     rarity: 'epic',
     price: 95,
   },
@@ -299,9 +299,7 @@ export const CHARM_LIST: CharmDef[] = Object.values(CHARMS);
 
 export type ModifierId =
   | 'narrow'
-  | 'cramped'
   | 'wide'
-  | 'buried'
   | 'royal'
   | 'gridlock'
   | 'sameSuit'
@@ -321,8 +319,9 @@ export type ModifierId =
   | 'steady'
   | 'glass'
   | 'rich'
-  | 'tight'
-  | 'toll';
+  | 'thindraw'
+  | 'deepdraw'
+  | 'heavydraw';
 
 export interface ModifierDef {
   id: ModifierId;
@@ -352,17 +351,7 @@ export const MODIFIERS: Record<ModifierId, ModifierDef> = {
     text: 'One fewer column.',
     threat: 3,
     minDepth: 2,
-    excludes: ['cramped', 'wide'],
-  },
-  cramped: {
-    id: 'cramped',
-    tag: 'rule',
-    name: 'Cramped',
-    glyph: '⇥',
-    text: 'Two fewer columns.',
-    threat: 7,
-    minDepth: 12,
-    excludes: ['narrow', 'wide'],
+    excludes: ['wide'],
   },
   wide: {
     id: 'wide',
@@ -372,16 +361,7 @@ export const MODIFIERS: Record<ModifierId, ModifierDef> = {
     text: 'One extra column.',
     threat: -3,
     minDepth: 1,
-    excludes: ['narrow', 'cramped'],
-  },
-  buried: {
-    id: 'buried',
-    tag: 'board',
-    name: 'Buried',
-    glyph: '⇊',
-    text: 'One fewer card starts face-up in each column.',
-    threat: 4,
-    minDepth: 3,
+    excludes: ['narrow'],
   },
   royal: {
     id: 'royal',
@@ -389,8 +369,8 @@ export const MODIFIERS: Record<ModifierId, ModifierDef> = {
     name: 'Royal Gates',
     glyph: '♛',
     text: 'Only the two ranks nearest the top of the deck may start an empty column.',
-    threat: 5,
-    minDepth: 10,
+    threat: 7,
+    minDepth: 12,
   },
   gridlock: {
     id: 'gridlock',
@@ -408,8 +388,8 @@ export const MODIFIERS: Record<ModifierId, ModifierDef> = {
     name: 'Suit Lock',
     glyph: '♠',
     text: 'Stacks must follow the same suit instead of alternating colour.',
-    threat: 6,
-    minDepth: 5,
+    threat: 8,
+    minDepth: 10,
     excludes: ['anyColor'],
   },
   anyColor: {
@@ -437,9 +417,9 @@ export const MODIFIERS: Record<ModifierId, ModifierDef> = {
     name: 'Rust',
     glyph: '⇢',
     text: 'Only one card may be moved at a time.',
-    threat: 7,
-    minDepth: 9,
-    excludes: ['gridlock', 'tight'],
+    threat: 9,
+    minDepth: 13,
+    excludes: ['gridlock'],
   },
   tithe: {
     id: 'tithe',
@@ -537,8 +517,8 @@ export const MODIFIERS: Record<ModifierId, ModifierDef> = {
     name: 'Doppelgänger',
     glyph: '⧉',
     text: 'Three of your cards are duplicated into this level.',
-    threat: 4,
-    minDepth: 12,
+    threat: 5,
+    minDepth: 14,
   },
   steady: {
     id: 'steady',
@@ -550,25 +530,34 @@ export const MODIFIERS: Record<ModifierId, ModifierDef> = {
     minDepth: 5,
     excludes: ['glass'],
   },
-  toll: {
-    id: 'toll',
-    tag: 'rule',
-    name: 'Reserve Toll',
-    glyph: '⊗',
-    text: 'Parking a card in the reserve costs 1 extra move.',
-    threat: 4,
-    minDepth: 5,
-    excludes: ['tight'],
-  },
-  tight: {
-    id: 'tight',
-    tag: 'rule',
-    name: 'Tight Quarters',
-    glyph: '⊠',
-    text: 'One fewer reserve cell.',
-    threat: 6,
+  thindraw: {
+    id: 'thindraw',
+    tag: 'board',
+    name: 'Shallow Deal',
+    glyph: '⇱',
+    text: 'Four fewer cards in the draw pile — and four more buried in the tableau.',
+    threat: 5,
     minDepth: 4,
-    excludes: ['toll'],
+    excludes: ['deepdraw'],
+  },
+  deepdraw: {
+    id: 'deepdraw',
+    tag: 'board',
+    name: 'Deep Deal',
+    glyph: '⇲',
+    text: 'Four more cards in the draw pile, and four fewer in the tableau.',
+    threat: -3,
+    minDepth: 1,
+    excludes: ['thindraw'],
+  },
+  heavydraw: {
+    id: 'heavydraw',
+    tag: 'rule',
+    name: 'Stiff Deck',
+    glyph: '⊗',
+    text: 'Every draw costs 2 moves instead of 1.',
+    threat: 6,
+    minDepth: 5,
   },
   glass: {
     id: 'glass',

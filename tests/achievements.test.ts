@@ -49,20 +49,20 @@ describe('achievements', () => {
 
   it('rewards a level cleared on fumes', () => {
     const level = buildTutorialLevel();
-    const tight = ctx({ level, tally: { ...emptyTally(), spare: 2, reserveMoves: 1 } });
+    const tight = ctx({ level, tally: { ...emptyTally(), spare: 2, wasteLeft: 1 } });
     expect(newlyEarned(tight, {}).map((a) => a.id)).toContain('tight');
-    const loose = ctx({ level, tally: { ...emptyTally(), spare: 9, reserveMoves: 1 } });
+    const loose = ctx({ level, tally: { ...emptyTally(), spare: 9, wasteLeft: 1 } });
     expect(newlyEarned(loose, {}).map((a) => a.id)).not.toContain('tight');
   });
 
-  it('rewards clearing without touching the reserve, but only when there was one', () => {
+  it('rewards leaving nothing stranded on the waste, but only when a pile existed', () => {
     const level = buildTutorialLevel();
     expect(newlyEarned(ctx({ level }), {}).map((a) => a.id)).toContain('clean');
-    const used = ctx({ level, tally: { ...emptyTally(), reserveMoves: 1 } });
-    expect(newlyEarned(used, {}).map((a) => a.id)).not.toContain('clean');
+    const stranded = ctx({ level, tally: { ...emptyTally(), wasteLeft: 1 } });
+    expect(newlyEarned(stranded, {}).map((a) => a.id)).not.toContain('clean');
 
-    const noCells = { ...level, cells: 0 };
-    expect(newlyEarned(ctx({ level: noCells }), {}).map((a) => a.id)).not.toContain('clean');
+    const noStock = { ...level, stockSize: 0 };
+    expect(newlyEarned(ctx({ level: noStock }), {}).map((a) => a.id)).not.toContain('clean');
   });
 
   it('tracks hint-free and undo-free streaks', () => {

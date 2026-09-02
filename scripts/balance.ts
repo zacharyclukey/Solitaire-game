@@ -29,7 +29,7 @@ interface Row {
   depth: number;
   cards: number;
   cols: number;
-  cells: number;
+  stockSize: number;
   hidden: number;
   par: number;
   budget: number;
@@ -97,7 +97,7 @@ for (let i = 0; i < RUNS; i++) {
       depth: d,
       cards: level.sim.defs.length,
       cols: level.columns,
-      cells: level.cells,
+      stockSize: level.stockSize,
       hidden: level.sim.hidden,
       par: level.par,
       budget: level.budget,
@@ -122,7 +122,7 @@ for (const r of rows) {
 const avg = (xs: number[]): number => xs.reduce((a, b) => a + b, 0) / (xs.length || 1);
 const pad = (s: string | number, n: number): string => String(s).padStart(n);
 
-console.log('depth  cards cols cell hidden   par budget slack  weakFail  dealMs   relaxed');
+console.log('depth  cards cols pile hidden   par budget slack  weakFail  dealMs   relaxed');
 for (const d of [...byDepth.keys()].sort((a, b) => a - b)) {
   const rs = byDepth.get(d)!;
   const weakFail = rs.filter((r) => r.weak === null || r.weak > r.budget).length / rs.length;
@@ -131,7 +131,7 @@ for (const d of [...byDepth.keys()].sort((a, b) => a - b)) {
       pad(d, 5),
       pad(avg(rs.map((r) => r.cards)).toFixed(0), 7),
       pad(avg(rs.map((r) => r.cols)).toFixed(1), 5),
-      pad(avg(rs.map((r) => r.cells)).toFixed(1), 5),
+      pad(avg(rs.map((r) => r.stockSize)).toFixed(1), 5),
       pad(avg(rs.map((r) => r.hidden)).toFixed(1), 7),
       pad(avg(rs.map((r) => r.par)).toFixed(1), 6),
       pad(avg(rs.map((r) => r.budget)).toFixed(1), 7),
