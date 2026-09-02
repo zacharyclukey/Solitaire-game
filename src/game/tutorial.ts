@@ -36,13 +36,17 @@ interface Slot {
 const up = (rank: number, suit: Suit): Slot => ({ rank, suit, up: true });
 const down = (rank: number, suit: Suit): Slot => ({ rank, suit, up: false });
 
-/** Columns bottom-first, exactly as they are dealt. */
+/**
+ * Columns bottom-first, exactly as they are dealt, ordered so the board still
+ * reads as a staircase. The deepest column is the one carrying the 8-7 run,
+ * because the fourth lesson needs that run to be visible before it is taught.
+ */
 const LAYOUT: Slot[][] = [
-  [down(4, C), up(8, S), up(7, H)],
   [down(2, D), up(6, S)],
   [down(5, H), up(4, S)],
   [down(1, C), up(4, D)],
   [down(6, D), up(7, S)],
+  [down(4, C), up(8, S), up(7, H)],
 ];
 
 /** The draw pile, bottom first — so the last entry is turned first. */
