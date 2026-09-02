@@ -31,12 +31,18 @@ export interface RunStats {
   goldEarned: number;
 }
 
-export type Phase = 'fork' | 'level' | 'reward' | 'shop' | 'over';
+export type Phase = 'queue' | 'level' | 'reward' | 'shop' | 'over';
 
 export interface RunState {
   seed: number;
   daily: boolean;
-  depth: number; // levels cleared so far
+  /** Levels cleared. This is the score. */
+  depth: number;
+  /**
+   * Levels faced, cleared or skipped. Difficulty keys off this, so ducking a
+   * board buys you a buff without buying you any respite.
+   */
+  stage: number;
   deck: DeckCard[];
   charms: CharmId[];
   gold: number;
@@ -45,7 +51,6 @@ export interface RunState {
   nextUid: number;
   secondWind: boolean; // charm available and unused
   phase: Phase;
-  fork: LevelSpec[];
   current: LevelSpec | null;
   /** Moves played in the current level, for save/resume by replay. */
   levelMoves: { kind: string; from: number; fromIdx: number; to: number; cost: number }[];
@@ -87,6 +92,7 @@ export function newRun(seed: number, daily = false): RunState {
     seed,
     daily,
     depth: 0,
+    stage: 0,
     deck,
     charms: [],
     gold: 0,
@@ -94,8 +100,7 @@ export function newRun(seed: number, daily = false): RunState {
     bonusCells: 0,
     nextUid: deck.length + 1,
     secondWind: false,
-    phase: 'fork',
-    fork: [],
+    phase: 'queue',
     current: null,
     levelMoves: [],
     rewards: [],
@@ -103,7 +108,6 @@ export function newRun(seed: number, daily = false): RunState {
     stats: { movesSpent: 0, cardsTurned: 0, levelsCleared: 0, goldEarned: 0 },
     score: 0,
   };
-  run.fork = makeFork(run);
   return run;
 }
 
@@ -167,44 +171,88 @@ function maxModsFor(depth: number): number {
   return 5;
 }
 
-/** Three flavours of next step: a gentle one, a standard one, and a gamble. */
-export function makeFork(run: RunState): LevelSpec[] {
-  const depth = run.depth + 1;
-  const rng = new Rng(subSeed(run.seed, depth, 0x5f0));
+/**
+ * The stage that sits at a given point in the run.
+ *
+ * Deterministic from the run seed, so the whole queue can be read ahead — and
+ * the Warden at the end of a stretch can be shown from the moment the stretch
+ * begins, which is the point: you are meant to be building towards it.
+ */
+export function stageSpec(run: RunState, stage: number): LevelSpec {
+  const rng = new Rng(subSeed(run.seed, stage, 0x5f0));
 
-  if (depth % BOSS_EVERY === 0) {
-    const spec: LevelSpec = {
-      depth,
+  if (stage % BOSS_EVERY === 0) {
+    return {
+      stage,
       kind: 'boss',
-      modifiers: pickModifiers(rng, depth, depth * 1.35 + 6, maxModsFor(depth) + 1, false, depth >= 15 ? 2 : 1),
-      seed: subSeed(run.seed, depth, 0xb055),
+      modifiers: pickModifiers(rng, stage, stage * 1.35 + 6, maxModsFor(stage) + 1, false, stage >= 15 ? 2 : 1),
+      seed: subSeed(run.seed, stage, 0xb055),
     };
-    return [spec];
   }
 
-  const target = depth * 1.05 + 1;
-  const safeKind: NodeKind = depth === 1 || rng.next() < 0.35 ? 'cache' : 'trial';
-  const options: LevelSpec[] = [
-    {
-      depth,
-      kind: safeKind,
-      modifiers: pickModifiers(rng, depth, Math.max(0, target - 5), Math.max(1, maxModsFor(depth) - 1), true),
-      seed: subSeed(run.seed, depth, 1),
-    },
-    {
-      depth,
-      kind: 'trial',
-      modifiers: pickModifiers(rng, depth, target, maxModsFor(depth), false),
-      seed: subSeed(run.seed, depth, 2),
-    },
-    {
-      depth,
-      kind: 'gauntlet',
-      modifiers: pickModifiers(rng, depth, target + 5, maxModsFor(depth) + 1, false),
-      seed: subSeed(run.seed, depth, 3),
-    },
-  ];
-  return depth === 1 ? options.slice(0, 2) : options;
+  // Every third stage runs hot: worse rules, but a skip worth taking.
+  const hot = stage % 3 === 0;
+  const target = stage * 1.05 + 1 + (hot ? 5 : 0);
+  return {
+    stage,
+    kind: hot ? 'gauntlet' : 'trial',
+    modifiers: pickModifiers(rng, stage, target, maxModsFor(stage) + (hot ? 1 : 0), !hot && rng.next() < 0.4),
+    seed: subSeed(run.seed, stage, 2),
+  };
+}
+
+export interface QueuedStage {
+  spec: LevelSpec;
+  /** What ducking this one hands you instead. Null when it cannot be ducked. */
+  skip: Reward | null;
+}
+
+/** Whether a stage can be skipped. Wardens have to be faced. */
+export function skippable(stage: number): boolean {
+  return stage % BOSS_EVERY !== 0 && stage > 1;
+}
+
+/**
+ * What you get for walking past a stage.
+ *
+ * Visible before you choose, because the whole decision is "is that board
+ * worth more to me than this is" — and you cannot weigh that blind.
+ */
+export function skipRewardFor(run: RunState, stage: number): Reward | null {
+  if (!skippable(stage)) return null;
+  const rng = new Rng(subSeed(run.seed, stage, 0x5c19));
+  const roll = rng.next();
+  if (roll < 0.34) {
+    return {
+      t: 'ench',
+      ench: rng.weighted(ENCHANT_LIST.map((e) => ({ item: e.id, weight: rarityWeight(e.rarity, stage) })))!,
+    };
+  }
+  if (roll < 0.52) return { t: 'moves', n: 2 };
+  if (roll < 0.68) return { t: 'gold', n: Math.round(30 + stage * 6) };
+  if (roll < 0.8) {
+    const c = randomCharm(run, rng);
+    if (c) return { t: 'charm', id: c };
+    return { t: 'gold', n: Math.round(30 + stage * 6) };
+  }
+  if (roll < 0.9 && run.deck.length > MIN_DECK) return { t: 'remove' };
+  return { t: 'add', card: newCard(run, rng, true) };
+}
+
+/** The next few stages, read-ahead so the run can actually be planned. */
+export function makeQueue(run: RunState, ahead = 3): QueuedStage[] {
+  const out: QueuedStage[] = [];
+  for (let i = 1; i <= ahead; i++) {
+    const stage = run.stage + i;
+    out.push({ spec: stageSpec(run, stage), skip: skipRewardFor(run, stage) });
+  }
+  return out;
+}
+
+/** The next Warden, so a whole stretch can be played towards it. */
+export function nextWarden(run: RunState): LevelSpec {
+  const stage = (Math.floor(run.stage / BOSS_EVERY) + 1) * BOSS_EVERY;
+  return stageSpec(run, stage);
 }
 
 /* ----------------------------------------------------------------- rewards */
@@ -240,7 +288,7 @@ function newCard(run: RunState, rng: Rng, withEnch: boolean): DeckCard {
   };
   if (withEnch) {
     card.ench = rng.weighted(
-      ENCHANT_LIST.map((e) => ({ item: e.id, weight: rarityWeight(e.rarity, run.depth) })),
+      ENCHANT_LIST.map((e) => ({ item: e.id, weight: rarityWeight(e.rarity, run.stage) })),
     )!;
   }
   return card;
@@ -254,11 +302,11 @@ function randomCharm(run: RunState, rng: Rng): CharmId | null {
   const owned = ownedCharms(run);
   const pool = Object.values(CHARMS).filter((c) => !owned.has(c.id));
   if (!pool.length) return null;
-  return rng.weighted(pool.map((c) => ({ item: c.id, weight: rarityWeight(c.rarity, run.depth) })));
+  return rng.weighted(pool.map((c) => ({ item: c.id, weight: rarityWeight(c.rarity, run.stage) })));
 }
 
 export function makeRewards(run: RunState, kind: NodeKind, count: number): Reward[] {
-  const rng = new Rng(subSeed(run.seed, run.depth, 0x4ee));
+  const rng = new Rng(subSeed(run.seed, run.stage, 0x4ee));
   const out: Reward[] = [];
   const used = new Set<string>();
   const rich = kind === 'gauntlet' || kind === 'boss';
@@ -280,7 +328,7 @@ export function makeRewards(run: RunState, kind: NodeKind, count: number): Rewar
       push({
         t: 'ench',
         ench: rng.weighted(
-          ENCHANT_LIST.map((e) => ({ item: e.id, weight: rarityWeight(e.rarity, run.depth) })),
+          ENCHANT_LIST.map((e) => ({ item: e.id, weight: rarityWeight(e.rarity, run.stage) })),
         )!,
       });
     } else if (roll < 0.46) {
@@ -292,17 +340,31 @@ export function makeRewards(run: RunState, kind: NodeKind, count: number): Rewar
     } else if (roll < 0.72) {
       if (run.bonusCells < 2) push({ t: 'cell' });
     } else if (roll < 0.8) {
-      push({ t: 'gold', n: Math.round((28 + run.depth * 5) * (rich ? 1.6 : 1)) });
+      push({ t: 'gold', n: Math.round((28 + run.stage * 5) * (rich ? 1.6 : 1)) });
     } else if (roll < 0.88) {
       if (run.deck.some((c) => c.curse)) push({ t: 'uncurse' });
     } else if (roll < 0.95) {
       const c = randomCharm(run, rng);
       if (c && (rich || rng.next() < 0.5)) push({ t: 'charm', id: c });
     } else {
-      push({ t: 'bargain', n: Math.round(60 + run.depth * 8) });
+      push({ t: 'bargain', n: Math.round(60 + run.stage * 8) });
     }
   }
   return out.slice(0, count);
+}
+
+/** Walking past a stage: the buff lands, the stage counter moves, the score does not. */
+export function takeSkip(run: RunState): Reward | null {
+  const stage = run.stage + 1;
+  const reward = skipRewardFor(run, stage);
+  run.stage = stage;
+  return reward;
+}
+
+/** Clearing a stage: both counters move. */
+export function bankStage(run: RunState): void {
+  run.stage += 1;
+  run.depth += 1;
 }
 
 export function rewardCount(run: RunState, kind: NodeKind): number {
@@ -377,14 +439,14 @@ export type ShopItem =
   | { t: 'cell'; price: number; sold?: boolean };
 
 export function makeShop(run: RunState): ShopItem[] {
-  const rng = new Rng(subSeed(run.seed, run.depth, 0x5409));
+  const rng = new Rng(subSeed(run.seed, run.stage, 0x5409));
   const items: ShopItem[] = [];
-  const priceScale = 1 + run.depth * 0.045;
+  const priceScale = 1 + run.stage * 0.045;
   const p = (n: number): number => Math.round(n * priceScale);
 
   for (let i = 0; i < 2; i++) {
     const e = rng.weighted(
-      ENCHANT_LIST.map((x) => ({ item: x.id, weight: rarityWeight(x.rarity, run.depth) })),
+      ENCHANT_LIST.map((x) => ({ item: x.id, weight: rarityWeight(x.rarity, run.stage) })),
     )!;
     if (!items.some((it) => it.t === 'ench' && it.ench === e)) {
       items.push({ t: 'ench', ench: e, price: p(ENCHANTS[e].price) });

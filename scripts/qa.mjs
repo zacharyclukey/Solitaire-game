@@ -47,9 +47,8 @@ await page.waitForTimeout(400);
 
 const log = [];
 for (let i = 1; i <= levels; i++) {
-  await page.waitForSelector('#scr-fork.active .node', { timeout: 15000 });
-  const n = await page.locator('#scr-fork.active .node').count();
-  await page.locator('#scr-fork.active .node').nth(Math.min(1, n - 1)).click();
+  await page.waitForSelector('#scr-fork.active .stage.now', { timeout: 15000 });
+  await page.locator('#scr-fork.active .stage.now .btn.primary').click();
   await page.waitForTimeout(3200);
   const info = await page.evaluate(() => {
     const a = window.facedown;

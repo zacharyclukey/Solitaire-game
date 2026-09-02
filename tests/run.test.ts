@@ -1,11 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import { columnsFor, dealLevel, slackFor, stockFor, type LevelSpec } from '../src/game/deal.ts';
 import { MODIFIERS, type ModifierId } from '../src/game/content.ts';
-import { Rng } from '../src/game/rng.ts';
 import {
   addCharm,
+  bankStage,
   computeScore,
-  makeFork,
+  makeQueue,
+  nextWarden,
+  skippable,
+  skipRewardFor,
+  takeSkip,
+  stageSpec,
   makeRewards,
   makeShop,
   MIN_DECK,
@@ -17,8 +22,8 @@ import {
 } from '../src/game/run.ts';
 import { applyMove, isWon, legalMoves, simKey, status } from '../src/game/sim.ts';
 
-function spec(depth: number, modifiers: ModifierId[] = [], seed = 1234): LevelSpec {
-  return { depth, kind: 'trial', modifiers, seed };
+function spec(stage: number, modifiers: ModifierId[] = [], seed = 1234): LevelSpec {
+  return { stage, kind: 'trial', modifiers, seed };
 }
 
 function deal(depth: number, mods: ModifierId[] = [], seed = 999) {
@@ -98,35 +103,57 @@ describe('dealing', () => {
 });
 
 describe('run progression', () => {
-  it('offers a fork of distinct options that grows in threat', () => {
+  it('shows the next few stages, so a run can be read ahead', () => {
     const run = newRun(31337);
-    expect(run.fork.length).toBeGreaterThanOrEqual(2);
-    run.depth = 6;
-    const later = makeFork(run);
-    expect(later.length).toBe(3);
-    expect(later.map((n) => n.kind)).toContain('gauntlet');
+    const queue = makeQueue(run);
+    expect(queue).toHaveLength(3);
+    expect(queue.map((q) => q.spec.stage)).toEqual([1, 2, 3]);
+    // Deterministic: reading ahead has to agree with what actually arrives.
+    run.stage = 1;
+    expect(makeQueue(run)[0].spec).toEqual(queue[1].spec);
   });
 
-  it('puts a warden on every fifth level', () => {
+  it('telegraphs the Warden from the start of its stretch', () => {
     const run = newRun(5);
-    run.depth = 4;
-    const fork = makeFork(run);
-    expect(fork.length).toBe(1);
-    expect(fork[0].kind).toBe('boss');
+    expect(nextWarden(run).stage).toBe(5);
+    expect(nextWarden(run).kind).toBe('boss');
+    run.stage = 5;
+    expect(nextWarden(run).stage).toBe(10);
   });
 
-  it('never breaks the one-rule-modifier budget', () => {
-    for (let seed = 0; seed < 40; seed++) {
-      const run = newRun(seed * 7919 + 13);
-      for (let d = 0; d < 24; d++) {
-        run.depth = d;
-        for (const node of makeFork(run)) {
-          const rules = node.modifiers.filter((m) => MODIFIERS[m].tag === 'rule').length;
-          expect(rules).toBeLessThanOrEqual(node.kind === 'boss' ? 2 : 1);
-          for (const m of node.modifiers) expect(MODIFIERS[m].minDepth).toBeLessThanOrEqual(node.depth);
-        }
-      }
+  it('will not let a Warden be walked past', () => {
+    expect(skippable(5)).toBe(false);
+    expect(skippable(10)).toBe(false);
+    expect(skippable(4)).toBe(true);
+    // Nor the opening board, which is where the run is learnt.
+    expect(skippable(1)).toBe(false);
+  });
+
+  it('shows what a skip pays before it is taken', () => {
+    const run = newRun(808);
+    for (let stage = 2; stage < 20; stage++) {
+      const reward = skipRewardFor(run, stage);
+      if (stage % 5 === 0) expect(reward).toBeNull();
+      else expect(reward).not.toBeNull();
     }
+  });
+
+  it('walking past a stage costs the score but not the escalation', () => {
+    const run = newRun(99);
+    run.stage = 2;
+    const before = { stage: run.stage, depth: run.depth };
+    takeSkip(run);
+    expect(run.stage).toBe(before.stage + 1);
+    expect(run.depth).toBe(before.depth); // nothing banked
+    // ...and the board after it is scaled to the stage, not the score.
+    expect(stageSpec(run, run.stage + 1).stage).toBe(4);
+  });
+
+  it('banking a stage moves both counters', () => {
+    const run = newRun(99);
+    bankStage(run);
+    expect(run.stage).toBe(1);
+    expect(run.depth).toBe(1);
   });
 
   it('generates rewards without duplicates', () => {
@@ -185,11 +212,9 @@ describe('run progression', () => {
 
 describe('a full simulated run', () => {
   it('plays ten levels end to end using the solver as the player', () => {
-    const rng = new Rng(2024);
     const run = newRun(20240601);
     for (let d = 1; d <= 10; d++) {
-      run.fork = makeFork(run);
-      const node = rng.pick(run.fork);
+      const node = stageSpec(run, d);
       const level = dealLevel({
         deck: run.deck,
         charms: run.charms,
@@ -201,7 +226,7 @@ describe('a full simulated run', () => {
       for (const mv of level.solution!) applyMove(level.sim, mv, null);
       expect(isWon(level.sim)).toBe(true);
       expect(level.sim.movesLeft).toBeGreaterThanOrEqual(0);
-      run.depth = d;
+      bankStage(run);
       run.gold += level.baseGold;
       const rewards = makeRewards(run, node.kind, rewardCount(run, node.kind));
       expect(rewards.length).toBeGreaterThan(0);

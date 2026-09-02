@@ -15,7 +15,9 @@ import { DEFAULT_RULES, makeCardDef, type CardDef, type CurseId, type DeckCard, 
 export type NodeKind = 'trial' | 'gauntlet' | 'cache' | 'boss' | 'shop' | 'respite' | 'tutorial';
 
 export interface LevelSpec {
-  depth: number;
+  /** How far along the run this level sits. Advances on a skip as well as a
+   *  clear, so difficulty keeps climbing whether or not you bank the level. */
+  stage: number;
   kind: NodeKind;
   modifiers: ModifierId[];
   seed: number;
@@ -264,7 +266,7 @@ export function dealLevel(opts: DealOptions): Level {
   const rng = new Rng(spec.seed);
   const mods = spec.modifiers;
   const columns = columnsFor(deck.length, mods, charms);
-  const baseStock = stockFor(deck.length, mods, charms, opts.bonusCells, spec.depth);
+  const baseStock = stockFor(deck.length, mods, charms, opts.bonusCells, spec.stage);
   // Exactly one card face-up per column: the classic silhouette, and the
   // configuration that measured most reliably solvable.
   const baseFaceUp = 1;
@@ -330,7 +332,7 @@ export function dealLevel(opts: DealOptions): Level {
   const par = Number.isFinite(bestCost) ? bestCost : Math.round(cand.defs.length * 1.4);
 
   const m = activeMods;
-  let budget = Math.ceil(par * slackFor(spec.depth)) + flatBonus(spec.depth);
+  let budget = Math.ceil(par * slackFor(spec.stage)) + flatBonus(spec.stage);
   if (has(m, 'austere')) budget = Math.ceil(budget * 0.85);
   if (spec.kind === 'gauntlet') budget = Math.ceil(budget * 0.94);
   if (spec.kind === 'boss') budget = Math.ceil(budget * 0.9);
@@ -362,7 +364,7 @@ export function dealLevel(opts: DealOptions): Level {
   if (charms.includes('dice')) undos += 2;
   if (has(m, 'steady')) undos = 0;
 
-  let baseGold = 12 + spec.depth * 3;
+  let baseGold = 12 + spec.stage * 3;
   if (spec.kind === 'gauntlet') baseGold = Math.round(baseGold * 1.6);
   if (spec.kind === 'boss') baseGold = Math.round(baseGold * 2.2);
   if (spec.kind === 'cache') baseGold = Math.round(baseGold * 0.7);

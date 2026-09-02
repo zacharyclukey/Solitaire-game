@@ -76,7 +76,7 @@ function fumble(sim: Sim, rng: Rng, cap = 300): Move[] {
 }
 
 function level(depth: number, seed: number) {
-  const spec: LevelSpec = { depth, kind: 'trial', modifiers: [], seed };
+  const spec: LevelSpec = { stage: depth, kind: 'trial', modifiers: [], seed };
   return dealLevel({ deck: starterDeck(), charms: [], spec, bonusMoves: 0, bonusCells: 0 });
 }
 
@@ -148,7 +148,7 @@ describe('where the line was lost', () => {
     const level = dealLevel({
       deck: starterDeck(),
       charms: [],
-      spec: { depth: 4, kind: 'trial', modifiers: [], seed: 8123 } as LevelSpec,
+      spec: { stage: 4, kind: 'trial', modifiers: [], seed: 8123 } as LevelSpec,
       bonusMoves: 0,
       bonusCells: 0,
     });

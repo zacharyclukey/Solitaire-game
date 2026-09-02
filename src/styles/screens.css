@@ -393,3 +393,80 @@ html.four-colour .mini.s3 { color: var(--suit-green); }
 .epitaph-verdict { font-size: 14.5px; line-height: 1.5; color: var(--ink); }
 .epitaph-lines { margin-top: 8px; padding-left: 16px; }
 .epitaph-lines li { font-size: 12.5px; color: var(--ink-faint); margin-bottom: 3px; }
+
+/* ------------------------------------------------------- the stage queue */
+
+.warden-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 14px;
+  margin-bottom: 14px;
+  border-radius: var(--r-md);
+  background: linear-gradient(100deg, rgba(229, 103, 95, 0.13), rgba(227, 178, 98, 0.08));
+  border: 1px solid rgba(229, 103, 95, 0.3);
+}
+.warden-when {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #f0b3ae;
+}
+
+.stage {
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  padding: 15px 16px 14px;
+  position: relative;
+  overflow: hidden;
+}
+.stage::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: var(--violet);
+}
+.stage-gauntlet::before { background: var(--bad); }
+.stage-boss::before { background: linear-gradient(180deg, var(--gold), var(--bad)); }
+
+.stage.now { background: linear-gradient(165deg, var(--surface-2), var(--surface)); }
+.stage.ahead {
+  background: rgba(255, 255, 255, 0.022);
+  padding: 11px 14px;
+  margin-bottom: 8px;
+  opacity: 0.72;
+}
+
+.stage-head { display: flex; align-items: center; gap: 9px; }
+.stage-no {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+.stage-kind { font-size: 16px; font-weight: 700; letter-spacing: -0.01em; margin-right: auto; }
+.stage.ahead .stage-kind { font-size: 13.5px; }
+.stage.ahead .node-mods { margin-top: 7px; }
+
+.stage-actions { display: grid; gap: 8px; margin-top: 14px; }
+.btn.skip {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: transparent;
+  border-color: var(--line-strong);
+  color: var(--ink-dim);
+  padding: 11px 16px;
+}
+.skip-label { font-size: 14.5px; font-weight: 600; }
+.skip-take { font-size: 12px; color: var(--gold); }
+.stage-locked {
+  margin-top: 12px;
+  text-align: center;
+  font-size: 12.5px;
+  color: var(--ink-faint);
+}

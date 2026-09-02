@@ -164,13 +164,36 @@ The same solver, restricted to the remaining allowance, is the Hint button.
 ## 3. The run
 
 ```
-fork  ──▶  level  ──▶  reward  ──▶  [market every 3rd]  ──▶  fork ...
-                 └─▶  run over
+queue ──▶  play  ──▶  reward  ──▶  [market every 3rd stage]  ──▶  queue ...
+      └─▶  skip  ──▶  buff      ──▶ ...                          └─▶ run over
 ```
 
-- The fork always offers a **gentle** node, a **standard** one and a **gauntlet**
-  (harsher rules, richer spoils). Every fifth level is a single **Warden** node
-  that guarantees a charm.
+The run is a **queue you can read ahead**, not a fork you pick blind. The next
+three stages are shown with their rules, and the Warden at the end of the
+stretch is telegraphed from the moment the stretch begins — you are meant to be
+building towards it.
+
+Every stage but the first and the Wardens can be **walked past**. The buff you
+would get is shown *before* you choose, because the whole decision is "is that
+board worth more to me than this is", and you cannot weigh that blind.
+
+Two counters, and the split is the point:
+
+- **stage** — levels *faced*, cleared or skipped. Difficulty keys off this.
+- **depth** — levels *cleared*. This is the score.
+
+So ducking a board buys you a buff and buys you no respite: the next board is
+harder and nothing was banked. Skip your way to the Warden and you will meet it
+tooled up and scoring nothing.
+
+An earlier version offered three simultaneous boards. It fell flat, and the
+reason is worth recording: **because the allowance is derived from par, adding
+modifiers largely self-compensates.** A harder board makes the solver work
+harder, which raises par, which raises the budget. The threat pips were close
+to cosmetic. Difficulty that actually bites has to come from what par cannot
+see — undos, passes through the pile, information — which is what the Wardens
+and the hot stages lean on.
+
 - Failing a level ends the run. The `Second Wind` charm buys exactly one re-deal.
 - **Score is depth.** Everything else — gold, cards turned, charms — is a
   tie-break.

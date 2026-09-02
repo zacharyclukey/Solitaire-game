@@ -6,6 +6,7 @@ import {
   computeScore,
   deckSummary,
   shopLabel,
+  type QueuedStage,
   type Reward,
   type RunState,
   type ShopItem,
@@ -21,7 +22,8 @@ export interface MenuCtx {
   continueRun(): void;
   daily(): void;
   tutorial(): void;
-  pickNode(spec: LevelSpec): void;
+  playStage(): void;
+  skipStage(): void;
   takeReward(r: Reward): void;
   buy(item: ShopItem, index: number): void;
   leaveShop(): void;
@@ -138,44 +140,88 @@ export function runBar(run: RunState, opts: { onDeck: () => void } = { onDeck: (
   return bar;
 }
 
-export function renderFork(ctx: MenuCtx, run: RunState): void {
-  const s = screen('fork');
-  const depth = run.depth + 1;
-  const nodes = el('div', { class: 'fork-nodes' });
+function stageCard(
+  ctx: MenuCtx,
+  run: RunState,
+  q: QueuedStage,
+  position: 'now' | 'ahead',
+): HTMLElement {
+  const spec = q.spec;
+  const mods = describeModifiers(spec.modifiers);
+  const cols = columnsFor(run.deck.length, spec.modifiers, run.charms);
+  const chips = mods.length
+    ? spec.modifiers.map((m) => modChip(m))
+    : [el('span', { class: 'chip plain' }, ['Standard rules'])];
 
-  for (const spec of run.fork) {
-    const mods = describeModifiers(spec.modifiers);
-    const cols = columnsFor(run.deck.length, spec.modifiers, run.charms);
-    const card = el('button', { class: `node node-${spec.kind}`, type: 'button' }, [
-      el('div', { class: 'node-head' }, [
-        el('span', { class: 'node-kind' }, [KIND_LABEL[spec.kind]]),
+  if (position === 'ahead') {
+    return el('div', { class: `stage ahead stage-${spec.kind}` }, [
+      el('div', { class: 'stage-head' }, [
+        el('span', { class: 'stage-no' }, [`Stage ${spec.stage}`]),
+        el('span', { class: 'stage-kind' }, [KIND_LABEL[spec.kind]]),
         threatBar(threatOf(spec)),
       ]),
-      el('p', { class: 'node-blurb' }, [KIND_BLURB[spec.kind]]),
-      el('div', { class: 'node-mods' }, mods.length
-        ? spec.modifiers.map((m) => modChip(m))
-        : [el('span', { class: 'chip plain' }, ['Standard rules'])]),
-      el('div', { class: 'node-foot' }, [
-        el('span', { class: 'node-stats' }, [`${cols} columns · ${run.deck.length} cards`]),
-        el('span', { class: 'node-reward' }, [KIND_REWARD[spec.kind]]),
-      ]),
-      el('div', { class: 'node-go' }, ['Deal →']),
+      el('div', { class: 'node-mods' }, chips),
     ]);
-    card.addEventListener('click', () => ctx.pickNode(spec));
-    nodes.append(card);
   }
+
+  const face = q.skip ? rewardFace(q.skip) : null;
+  const play = el('button', { class: 'btn primary', type: 'button' }, ['Play it']);
+  play.addEventListener('click', () => ctx.playStage());
+
+  const skip = q.skip
+    ? (() => {
+        const b = el('button', { class: 'btn skip', type: 'button' }, [
+          el('span', { class: 'skip-label' }, ['Walk past it']),
+          el('span', { class: 'skip-take' }, [`take ${face!.title}`]),
+        ]);
+        b.addEventListener('click', () => ctx.skipStage());
+        return b;
+      })()
+    : el('p', { class: 'stage-locked' }, ['The Warden has to be faced.']);
+
+  return el('div', { class: `stage now stage-${spec.kind}` }, [
+    el('div', { class: 'stage-head' }, [
+      el('span', { class: 'stage-no' }, [`Stage ${spec.stage}`]),
+      el('span', { class: 'stage-kind' }, [KIND_LABEL[spec.kind]]),
+      threatBar(threatOf(spec)),
+    ]),
+    el('p', { class: 'node-blurb' }, [KIND_BLURB[spec.kind]]),
+    el('div', { class: 'node-mods' }, chips),
+    el('div', { class: 'node-foot' }, [
+      el('span', { class: 'node-stats' }, [`${cols} columns · ${run.deck.length} cards`]),
+      el('span', { class: 'node-reward' }, [KIND_REWARD[spec.kind]]),
+    ]),
+    el('div', { class: 'stage-actions' }, [play, skip]),
+  ]);
+}
+
+export function renderQueue(ctx: MenuCtx, run: RunState, queue: QueuedStage[], warden: LevelSpec): void {
+  const s = screen('fork');
+  const showWarden = warden.stage !== queue[0].spec.stage;
 
   s.replaceChildren(
     el('div', { class: 'pad' }, [
       el('header', { class: 'screen-head' }, [
         el('div', {}, [
-          el('p', { class: 'eyebrow' }, ['Descending']),
-          el('h2', {}, [`Level ${depth}`]),
+          el('p', { class: 'eyebrow' }, [`${run.depth} cleared`]),
+          el('h2', {}, ['What is next']),
         ]),
         btn('Menu', 'small', () => openRunMenu(ctx, run)),
       ]),
       runBar(run, { onDeck: () => openDeck(run) }),
-      nodes,
+      showWarden
+        ? el('div', { class: 'warden-banner' }, [
+            el('span', { class: 'warden-when' }, [`Warden at stage ${warden.stage}`]),
+            el('div', { class: 'node-mods' }, warden.modifiers.length
+              ? warden.modifiers.map((m) => modChip(m))
+              : [el('span', { class: 'chip plain' }, ['Standard rules'])]),
+          ])
+        : null,
+      stageCard(ctx, run, queue[0], 'now'),
+      queue.length > 1
+        ? el('p', { class: 'section-label' }, ['Then'])
+        : null,
+      ...queue.slice(1).map((q) => stageCard(ctx, run, q, 'ahead')),
     ]),
   );
 }

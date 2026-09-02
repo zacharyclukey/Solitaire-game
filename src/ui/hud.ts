@@ -108,7 +108,7 @@ export class Hud {
     const lesson = level.spec.kind === 'tutorial';
     this.depthBox.classList.toggle('lesson', lesson);
     this.depthBox.firstChild!.textContent = lesson ? 'LESSON' : 'LV ';
-    this.depth.textContent = lesson ? '' : String(level.spec.depth);
+    this.depth.textContent = lesson ? '' : String(level.spec.stage);
     this.strip.replaceChildren(
       ...level.modifiers.map((m) => {
         const c = modChip(m);

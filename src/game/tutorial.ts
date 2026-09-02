@@ -55,7 +55,7 @@ const STOCK: Slot[] = [down(8, H), down(2, C), down(5, D), down(3, S)];
 export const TUTORIAL_BUDGET = 34;
 
 export const TUTORIAL_SPEC: LevelSpec = {
-  depth: 0,
+  stage: 0,
   kind: 'tutorial',
   modifiers: [],
   seed: 0,

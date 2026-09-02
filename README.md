@@ -52,8 +52,12 @@ counter at the top is what is left to place, not what is left to turn.
 
 ## The run
 
-- Each level offers a **fork**: a gentler board, a standard one, and a gauntlet
-  with harsher rules and richer spoils. Every fifth level is a **Warden**.
+- The run is a **queue you can read ahead**. You see the next three stages and
+  their rules, and the Warden at the end of the stretch from the moment it
+  starts — so you can build towards it.
+- Any stage but the first and the Wardens can be **walked past** for a buff you
+  are shown in advance. It costs you the level's spoils and your score, and the
+  escalation carries on without you.
 - Clearing a level lets you **enchant a card**, add one, cut one, take a
   **charm**, widen the reserve, or bank gold.
 - Every third level the **market** opens.

@@ -14,13 +14,17 @@ import {
   curseRandomCard,
   enchantCard,
   gainGold,
-  makeFork,
+  bankStage,
+  makeQueue,
   makeRewards,
   makeShop,
   newRun,
+  nextWarden,
   removeCard,
   rewardCount,
   SHOP_EVERY,
+  stageSpec,
+  takeSkip,
   uncurseCard,
   type Reward,
   type RunState,
@@ -61,7 +65,7 @@ import {
   openHelp,
   openSettings,
   openCodex,
-  renderFork,
+  renderQueue,
   renderOver,
   renderReward,
   renderShop,
@@ -121,7 +125,8 @@ export class App {
       continueRun: () => void this.resume(),
       daily: () => void this.startDaily(),
       tutorial: () => void this.startTutorial(),
-      pickNode: (spec) => void this.enterNode(spec),
+      playStage: () => void this.enterNode(stageSpec(this.run!, this.run!.stage + 1)),
+      skipStage: () => void this.skipStage(),
       takeReward: (r) => void this.takeReward(r),
       buy: (item, i) => this.buy(item, i),
       leaveShop: () => this.afterShop(),
@@ -224,7 +229,7 @@ export class App {
     store.stats().runs += 1;
     this.run = run;
     store.setRun(run);
-    this.showFork();
+    this.showQueue();
   }
 
   private async startDaily(): Promise<void> {
@@ -265,7 +270,7 @@ export class App {
     switch (run.phase) {
       case 'level':
         if (run.current) void this.enterNode(run.current, run.levelMoves);
-        else this.showFork();
+        else this.showQueue();
         break;
       case 'reward':
         renderReward(this.ctx, run, run.rewards, []);
@@ -280,19 +285,35 @@ export class App {
         this.toTitle();
         break;
       default:
-        this.showFork();
+        this.showQueue();
     }
   }
 
-  private showFork(): void {
+  private showQueue(): void {
     const run = this.run!;
-    if (!run.fork.length) run.fork = makeFork(run);
-    run.phase = 'fork';
+    run.phase = 'queue';
     run.current = null;
     run.levelMoves = [];
     this.persist();
-    renderFork(this.ctx, run);
+    renderQueue(this.ctx, run, makeQueue(run), nextWarden(run));
     show('fork');
+  }
+
+  /**
+   * Walking past a board. The buff lands and the stage counter moves, so the
+   * next board is harder — but nothing is banked, and the score does not move.
+   */
+  private async skipStage(): Promise<void> {
+    const run = this.run!;
+    const reward = takeSkip(run);
+    if (reward && !(await this.applyReward(reward))) {
+      run.stage -= 1; // the pick was cancelled; put the stage back
+      this.showQueue();
+      return;
+    }
+    sfx.boon();
+    haptic('light');
+    this.afterStage();
   }
 
   /* ----------------------------------------------------------------- level */
@@ -324,7 +345,7 @@ export class App {
     this.history = [];
     this.tally = emptyTally();
     this.offBookSpend = 0;
-    this.freeHints = spec.depth <= 2 ? 3 : 0;
+    this.freeHints = spec.stage <= 2 ? 3 : 0;
     this.hud.mount(level);
     this.hud.setHintEnabled(store.settings().showHint);
     this.board.mount(level);
@@ -577,7 +598,7 @@ export class App {
     sfx.win();
     haptic('success');
 
-    run.depth = level.spec.depth;
+    bankStage(run);
     run.stats.levelsCleared += 1;
     run.stats.cardsTurned += level.sim.revealed;
     this.tally.spare = Math.max(0, level.sim.movesLeft);
@@ -708,6 +729,14 @@ export class App {
   /* ------------------------------------------------------------- rewards */
 
   private async takeReward(r: Reward): Promise<void> {
+    if (!(await this.applyReward(r))) return;
+    sfx.boon();
+    this.run!.rewards = [];
+    this.afterStage();
+  }
+
+  /** Applies one reward. Returns false if the player backed out of a picker. */
+  private async applyReward(r: Reward): Promise<boolean> {
     const run = this.run!;
     switch (r.t) {
       case 'gold':
@@ -719,7 +748,7 @@ export class App {
         break;
       case 'cell':
         run.bonusCells += 1;
-        toast('Reserve expanded', 'good');
+        toast('Draw pile widened', 'good');
         break;
       case 'charm':
         addCharm(run, r.id);
@@ -735,37 +764,36 @@ export class App {
           hint: 'Cards that already carry an enchantment cannot take another.',
           allow: (c) => !c.ench,
         });
-        if (uid === null) return;
+        if (uid === null) return false;
         enchantCard(run, uid, r.ench);
         break;
       }
       case 'remove': {
         const uid = await pickCard(run.deck, { title: 'Remove which card?', hint: 'A smaller deck is a smaller board.' });
-        if (uid === null) return;
+        if (uid === null) return false;
         removeCard(run, uid);
         break;
       }
       case 'uncurse': {
         const uid = await pickCard(run.deck, { title: 'Lift which curse?', allow: (c) => !!c.curse });
-        if (uid === null) return;
+        if (uid === null) return false;
         uncurseCard(run, uid);
         break;
       }
       case 'bargain': {
         toast(`+${gainGold(run, r.n)} gold`, 'good');
-        const cursed = curseRandomCard(run, new Rng((run.seed ^ (run.depth * 7919)) >>> 0));
+        const cursed = curseRandomCard(run, new Rng((run.seed ^ (run.stage * 7919)) >>> 0));
         if (cursed) toast('A card in your deck was cursed', 'bad');
         break;
       }
     }
-    sfx.boon();
-    run.rewards = [];
-    this.afterReward();
+    return true;
   }
 
-  private afterReward(): void {
+  /** Where the run goes once a stage has been played or walked past. */
+  private afterStage(): void {
     const run = this.run!;
-    if (run.depth % SHOP_EVERY === 0) {
+    if (run.stage % SHOP_EVERY === 0) {
       run.shop = makeShop(run);
       run.phase = 'shop';
       this.persist();
@@ -773,8 +801,7 @@ export class App {
       show('shop');
       return;
     }
-    run.fork = makeFork(run);
-    this.showFork();
+    this.showQueue();
   }
 
   private buy(item: ShopItem, index: number): void {
@@ -829,9 +856,7 @@ export class App {
   }
 
   private afterShop(): void {
-    const run = this.run!;
-    run.fork = makeFork(run);
-    this.showFork();
+    this.showQueue();
   }
 
   /* ------------------------------------------------------------ tutorial */
@@ -985,7 +1010,7 @@ export class App {
     const run = this.run;
     const facts = el('div', { class: 'level-facts' }, [
       el('p', {}, [
-        `Level ${level.spec.depth} · ${level.columns} columns · ${level.stockSize} in the pile · ${level.sim.defs.length} cards`,
+        `Level ${level.spec.stage} · ${level.columns} columns · ${level.stockSize} in the pile · ${level.sim.defs.length} cards`,
       ]),
       el('p', {}, [`Allowance ${level.budget} moves · seed ${seedToCode(level.spec.seed)}`]),
       ...level.modifiers.map((m) =>
