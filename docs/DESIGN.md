@@ -173,18 +173,24 @@ three stages are shown with their rules, and the Warden at the end of the
 stretch is telegraphed from the moment the stretch begins — you are meant to be
 building towards it.
 
-Every stage but the first and the Wardens can be **walked past**. The buff you
-would get is shown *before* you choose, because the whole decision is "is that
-board worth more to me than this is", and you cannot weigh that blind.
+Every stage but the first and the Wardens can be **walked past**, and doing so
+pays nothing at all. No spoils, no gold, no score — the level is simply gone,
+and the next board is harder anyway.
+
+An earlier version handed out a buff for skipping, shown in advance. It made
+skipping a value proposition rather than a hedge, and the optimal line drifted
+towards ducking anything uncertain. Walking away is now what it should be:
+insurance against a board you think will end the run, priced at everything that
+board would have paid you.
 
 Two counters, and the split is the point:
 
 - **stage** — levels *faced*, cleared or skipped. Difficulty keys off this.
 - **depth** — levels *cleared*. This is the score.
 
-So ducking a board buys you a buff and buys you no respite: the next board is
-harder and nothing was banked. Skip your way to the Warden and you will meet it
-tooled up and scoring nothing.
+So ducking a board buys no respite at all: the next one is harder and nothing
+was banked. Skip your way to a Warden and you meet it with the deck you started
+the stretch with, and a score that never moved.
 
 An earlier version offered three simultaneous boards. It fell flat, and the
 reason is worth recording: **because the allowance is derived from par, adding

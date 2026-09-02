@@ -203,8 +203,8 @@ export function stageSpec(run: RunState, stage: number): LevelSpec {
 
 export interface QueuedStage {
   spec: LevelSpec;
-  /** What ducking this one hands you instead. Null when it cannot be ducked. */
-  skip: Reward | null;
+  /** Whether this one can be walked past. Wardens cannot. */
+  canSkip: boolean;
 }
 
 /** Whether a stage can be skipped. Wardens have to be faced. */
@@ -212,39 +212,12 @@ export function skippable(stage: number): boolean {
   return stage % BOSS_EVERY !== 0 && stage > 1;
 }
 
-/**
- * What you get for walking past a stage.
- *
- * Visible before you choose, because the whole decision is "is that board
- * worth more to me than this is" — and you cannot weigh that blind.
- */
-export function skipRewardFor(run: RunState, stage: number): Reward | null {
-  if (!skippable(stage)) return null;
-  const rng = new Rng(subSeed(run.seed, stage, 0x5c19));
-  const roll = rng.next();
-  if (roll < 0.34) {
-    return {
-      t: 'ench',
-      ench: rng.weighted(ENCHANT_LIST.map((e) => ({ item: e.id, weight: rarityWeight(e.rarity, stage) })))!,
-    };
-  }
-  if (roll < 0.52) return { t: 'moves', n: 2 };
-  if (roll < 0.68) return { t: 'gold', n: Math.round(30 + stage * 6) };
-  if (roll < 0.8) {
-    const c = randomCharm(run, rng);
-    if (c) return { t: 'charm', id: c };
-    return { t: 'gold', n: Math.round(30 + stage * 6) };
-  }
-  if (roll < 0.9 && run.deck.length > MIN_DECK) return { t: 'remove' };
-  return { t: 'add', card: newCard(run, rng, true) };
-}
-
 /** The next few stages, read-ahead so the run can actually be planned. */
 export function makeQueue(run: RunState, ahead = 3): QueuedStage[] {
   const out: QueuedStage[] = [];
   for (let i = 1; i <= ahead; i++) {
     const stage = run.stage + i;
-    out.push({ spec: stageSpec(run, stage), skip: skipRewardFor(run, stage) });
+    out.push({ spec: stageSpec(run, stage), canSkip: skippable(stage) });
   }
   return out;
 }
@@ -353,12 +326,15 @@ export function makeRewards(run: RunState, kind: NodeKind, count: number): Rewar
   return out.slice(0, count);
 }
 
-/** Walking past a stage: the buff lands, the stage counter moves, the score does not. */
-export function takeSkip(run: RunState): Reward | null {
-  const stage = run.stage + 1;
-  const reward = skipRewardFor(run, stage);
-  run.stage = stage;
-  return reward;
+/**
+ * Walking past a stage.
+ *
+ * It pays nothing. The stage counter moves, so the next board is harder; the
+ * score does not, so the level is simply gone. Skipping is a hedge against a
+ * board you think will end the run, and hedging is supposed to cost.
+ */
+export function takeSkip(run: RunState): void {
+  run.stage += 1;
 }
 
 /** Clearing a stage: both counters move. */

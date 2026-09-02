@@ -8,7 +8,6 @@ import {
   makeQueue,
   nextWarden,
   skippable,
-  skipRewardFor,
   takeSkip,
   stageSpec,
   makeRewards,
@@ -129,13 +128,24 @@ describe('run progression', () => {
     expect(skippable(1)).toBe(false);
   });
 
-  it('shows what a skip pays before it is taken', () => {
+  it('pays nothing for walking away', () => {
     const run = newRun(808);
-    for (let stage = 2; stage < 20; stage++) {
-      const reward = skipRewardFor(run, stage);
-      if (stage % 5 === 0) expect(reward).toBeNull();
-      else expect(reward).not.toBeNull();
-    }
+    run.stage = 3;
+    run.gold = 40;
+    const before = { gold: run.gold, deck: run.deck.length, charms: run.charms.length, moves: run.bonusMoves };
+    takeSkip(run);
+    expect(run.gold).toBe(before.gold);
+    expect(run.deck).toHaveLength(before.deck);
+    expect(run.charms).toHaveLength(before.charms);
+    expect(run.bonusMoves).toBe(before.moves);
+  });
+
+  it('marks which queued stages can be walked past', () => {
+    const run = newRun(808);
+    run.stage = 2;
+    const queue = makeQueue(run);
+    expect(queue.map((q) => q.spec.stage)).toEqual([3, 4, 5]);
+    expect(queue.map((q) => q.canSkip)).toEqual([true, true, false]);
   });
 
   it('walking past a stage costs the score but not the escalation', () => {

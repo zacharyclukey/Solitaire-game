@@ -164,15 +164,14 @@ function stageCard(
     ]);
   }
 
-  const face = q.skip ? rewardFace(q.skip) : null;
   const play = el('button', { class: 'btn primary', type: 'button' }, ['Play it']);
   play.addEventListener('click', () => ctx.playStage());
 
-  const skip = q.skip
+  const skip = q.canSkip
     ? (() => {
         const b = el('button', { class: 'btn skip', type: 'button' }, [
           el('span', { class: 'skip-label' }, ['Walk past it']),
-          el('span', { class: 'skip-take' }, [`take ${face!.title}`]),
+          el('span', { class: 'skip-take' }, ['no spoils, and it still counts against the climb']),
         ]);
         b.addEventListener('click', () => ctx.skipStage());
         return b;

@@ -305,13 +305,18 @@ export class App {
    */
   private async skipStage(): Promise<void> {
     const run = this.run!;
-    const reward = takeSkip(run);
-    if (reward && !(await this.applyReward(reward))) {
-      run.stage -= 1; // the pick was cancelled; put the stage back
-      this.showQueue();
-      return;
-    }
-    sfx.boon();
+    const spec = stageSpec(run, run.stage + 1);
+    const go = await modal({
+      title: 'Walk past it?',
+      body: `Stage ${spec.stage} is simply gone — no spoils, and it does not count towards your score. The next board is harder all the same.`,
+      actions: [
+        { label: 'Stay and play it', kind: 'ghost', value: false },
+        { label: 'Walk past it', kind: 'danger', value: true },
+      ],
+    });
+    if (!go) return;
+    takeSkip(run);
+    sfx.tap();
     haptic('light');
     this.afterStage();
   }
