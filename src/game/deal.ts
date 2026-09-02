@@ -12,9 +12,6 @@ import { findSolution } from './solver.ts';
 import { createSim, type Sim } from './sim.ts';
 import { DEFAULT_RULES, makeCardDef, type CardDef, type CurseId, type DeckCard, type Move, type RuleSet, type Suit } from './types.ts';
 
-/** Readings every level starts with, before anything earned. */
-export const BASE_INSIGHT = 2;
-
 export type NodeKind = 'trial' | 'gauntlet' | 'cache' | 'boss' | 'shop' | 'respite' | 'tutorial';
 
 export interface LevelSpec {
@@ -40,11 +37,11 @@ export interface Level {
   undoCostsMove: boolean;
   timeLimit: number; // seconds; 0 = untimed
   peeksLeft: number;
-  /** Readings available from the Oracle this level. */
-  insight: number;
   solution: Move[] | null;
   par: number; // the solver's own move count
   budget: number;
+  /** Moves granted above par: the only ones that are actually yours. */
+  surplus: number;
   baseGold: number;
   freeFirstMove: boolean;
 }
@@ -155,20 +152,45 @@ export function columnsFor(deckSize: number, mods: ModifierId[], charms: CharmId
 }
 
 /**
- * Slack applied to the solver's solution length when setting the allowance.
+ * The allowance is `par + surplus`, and the surplus is the whole game.
  *
- * It never drops below 1.05: the board is always clearable inside the budget by
- * the line the solver actually found, so a loss is always the player's line
- * rather than an impossible deal. Since that line is close to optimal (see
- * DESIGN.md), a slack of 1.05 by depth 10 means near-perfect play — which is
- * where the ceiling of the game sits.
+ * Par is what the board costs — the length of a line the solver actually found.
+ * The surplus on top is the only thing you own: it pays for mistakes, for
+ * exploring a line that turns out wrong, and for asking the Oracle anything.
+ * Stating it as an explicit addition rather than a multiplier means it can be
+ * shown to the player, guaranteed never to vanish, and spent deliberately.
+ *
+ * It shrinks as a run goes deeper. Early on there is room to wander and consult
+ * freely; by the deep game you can afford a couple of readings or a couple of
+ * wasted moves, and not both.
  */
-export function slackFor(depth: number): number {
-  return Math.min(1.45, Math.max(1.05, 1.45 - depth * 0.04));
+export function spareFractionFor(stage: number): number {
+  return Math.max(0.12, 0.45 - stage * 0.028);
 }
 
-function flatBonus(depth: number): number {
-  return Math.max(1, 3 - Math.floor(depth / 5));
+/** Never fewer than this, so a reading is always affordable in principle. */
+export const MIN_SURPLUS = 6;
+
+/**
+ * Floor once modifiers have taken their cut. Tight, but never so tight that
+ * the Oracle is unaffordable on the boards where it matters most.
+ */
+export const HARD_MIN_SURPLUS = 4;
+
+export function surplusFor(
+  par: number,
+  stage: number,
+  mods: ModifierId[],
+  kind: NodeKind,
+): number {
+  let spare = Math.max(MIN_SURPLUS, Math.round(par * spareFractionFor(stage)));
+  // Modifiers and hard nodes cut the surplus, never the par underneath it —
+  // which is why the allowance can no longer be pushed below a winnable line.
+  if (has(mods, 'austere')) spare = Math.round(spare * 0.55);
+  if (kind === 'gauntlet') spare = Math.round(spare * 0.8);
+  if (kind === 'boss') spare = Math.round(spare * 0.8);
+  if (kind === 'cache') spare = Math.round(spare * 1.4);
+  return Math.max(HARD_MIN_SURPLUS, spare);
 }
 
 interface Candidate {
@@ -261,8 +283,6 @@ export interface DealOptions {
   bonusMoves: number;
   /** Extra reserve cells bought during the run. */
   bonusCells: number;
-  /** Extra Oracle readings earned by clearing boards under par. */
-  insightBonus: number;
   attempts?: number;
   /** Wall-clock budget for dealing, including every solver attempt. */
   budgetMs?: number;
@@ -339,11 +359,8 @@ export function dealLevel(opts: DealOptions): Level {
   const par = Number.isFinite(bestCost) ? bestCost : Math.round(cand.defs.length * 1.4);
 
   const m = activeMods;
-  let budget = Math.ceil(par * slackFor(spec.stage)) + flatBonus(spec.stage);
-  if (has(m, 'austere')) budget = Math.ceil(budget * 0.85);
-  if (spec.kind === 'gauntlet') budget = Math.ceil(budget * 0.94);
-  if (spec.kind === 'boss') budget = Math.ceil(budget * 0.9);
-  if (spec.kind === 'cache') budget = Math.ceil(budget * 1.2);
+  const surplus = surplusFor(par, spec.stage, m, spec.kind);
+  let budget = par + surplus;
   if (charms.includes('sleeve')) budget += CHARM_MOVE_BONUS.sleeve;
   if (charms.includes('pact')) budget += CHARM_MOVE_BONUS.pact;
   budget += opts.bonusMoves;
@@ -389,10 +406,10 @@ export function dealLevel(opts: DealOptions): Level {
     undoCostsMove: has(m, 'glass'),
     timeLimit: has(m, 'rush') ? 120 : 0,
     peeksLeft: charms.includes('xray') ? 1 : 0,
-    insight: BASE_INSIGHT + opts.insightBonus,
     solution: bestSolution,
     par,
     budget,
+    surplus,
     baseGold,
     freeFirstMove: charms.includes('crowbar'),
   };

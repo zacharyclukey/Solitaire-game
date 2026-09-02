@@ -559,9 +559,9 @@ export function openHelp(): void {
       el('li', {}, ['Tap the draw pile to turn its next card. Once it runs dry you can turn the waste back over, but only a couple of times.']),
     ]),
     el('h3', {}, ['The Oracle']),
-    el('p', {}, ['Every board was solved before it was dealt to you, so the game knows things it can be asked. Readings are spent on questions — whether a line still exists from where you are standing, what the next move of it is, or which move threw it away and how far back to step. Readings are their own currency, not moves, so asking never eats the margin you need to finish. You start each level with two, and clearing a board under par earns you another for good.']),
+    el('p', {}, ['Every board was solved before it was dealt to you, so the game knows things it can be asked: whether a line still exists from where you are standing, what the next move of it is, or which move threw it away and how far back to step. Readings are paid for in moves, out of the same spare you would otherwise spend on mistakes. That is the trade — certainty now, or room to be wrong later.']),
     el('h3', {}, ['Moves are the clock']),
-    el('p', {}, ['Every level gives you a fixed allowance of moves. Run out and the run ends. The allowance is set by actually solving the board first, so every deal you are given can be cleared — the question is whether you find the line.']),
+    el('p', {}, ['Every level gives you par plus a surplus. Par is what the board costs — the length of a line the solver actually found, so every deal you are given can be cleared. The surplus on top is the only part that is yours: it pays for mistakes, for exploring a line that turns out wrong, and for anything you ask the Oracle. The counter at the top tells you how much of it is left. Spend it all and the run ends.']),
     el('h3', {}, ['The run']),
     el('ul', {}, [
       el('li', {}, ['Each level offers a choice of boards. Safer ones pay less; gauntlets bite harder and pay more.']),

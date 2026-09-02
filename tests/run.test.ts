@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { columnsFor, dealLevel, slackFor, stockFor, type LevelSpec } from '../src/game/deal.ts';
+import {
+  columnsFor,
+  dealLevel,
+  HARD_MIN_SURPLUS,
+  MIN_SURPLUS,
+  spareFractionFor,
+  stockFor,
+  surplusFor,
+  type LevelSpec,
+} from '../src/game/deal.ts';
 import { MODIFIERS, type ModifierId } from '../src/game/content.ts';
 import {
   addCharm,
@@ -32,7 +41,7 @@ function deal(depth: number, mods: ModifierId[] = [], seed = 999) {
     charms: [],
     spec: spec(depth, mods, seed),
     bonusMoves: 0,
-    bonusCells: 0, insightBonus: 0,
+    bonusCells: 0,
   });
 }
 
@@ -92,13 +101,22 @@ describe('dealing', () => {
     expect(stockFor(28, [], ['casing'], 0)).toBe(stockFor(28, [], [], 0) + 2);
   });
 
-  it('tightens the allowance as the run goes deeper, then holds at the floor', () => {
-    // Never rises, and is meaningfully tighter by the time a run is ten deep.
-    for (let d = 1; d < 40; d++) expect(slackFor(d + 1)).toBeLessThanOrEqual(slackFor(d));
-    expect(slackFor(10)).toBeLessThan(slackFor(1) - 0.25);
-    // The floor stays above 1: the line the solver found must always fit, or a
-    // loss would be the deal's fault rather than the player's.
-    expect(slackFor(40)).toBeGreaterThan(1);
+  it('shrinks the surplus as the run goes deeper, and never to nothing', () => {
+    for (let d = 1; d < 40; d++) expect(spareFractionFor(d + 1)).toBeLessThanOrEqual(spareFractionFor(d));
+    expect(surplusFor(34, 12, [], 'trial')).toBeLessThan(surplusFor(34, 1, [], 'trial'));
+    // A reading has to stay affordable in principle at any depth.
+    expect(surplusFor(34, 40, [], 'trial')).toBeGreaterThanOrEqual(MIN_SURPLUS);
+  });
+
+  it('lets modifiers cut the surplus but never the par underneath it', () => {
+    const plain = surplusFor(34, 8, [], 'trial');
+    expect(surplusFor(34, 8, ['austere'], 'trial')).toBeLessThan(plain);
+    expect(surplusFor(34, 8, [], 'boss')).toBeLessThan(plain);
+    expect(surplusFor(34, 8, [], 'cache')).toBeGreaterThan(plain);
+    // Even everything at once leaves something to spend.
+    for (const stage of [1, 5, 10, 20, 40]) {
+      expect(surplusFor(20, stage, ['austere'], 'boss')).toBeGreaterThanOrEqual(HARD_MIN_SURPLUS);
+    }
   });
 });
 
@@ -277,7 +295,7 @@ describe('a full simulated run', () => {
         charms: run.charms,
         spec: node,
         bonusMoves: run.bonusMoves,
-        bonusCells: run.bonusCells, insightBonus: 0,
+        bonusCells: run.bonusCells,
       });
       expect(level.solution).not.toBeNull();
       for (const mv of level.solution!) applyMove(level.sim, mv, null);

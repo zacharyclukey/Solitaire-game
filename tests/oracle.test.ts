@@ -7,7 +7,7 @@ import type { Move } from '../src/game/types.ts';
 
 function level(stage: number, seed: number) {
   const spec: LevelSpec = { stage, kind: 'trial', modifiers: [], seed };
-  return dealLevel({ deck: starterDeck(), charms: [], spec, bonusMoves: 0, bonusCells: 0, insightBonus: 0 });
+  return dealLevel({ deck: starterDeck(), charms: [], spec, bonusMoves: 0, bonusCells: 0 });
 }
 
 /** Plays moves that are legal but deliberately unhelpful. */

@@ -19,9 +19,6 @@ import type { LevelSpec, NodeKind } from './deal.ts';
 import { Rng } from './rng.ts';
 import type { CurseId, DeckCard, EnchantId, Suit } from './types.ts';
 
-/** Ceiling on earned readings, so foresight cannot snowball. */
-export const MAX_INSIGHT_BONUS = 3;
-
 export const MIN_DECK = 16;
 export const MAX_DECK = 48;
 export const BOSS_EVERY = 5;
@@ -52,8 +49,6 @@ export interface RunState {
   bonusMoves: number;
   bonusCells: number;
   /** Skips taken since the last cleared level. They pay nothing until one is. */
-  /** Extra Oracle readings, earned one per board cleared under par. */
-  insightBonus: number;
   skipsPending: number;
   /** Skips that a clear has since vouched for, waiting on the next market. */
   marketCredit: number;
@@ -107,7 +102,6 @@ export function newRun(seed: number, daily = false): RunState {
     gold: 0,
     bonusMoves: 0,
     bonusCells: 0,
-    insightBonus: 0,
     skipsPending: 0,
     marketCredit: 0,
     nextUid: deck.length + 1,
@@ -507,7 +501,6 @@ export function computeScore(run: RunState): number {
     run.gold +
     run.charms.length * 25 +
     run.bonusCells * 40 +
-    run.insightBonus * 30 +
     deckPower
   );
 }

@@ -24,8 +24,10 @@ alone would lock up constantly, so the game adds two things:
   dealing the pile out is not progress. Play what you draw while you can; the
   next draw buries it. Once the pile runs dry you can turn the waste back over,
   twice.
-- **A move allowance.** Every level gives you a fixed number of moves. Spend them
-  all and the run is over. Moves, not luck, are the resource you manage.
+- **An allowance of par plus a surplus.** Par is what the board costs. The
+  surplus on top is the only part that is yours — it pays for mistakes, for
+  lines that turn out wrong, and for every question you put to the Oracle. Spend
+  it all and the run is over.
 
 Every deal is verified before you see it: a solver plays the board first, and the
 allowance you get is derived from the length of the line it actually found. Every
@@ -70,9 +72,9 @@ combine into the difficulty; the in-game **Codex** documents all of them.
 
 Because every board is solved before it is dealt, the game can be *asked
 things*. The **Oracle** answers three questions — am I still winning, what
-should I play, where did I go wrong — paid for in Insight, which is its own
-currency and which you earn by clearing boards under par. The last of those
-will offer to step you back to the last position that was still winnable.
+should I play, where did I go wrong — paid for in moves, out of the same
+surplus you would otherwise spend on mistakes. The last of those will offer to
+step you back to the last position that was still winnable.
 
 When a run ends, the solver replays it and tells you where the line actually
 closed, how many moves short you finished, and which enchantment would have

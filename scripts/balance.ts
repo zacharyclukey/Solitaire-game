@@ -14,7 +14,8 @@ import {
   addCard,
   addCharm,
   enchantCard,
-  makeFork,
+  stageSpec,
+  bankStage,
   makeRewards,
   newRun,
   removeCard,
@@ -33,6 +34,7 @@ interface Row {
   hidden: number;
   par: number;
   budget: number;
+  surplus: number;
   weak: number | null;
   dealMs: number;
   unsolved: boolean;
@@ -83,8 +85,7 @@ for (let i = 0; i < RUNS; i++) {
   const rng = new Rng(seed ^ 0xabcdef);
 
   for (let d = 1; d <= MAX_DEPTH; d++) {
-    run.fork = makeFork(run);
-    const spec = run.fork.length === 1 ? run.fork[0] : run.fork[Math.min(1, run.fork.length - 1)];
+    const spec = stageSpec(run, d);
     const t0 = Date.now();
     const level = dealLevel({ deck: run.deck, charms: run.charms, spec, bonusMoves: run.bonusMoves, bonusCells: run.bonusCells });
     const dealMs = Date.now() - t0;
@@ -101,6 +102,7 @@ for (let i = 0; i < RUNS; i++) {
       hidden: level.sim.hidden,
       par: level.par,
       budget: level.budget,
+      surplus: level.surplus,
       weak: weak ? weak.cost : null,
       dealMs,
       unsolved: level.solution === null,
@@ -108,7 +110,7 @@ for (let i = 0; i < RUNS; i++) {
       mods: level.modifiers.join(',') || '—',
     });
 
-    run.depth = d;
+    bankStage(run);
     autoReward(run, spec.kind === 'shop' || spec.kind === 'respite' ? 'trial' : spec.kind, rng);
   }
 }
@@ -122,7 +124,7 @@ for (const r of rows) {
 const avg = (xs: number[]): number => xs.reduce((a, b) => a + b, 0) / (xs.length || 1);
 const pad = (s: string | number, n: number): string => String(s).padStart(n);
 
-console.log('depth  cards cols pile hidden   par budget slack  weakFail  dealMs   relaxed');
+console.log('stage  cards cols pile hidden   par budget spare  weakFail  dealMs   relaxed');
 for (const d of [...byDepth.keys()].sort((a, b) => a - b)) {
   const rs = byDepth.get(d)!;
   const weakFail = rs.filter((r) => r.weak === null || r.weak > r.budget).length / rs.length;
@@ -135,7 +137,7 @@ for (const d of [...byDepth.keys()].sort((a, b) => a - b)) {
       pad(avg(rs.map((r) => r.hidden)).toFixed(1), 7),
       pad(avg(rs.map((r) => r.par)).toFixed(1), 6),
       pad(avg(rs.map((r) => r.budget)).toFixed(1), 7),
-      pad((avg(rs.map((r) => r.budget)) / avg(rs.map((r) => r.par))).toFixed(2), 6),
+      pad(avg(rs.map((r) => r.surplus)).toFixed(1), 6),
       pad((weakFail * 100).toFixed(0) + '%', 10),
       pad(avg(rs.map((r) => r.dealMs)).toFixed(0), 8),
       pad(rs.filter((r) => r.relaxed > 0).length + '/' + rs.length, 10),

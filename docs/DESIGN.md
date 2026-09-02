@@ -110,17 +110,37 @@ This gives three properties that would otherwise be very hard to get:
   levels demand that you match a searcher move for move. That *is* the top of the
   difficulty curve, and it is reachable rather than arbitrary.
 
-`slack` runs from 1.45 at depth 1 down to a floor of 1.05 by depth 10 — a
-deliberate tightening after a playtest reported never coming close to running
-out. Since par is near-optimal, 1.05 means near-perfect play. Measured across
-simulated runs:
+### The allowance is par plus a surplus
+
+Stated as a multiplier, the slack was invisible: the player saw one number and
+could not tell how much of it was theirs. It is now an explicit sum.
+
+**Par** is what the board costs — the length of a line the solver actually
+found. **Surplus** is everything on top, and it is the only part the player
+owns: it pays for mistakes, for exploring a line that turns out wrong, and for
+every reading. The HUD shows it live as `15 spare · par 36`, recomputed as
+`movesLeft − (par − movesUsed)`, so the cost of a reading is watched leaving
+the same pot as the cost of a bad move.
+
+Three consequences, all of them the point:
+
+- **There is always something to spend.** The surplus is floored, so a board can
+  never arrive with nothing to work with — which is what made a move-priced hint
+  unusable under the old multiplier.
+- **Modifiers cut the surplus, never par.** Austerity, gauntlets and Wardens all
+  shave the spare. The allowance therefore cannot be pushed below a winnable
+  line by any combination of them, which used to require a separate clamp.
+- **Failure stays real.** The surplus falls from about 15 at stage 1 to 4-6 by
+  stage 10. At that point one reading is a quarter of everything you have.
+
+Measured across simulated runs:
 
 ```
-depth   cards cols pile hidden   par budget slack
-    1      28  7.0  8.0   14.0  23.4   36.3  1.55
-    5      29  7.0  7.9   22.1  32.1   38.3  1.19
-   10      29  6.8  8.8   22.1  31.3   30.0  1.05
-   14      30  6.6 11.0   20.0  30.5   32.8  1.07
+stage   cards cols pile hidden   par budget spare
+    1      28  7.0 13.0   21.0  34.6   49.1  14.5
+    5      29  6.8 10.3   22.4  34.4   41.8   6.9
+   10      30  6.6  9.4   23.1  36.6   42.0   4.3
+   12      31  6.9  9.6   23.5  35.8   43.0   4.8
 ```
 
 `npm run balance` regenerates this table.
@@ -292,7 +312,7 @@ other card game can know: whether you are still winning, what the line is, and
 exactly which move threw it away. Spending that on a hint button was a waste of
 the only genuinely unusual thing in the design.
 
-Readings are questions put to the solver, paid for in **Insight**:
+Readings are questions put to the solver, paid for in **moves**:
 
 | Question | Cost | What it runs |
 | --- | --- | --- |
@@ -300,17 +320,16 @@ Readings are questions put to the solver, paid for in **Insight**:
 | What should I play? | 2 | the next move of a found line, marked on the board until you move |
 | Where did I go wrong? | 2 | the post-mortem's binary search, plus an offer to step back to it |
 
-Three things make this work rather than being a cheat button:
+Two things make this work rather than being a cheat button:
 
-- **Insight is its own currency, not moves.** The old hint cost a move, which
-  at the depth-10 slack of 1.05 meant help was unaffordable exactly when it was
-  needed. Separating them means asking never eats the margin you need to finish.
-- **You earn it by playing well.** Two per level, plus one permanently for each
-  board cleared under par, capped at three. Foresight is something you play your
-  way into.
+- **It is paid for out of the surplus** — the same moves you would otherwise
+  spend on mistakes. That is the whole trade: certainty now, or room to be wrong
+  later. An earlier version gave readings their own currency, which was safer
+  and much less interesting; the allowance was restated as par plus an explicit
+  surplus (below) precisely so that one currency could do everything.
 - **The cheapest question is the most interesting one.** "Am I still winning?"
-  costs one and tells you nothing about *what* to do — only whether the run is
-  already over. Knowing you are dead and choosing whether to spend undos is a
+  costs one move and tells you nothing about *what* to do — only whether the run
+  is already over. Knowing you are dead and choosing whether to spend undos is a
   better decision than being handed a move.
 
 The third question closes the loop with the post-mortem: the same analysis that
@@ -397,7 +416,7 @@ and cleared them of a loss that was genuinely theirs.
 | Achievements | `src/game/achievements.ts` |
 | Loss analysis and its copy | `src/game/postmortem.ts` |
 | The Oracle's questions and prices | `src/game/oracle.ts` |
-| Difficulty curve | `slackFor` / `flatBonus` in `src/game/deal.ts` |
+| Difficulty curve | `spareFractionFor` / `surplusFor` in `src/game/deal.ts` |
 | Tableau / pile split | `STOCK_SHARE`, `stockFor`, `MIN_COLUMNS` in `src/game/deal.ts` |
 | Modifier threat and availability | `MODIFIERS` in `src/game/content.ts` |
 | Rule-modifier cap | `pickModifiers` in `src/game/run.ts` |

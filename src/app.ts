@@ -18,7 +18,6 @@ import {
   makeQueue,
   makeRewards,
   makeShop,
-  MAX_INSIGHT_BONUS,
   newRun,
   nextWarden,
   removeCard,
@@ -346,7 +345,6 @@ export class App {
       spec,
       bonusMoves: run.bonusMoves,
       bonusCells: run.bonusCells,
-      insightBonus: run.insightBonus,
     });
     rehydrate(level);
 
@@ -506,11 +504,16 @@ export class App {
     const level = this.level;
     if (!level || this.board.busy) return;
     openOracle({
-      insight: () => level.insight,
+      insight: () => Math.max(0, level.sim.movesLeft),
       undosLeft: () => level.undosLeft,
       ask: async (id) => {
         const q = questionById(id);
-        level.insight -= q.cost;
+        // Paid out of the same allowance the board is played with, and logged
+        // off the books so the post-mortem still knows what you really had.
+        level.sim.movesLeft -= q.cost;
+        this.offBookSpend += q.cost;
+        if (this.run) this.run.stats.movesSpent += q.cost;
+        this.hud.flashMoves(-1);
         this.tally.hints += 1;
         this.refresh();
         this.persist();
@@ -628,9 +631,9 @@ export class App {
     const spare = Math.max(0, level.sim.movesLeft);
     // Beating the solver's own line is the real skill test, so it pays.
     const underPar = level.par - level.sim.movesUsed;
-    if (underPar > 0 && run.insightBonus < MAX_INSIGHT_BONUS) {
-      run.insightBonus += 1;
-      toast('The Oracle grants you another reading', 'good');
+    if (underPar > 0) {
+      run.bonusMoves += 1;
+      toast('+1 move on every level from here', 'good');
     }
     let gold = level.baseGold + level.sim.gold + Math.max(0, underPar) * 3;
     if (run.charms.includes('thrift')) gold += spare * 2;
