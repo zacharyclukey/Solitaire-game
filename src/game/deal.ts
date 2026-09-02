@@ -12,7 +12,7 @@ import { findSolution } from './solver.ts';
 import { createSim, type Sim } from './sim.ts';
 import { DEFAULT_RULES, makeCardDef, type CardDef, type CurseId, type DeckCard, type Move, type RuleSet, type Suit } from './types.ts';
 
-export type NodeKind = 'trial' | 'gauntlet' | 'cache' | 'boss' | 'shop' | 'respite' | 'tutorial';
+export type NodeKind = 'trial' | 'gauntlet' | 'cache' | 'boss' | 'sunken' | 'shop' | 'respite' | 'tutorial';
 
 export interface LevelSpec {
   /** How far along the run this level sits. Advances on a skip as well as a
@@ -190,6 +190,9 @@ export function surplusFor(
   if (kind === 'gauntlet') spare = Math.round(spare * 0.8);
   if (kind === 'boss') spare = Math.round(spare * 0.8);
   if (kind === 'cache') spare = Math.round(spare * 1.4);
+  // A board you walked past comes back with less room, not more rules: the
+  // same deal, harder to afford.
+  if (kind === 'sunken') spare = Math.round(spare * 0.65);
   return Math.max(HARD_MIN_SURPLUS, spare);
 }
 

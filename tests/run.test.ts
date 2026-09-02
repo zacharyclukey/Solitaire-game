@@ -14,6 +14,7 @@ import {
   addCharm,
   bankStage,
   computeScore,
+  clearSunken,
   makeQueue,
   MAX_MARKET_CREDIT,
   nextWarden,
@@ -140,11 +141,12 @@ describe('run progression', () => {
   });
 
   it('will not let a Warden be walked past', () => {
-    expect(skippable(5)).toBe(false);
-    expect(skippable(10)).toBe(false);
-    expect(skippable(4)).toBe(true);
+    const run = newRun(1);
+    expect(skippable(run, 5)).toBe(false);
+    expect(skippable(run, 10)).toBe(false);
+    expect(skippable(run, 4)).toBe(true);
     // Nor the opening board, which is where the run is learnt.
-    expect(skippable(1)).toBe(false);
+    expect(skippable(run, 1)).toBe(false);
   });
 
   it('pays nothing at the moment of walking away', () => {
@@ -203,6 +205,57 @@ describe('run progression', () => {
     // Set-aside stock is worth having: better shelf, half price.
     expect(['ench', 'charm']).toContain(aside[0].t);
     expect(aside[0].price).toBeGreaterThan(0);
+  });
+
+  it('sinks a board you walk past, and surfaces it again later', () => {
+    const run = newRun(4242);
+    run.stage = 2;
+    const ducked = stageSpec(run, 3);
+    takeSkip(run);
+    expect(run.sunken).toHaveLength(1);
+    const berth = run.sunken[0].at;
+    expect(berth).toBeGreaterThan(3);
+    expect(berth % 5).not.toBe(0); // never lands on a Warden
+
+    const risen = stageSpec(run, berth);
+    expect(risen.kind).toBe('sunken');
+    expect(risen.seed).toBe(ducked.seed); // the same deal, come back around
+    expect(risen.modifiers).toEqual(ducked.modifiers);
+    expect(risen.stage).toBe(berth); // scaled to where it resurfaced
+  });
+
+  it('gives a resurfaced board less room rather than more rules', () => {
+    expect(surplusFor(34, 8, [], 'sunken')).toBeLessThan(surplusFor(34, 8, [], 'trial'));
+    expect(surplusFor(34, 8, [], 'sunken')).toBeGreaterThanOrEqual(HARD_MIN_SURPLUS);
+  });
+
+  it('will not let a board that came back for you be ducked twice', () => {
+    const run = newRun(4242);
+    run.stage = 2;
+    takeSkip(run);
+    const berth = run.sunken[0].at;
+    expect(skippable(run, berth)).toBe(false);
+  });
+
+  it('never berths two sunken boards on the same stage', () => {
+    const run = newRun(99);
+    run.stage = 1;
+    for (let i = 0; i < 5; i++) {
+      if (skippable(run, run.stage + 1)) takeSkip(run);
+      else run.stage += 1;
+    }
+    const berths = run.sunken.map((b) => b.at);
+    expect(new Set(berths).size).toBe(berths.length);
+  });
+
+  it('forgets a sunken board once it has been faced', () => {
+    const run = newRun(4242);
+    run.stage = 2;
+    takeSkip(run);
+    const berth = run.sunken[0].at;
+    clearSunken(run, berth);
+    expect(run.sunken).toHaveLength(0);
+    expect(stageSpec(run, berth).kind).not.toBe('sunken');
   });
 
   it('marks which queued stages can be walked past', () => {

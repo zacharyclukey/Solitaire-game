@@ -15,6 +15,7 @@ import {
   enchantCard,
   gainGold,
   bankStage,
+  clearSunken,
   makeQueue,
   makeRewards,
   makeShop,
@@ -310,8 +311,9 @@ export class App {
     const go = await modal({
       title: 'Walk past it?',
       body:
-        `Stage ${spec.stage} is gone — no spoils, and it does not count towards your score. ` +
-        'The next board is harder all the same. Clear a board after this and the market will set something aside for you; fall here and it will not.',
+        `Stage ${spec.stage} does not go away — it sinks, and surfaces again a few stages down with less room to afford it. ` +
+        'You bank nothing now, and it will not count towards your score when it comes back around either. ' +
+        'Clear a board in the meantime and the market will set something aside for you; fall first and it will not.',
       actions: [
         { label: 'Stay and play it', kind: 'ghost', value: false },
         { label: 'Walk past it', kind: 'danger', value: true },
@@ -619,6 +621,7 @@ export class App {
     haptic('success');
 
     bankStage(run);
+    clearSunken(run, level.spec.stage);
     run.stats.levelsCleared += 1;
     run.stats.cardsTurned += level.sim.revealed;
     this.tally.spare = Math.max(0, level.sim.movesLeft);

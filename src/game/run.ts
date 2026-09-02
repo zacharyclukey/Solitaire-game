@@ -50,6 +50,8 @@ export interface RunState {
   bonusCells: number;
   /** Skips taken since the last cleared level. They pay nothing until one is. */
   skipsPending: number;
+  /** Boards walked past, waiting to resurface. Nothing is really avoided. */
+  sunken: SunkenBoard[];
   /** Skips that a clear has since vouched for, waiting on the next market. */
   marketCredit: number;
   nextUid: number;
@@ -103,6 +105,7 @@ export function newRun(seed: number, daily = false): RunState {
     bonusMoves: 0,
     bonusCells: 0,
     skipsPending: 0,
+    sunken: [],
     marketCredit: 0,
     nextUid: deck.length + 1,
     secondWind: false,
@@ -185,6 +188,11 @@ function maxModsFor(depth: number): number {
  * begins, which is the point: you are meant to be building towards it.
  */
 export function stageSpec(run: RunState, stage: number): LevelSpec {
+  // A board you ducked is still down there, and it surfaces on schedule — the
+  // same deal, at a deeper stage, with less room to afford it.
+  const risen = run.sunken.find((b) => b.at === stage);
+  if (risen) return { ...risen.spec, stage, kind: 'sunken' };
+
   const rng = new Rng(subSeed(run.seed, stage, 0x5f0));
 
   if (stage % BOSS_EVERY === 0) {
@@ -207,15 +215,28 @@ export function stageSpec(run: RunState, stage: number): LevelSpec {
   };
 }
 
+/** A board that was walked past, and the stage it comes back at. */
+export interface SunkenBoard {
+  spec: LevelSpec;
+  at: number;
+}
+
+/** How far down a skipped board sinks before it surfaces again. */
+export const SINK_DEPTH = 3;
+
 export interface QueuedStage {
   spec: LevelSpec;
   /** Whether this one can be walked past. Wardens cannot. */
   canSkip: boolean;
 }
 
-/** Whether a stage can be skipped. Wardens have to be faced. */
-export function skippable(stage: number): boolean {
-  return stage % BOSS_EVERY !== 0 && stage > 1;
+/**
+ * Whether a stage can be walked past. Wardens have to be faced, so does the
+ * opening board — and so does a board that has already come back for you.
+ */
+export function skippable(run: RunState, stage: number): boolean {
+  if (stage % BOSS_EVERY === 0 || stage <= 1) return false;
+  return !run.sunken.some((b) => b.at === stage);
 }
 
 /** The next few stages, read-ahead so the run can actually be planned. */
@@ -223,7 +244,7 @@ export function makeQueue(run: RunState, ahead = 3): QueuedStage[] {
   const out: QueuedStage[] = [];
   for (let i = 1; i <= ahead; i++) {
     const stage = run.stage + i;
-    out.push({ spec: stageSpec(run, stage), canSkip: skippable(stage) });
+    out.push({ spec: stageSpec(run, stage), canSkip: skippable(run, stage) });
   }
   return out;
 }
@@ -344,8 +365,22 @@ export const MAX_MARKET_CREDIT = 3;
  * board. Skipping is a wager on your own survival, not a payout.
  */
 export function takeSkip(run: RunState): void {
-  run.stage += 1;
+  const stage = run.stage + 1;
+  const spec = stageSpec(run, stage);
+
+  // Find it a berth: never on a Warden's stage, never on top of another
+  // sunken board, and never before the one already queued ahead of it.
+  let at = stage + SINK_DEPTH;
+  while (at % BOSS_EVERY === 0 || run.sunken.some((b) => b.at === at)) at += 1;
+  run.sunken.push({ spec, at });
+
+  run.stage = stage;
   run.skipsPending += 1;
+}
+
+/** Drops a board off the sunken list once it has been faced. */
+export function clearSunken(run: RunState, stage: number): void {
+  run.sunken = run.sunken.filter((b) => b.at !== stage);
 }
 
 /** Clearing a stage: both counters move, and any skips you took are vouched for. */

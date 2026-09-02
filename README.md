@@ -57,9 +57,10 @@ counter at the top is what is left to place, not what is left to turn.
 - The run is a **queue you can read ahead**. You see the next three stages and
   their rules, and the Warden at the end of the stretch from the moment it
   starts — so you can build towards it.
-- Any stage but the first and the Wardens can be **walked past**. It pays
-  nothing at the time — you forfeit the spoils and the score, and the escalation
-  carries on without you — but the market will set something aside for you *if
+- Any stage but the first and the Wardens can be **walked past** — but nothing
+  is really avoided. The board **sinks**, and surfaces again a few stages later
+  with a third less surplus, and it cannot be ducked twice. You forfeit the
+  spoils and the score, though the market will set something aside for you *if
   you clear a board afterwards*. Skipping is a wager on your own survival.
 - Clearing a level lets you **enchant a card**, add one, cut one, take a
   **charm**, widen the reserve, or bank gold.

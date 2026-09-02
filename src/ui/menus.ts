@@ -37,6 +37,7 @@ const KIND_LABEL: Record<NodeKind, string> = {
   gauntlet: 'Gauntlet',
   cache: 'Cache',
   boss: 'Warden',
+  sunken: 'Resurfaced',
   shop: 'Market',
   respite: 'Respite',
   tutorial: 'First Deal',
@@ -47,6 +48,7 @@ const KIND_BLURB: Record<NodeKind, string> = {
   gauntlet: 'Harsher rules, richer spoils.',
   cache: 'A gentle board and a quiet reward.',
   boss: 'The floor’s keeper. Everything at once.',
+  sunken: 'The board you walked past. It came back with less room.',
   shop: '',
   respite: '',
   tutorial: 'A short board with a guide.',
@@ -122,6 +124,7 @@ const KIND_REWARD: Record<NodeKind, string> = {
   gauntlet: 'Rich spoils · more gold',
   cache: 'A modest reward',
   boss: 'A charm, guaranteed',
+  sunken: 'Standard spoils',
   shop: '',
   respite: '',
   tutorial: '',
@@ -177,7 +180,11 @@ function stageCard(
         b.addEventListener('click', () => ctx.skipStage());
         return b;
       })()
-    : el('p', { class: 'stage-locked' }, ['The Warden has to be faced.']);
+    : el('p', { class: 'stage-locked' }, [
+        spec.kind === 'sunken'
+          ? 'It came back for you. There is no walking past it twice.'
+          : 'The Warden has to be faced.',
+      ]);
 
   return el('div', { class: `stage now stage-${spec.kind}` }, [
     el('div', { class: 'stage-head' }, [
@@ -214,6 +221,13 @@ export function renderQueue(ctx: MenuCtx, run: RunState, queue: QueuedStage[], w
             run.marketCredit
               ? `The market owes you ${run.marketCredit} ${run.marketCredit === 1 ? 'item' : 'items'}.`
               : `${run.skipsPending} skipped. Clear a board and the market makes it good.`,
+          ])
+        : null,
+      run.sunken.length
+        ? el('div', { class: 'sunk' }, [
+            run.sunken.length === 1
+              ? `A board you walked past resurfaces at stage ${run.sunken[0].at}.`
+              : `${run.sunken.length} boards you walked past resurface at stages ${run.sunken.map((b) => b.at).sort((a, b) => a - b).join(', ')}.`,
           ])
         : null,
       showWarden

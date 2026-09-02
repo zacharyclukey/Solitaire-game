@@ -193,15 +193,28 @@ three stages are shown with their rules, and the Warden at the end of the
 stretch is telegraphed from the moment the stretch begins — you are meant to be
 building towards it.
 
-Every stage but the first and the Wardens can be **walked past**. It pays
-nothing at the time: no spoils, no gold, no score, and the next board is harder
-anyway. What it leaves is a debt the market owes you — **and the market only
-honours it once you have cleared a board.** Each vouched-for skip puts one extra
-piece of stock on the next market's shelf, from the better pool, at half price.
+Every stage but the first and the Wardens can be **walked past** — but nothing
+is really avoided. **A board you duck sinks, and surfaces again a few stages
+down as the same deal with a third less surplus**, labelled Resurfaced, and it
+cannot be ducked a second time. It berths itself around Wardens and around
+other sunken boards, and the queue screen names the stage it is coming back at,
+so the debt is always visible before you take it on.
 
-So skipping is a wager on your own survival. Duck the board you think will kill
-you, clear the next one, and the read pays off at the market. Duck and then die,
-or duck everything and never clear anything, and it pays exactly nothing.
+Skipping also pays nothing at the time: no spoils, no gold, no score. What it
+leaves is a debt the market owes you — **and the market only honours it once you
+have cleared a board.** Each vouched-for skip puts one extra piece of stock on
+the next market's shelf, from the better pool, at half price.
+
+So skipping is a wager on your own survival, twice over. Duck the board you
+think will kill you, clear the next one, and the read pays off at the market —
+but the board itself is still coming, on a stage you will be worse equipped for
+than the one you dodged. Duck everything and you assemble a queue of your own
+avoidance.
+
+Making the returning board harder by *cutting its surplus* rather than stacking
+another modifier onto it is deliberate: it needs no conflict checking, it cannot
+produce an unwinnable combination, and it leans on the currency the whole game
+already runs on.
 
 Two earlier versions were wrong in opposite directions. The first handed out a
 buff immediately, which made skipping a value proposition rather than a hedge —
