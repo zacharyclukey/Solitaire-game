@@ -470,3 +470,19 @@ html.four-colour .mini.s3 { color: var(--suit-green); }
   font-size: 12.5px;
   color: var(--ink-faint);
 }
+
+/* What the market owes you for boards walked past and later made good on. */
+.owed {
+  margin-bottom: 14px;
+  padding: 9px 13px;
+  border-radius: var(--r-sm);
+  font-size: 12.5px;
+  color: #e6cf9d;
+  background: rgba(227, 178, 98, 0.08);
+  border: 1px solid rgba(227, 178, 98, 0.24);
+}
+.shop-item.set-aside {
+  border-color: rgba(227, 178, 98, 0.4);
+  background: rgba(227, 178, 98, 0.06);
+}
+.shop-item.set-aside .shop-glyph { color: var(--gold); }

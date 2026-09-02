@@ -6,6 +6,7 @@ import {
   bankStage,
   computeScore,
   makeQueue,
+  MAX_MARKET_CREDIT,
   nextWarden,
   skippable,
   takeSkip,
@@ -128,7 +129,7 @@ describe('run progression', () => {
     expect(skippable(1)).toBe(false);
   });
 
-  it('pays nothing for walking away', () => {
+  it('pays nothing at the moment of walking away', () => {
     const run = newRun(808);
     run.stage = 3;
     run.gold = 40;
@@ -138,6 +139,52 @@ describe('run progression', () => {
     expect(run.deck).toHaveLength(before.deck);
     expect(run.charms).toHaveLength(before.charms);
     expect(run.bonusMoves).toBe(before.moves);
+    // The debt exists but nothing has vouched for it yet.
+    expect(run.skipsPending).toBe(1);
+    expect(run.marketCredit).toBe(0);
+  });
+
+  it('only honours a skip once a board has been cleared', () => {
+    const run = newRun(808);
+    takeSkip(run);
+    takeSkip(run);
+    expect(run.marketCredit).toBe(0); // two ducked, nothing earned
+    bankStage(run);
+    expect(run.skipsPending).toBe(0);
+    expect(run.marketCredit).toBe(2); // the clear vouches for both
+  });
+
+  it('lets a run that never clears anything earn nothing at all', () => {
+    const run = newRun(808);
+    for (let i = 0; i < 4; i++) takeSkip(run);
+    expect(run.marketCredit).toBe(0);
+    expect(makeShop(run).some((it) => (it as { setAside?: boolean }).setAside)).toBe(false);
+  });
+
+  it('caps what one market will honour', () => {
+    const run = newRun(808);
+    for (let i = 0; i < 6; i++) takeSkip(run);
+    bankStage(run);
+    expect(run.marketCredit).toBe(MAX_MARKET_CREDIT);
+  });
+
+  it('sets aside stock for a skip that was made good on, at a discount', () => {
+    const plain = newRun(4242);
+    plain.stage = 6;
+    const baseline = makeShop(plain).length;
+
+    const owed = newRun(4242);
+    owed.stage = 4;
+    takeSkip(owed); // stage 5, one ducked
+    bankStage(owed); // stage 6, and a board cleared, which vouches for it
+    expect(owed.stage).toBe(plain.stage); // same shelf, so the diff is the credit
+    const shop = makeShop(owed);
+    const aside = shop.filter((it) => (it as { setAside?: boolean }).setAside);
+    expect(aside).toHaveLength(1);
+    expect(shop.length).toBe(baseline + 1);
+    // Set-aside stock is worth having: better shelf, half price.
+    expect(['ench', 'charm']).toContain(aside[0].t);
+    expect(aside[0].price).toBeGreaterThan(0);
   });
 
   it('marks which queued stages can be walked past', () => {

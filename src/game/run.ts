@@ -48,6 +48,10 @@ export interface RunState {
   gold: number;
   bonusMoves: number;
   bonusCells: number;
+  /** Skips taken since the last cleared level. They pay nothing until one is. */
+  skipsPending: number;
+  /** Skips that a clear has since vouched for, waiting on the next market. */
+  marketCredit: number;
   nextUid: number;
   secondWind: boolean; // charm available and unused
   phase: Phase;
@@ -98,6 +102,8 @@ export function newRun(seed: number, daily = false): RunState {
     gold: 0,
     bonusMoves: 0,
     bonusCells: 0,
+    skipsPending: 0,
+    marketCredit: 0,
     nextUid: deck.length + 1,
     secondWind: false,
     phase: 'queue',
@@ -326,21 +332,28 @@ export function makeRewards(run: RunState, kind: NodeKind, count: number): Rewar
   return out.slice(0, count);
 }
 
+/** Most skips a single market will honour, so a shop cannot become a catalogue. */
+export const MAX_MARKET_CREDIT = 3;
+
 /**
  * Walking past a stage.
  *
- * It pays nothing. The stage counter moves, so the next board is harder; the
- * score does not, so the level is simply gone. Skipping is a hedge against a
- * board you think will end the run, and hedging is supposed to cost.
+ * It pays nothing now. The stage counter moves, so the next board is harder;
+ * the score does not, so the level is gone. What it leaves behind is a debt the
+ * market owes you — and the market only honours it once you have cleared a
+ * board. Skipping is a wager on your own survival, not a payout.
  */
 export function takeSkip(run: RunState): void {
   run.stage += 1;
+  run.skipsPending += 1;
 }
 
-/** Clearing a stage: both counters move. */
+/** Clearing a stage: both counters move, and any skips you took are vouched for. */
 export function bankStage(run: RunState): void {
   run.stage += 1;
   run.depth += 1;
+  run.marketCredit = Math.min(MAX_MARKET_CREDIT, run.marketCredit + run.skipsPending);
+  run.skipsPending = 0;
 }
 
 export function rewardCount(run: RunState, kind: NodeKind): number {
@@ -414,7 +427,10 @@ export type ShopItem =
   | { t: 'moves'; n: number; price: number; sold?: boolean }
   | { t: 'cell'; price: number; sold?: boolean };
 
-export function makeShop(run: RunState): ShopItem[] {
+/** Set aside by the market for a board you walked past and later made good on. */
+export type StockedItem = ShopItem & { setAside?: boolean };
+
+export function makeShop(run: RunState): StockedItem[] {
   const rng = new Rng(subSeed(run.seed, run.stage, 0x5409));
   const items: ShopItem[] = [];
   const priceScale = 1 + run.stage * 0.045;
@@ -435,7 +451,25 @@ export function makeShop(run: RunState): ShopItem[] {
   if (run.deck.some((c) => c.curse)) items.push({ t: 'uncurse', price: p(26) });
   items.push({ t: 'moves', n: 2, price: p(45) });
   if (run.bonusCells < 2) items.push({ t: 'cell', price: p(110) });
-  return items;
+
+  // What the market owes you for the boards you walked past and then made good
+  // on: one extra piece of stock each, from the better shelf, at half price.
+  const owed: StockedItem[] = [];
+  for (let i = 0; i < run.marketCredit; i++) {
+    const charm = randomCharm(run, rng);
+    const takeCharm = charm && rng.next() < 0.4;
+    const item: StockedItem = takeCharm
+      ? { t: 'charm', id: charm!, price: Math.round(p(CHARMS[charm!].price) / 2) }
+      : (() => {
+          const e = rng.weighted(
+            ENCHANT_LIST.map((x) => ({ item: x.id, weight: rarityWeight(x.rarity, run.stage + 6) })),
+          )!;
+          return { t: 'ench', ench: e, price: Math.round(p(ENCHANTS[e].price) / 2) };
+        })();
+    item.setAside = true;
+    owed.push(item);
+  }
+  return [...owed, ...items];
 }
 
 export function shopLabel(item: ShopItem): string {

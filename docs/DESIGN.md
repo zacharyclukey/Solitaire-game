@@ -173,15 +173,23 @@ three stages are shown with their rules, and the Warden at the end of the
 stretch is telegraphed from the moment the stretch begins — you are meant to be
 building towards it.
 
-Every stage but the first and the Wardens can be **walked past**, and doing so
-pays nothing at all. No spoils, no gold, no score — the level is simply gone,
-and the next board is harder anyway.
+Every stage but the first and the Wardens can be **walked past**. It pays
+nothing at the time: no spoils, no gold, no score, and the next board is harder
+anyway. What it leaves is a debt the market owes you — **and the market only
+honours it once you have cleared a board.** Each vouched-for skip puts one extra
+piece of stock on the next market's shelf, from the better pool, at half price.
 
-An earlier version handed out a buff for skipping, shown in advance. It made
-skipping a value proposition rather than a hedge, and the optimal line drifted
-towards ducking anything uncertain. Walking away is now what it should be:
-insurance against a board you think will end the run, priced at everything that
-board would have paid you.
+So skipping is a wager on your own survival. Duck the board you think will kill
+you, clear the next one, and the read pays off at the market. Duck and then die,
+or duck everything and never clear anything, and it pays exactly nothing.
+
+Two earlier versions were wrong in opposite directions. The first handed out a
+buff immediately, which made skipping a value proposition rather than a hedge —
+with something to gain and only score to lose, the optimal line drifted towards
+ducking anything uncertain. The second paid nothing at all, which made the
+button hard to ever justify pressing. Deferring the payment behind a clear fixes
+both: the upside is real, and you only collect it by doing the thing the skip
+was avoiding.
 
 Two counters, and the split is the point:
 

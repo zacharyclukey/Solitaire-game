@@ -171,7 +171,7 @@ function stageCard(
     ? (() => {
         const b = el('button', { class: 'btn skip', type: 'button' }, [
           el('span', { class: 'skip-label' }, ['Walk past it']),
-          el('span', { class: 'skip-take' }, ['no spoils, and it still counts against the climb']),
+          el('span', { class: 'skip-take' }, ['nothing now — the market pays out if you clear the next one']),
         ]);
         b.addEventListener('click', () => ctx.skipStage());
         return b;
@@ -208,6 +208,13 @@ export function renderQueue(ctx: MenuCtx, run: RunState, queue: QueuedStage[], w
         btn('Menu', 'small', () => openRunMenu(ctx, run)),
       ]),
       runBar(run, { onDeck: () => openDeck(run) }),
+      run.skipsPending || run.marketCredit
+        ? el('div', { class: 'owed' }, [
+            run.marketCredit
+              ? `The market owes you ${run.marketCredit} ${run.marketCredit === 1 ? 'item' : 'items'}.`
+              : `${run.skipsPending} skipped. Clear a board and the market makes it good.`,
+          ])
+        : null,
       showWarden
         ? el('div', { class: 'warden-banner' }, [
             el('span', { class: 'warden-when' }, [`Warden at stage ${warden.stage}`]),
@@ -293,9 +300,16 @@ export function renderShop(ctx: MenuCtx, run: RunState): void {
   run.shop.forEach((item, i) => {
     const face = shopFace(item);
     const affordable = run.gold >= item.price && !item.sold;
-    const row = el('button', { class: `shop-item${item.sold ? ' sold' : ''}${affordable ? '' : ' broke'}`, type: 'button' }, [
+    const setAside = (item as { setAside?: boolean }).setAside === true;
+    const row = el('button', {
+      class: `shop-item${item.sold ? ' sold' : ''}${affordable ? '' : ' broke'}${setAside ? ' set-aside' : ''}`,
+      type: 'button',
+    }, [
       el('span', { class: 'shop-glyph' }, [face.glyph]),
-      el('span', { class: 'shop-body' }, [el('strong', {}, [face.title]), el('span', {}, [face.text])]),
+      el('span', { class: 'shop-body' }, [
+        el('strong', {}, [face.title, setAside ? el('em', { class: 'tag' }, ['set aside']) : null]),
+        el('span', {}, [face.text]),
+      ]),
       el('span', { class: 'shop-price' }, [item.sold ? 'sold' : `⛁ ${item.price}`]),
     ]);
     if (affordable) row.addEventListener('click', () => ctx.buy(item, i));

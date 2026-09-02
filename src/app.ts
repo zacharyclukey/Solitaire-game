@@ -308,7 +308,9 @@ export class App {
     const spec = stageSpec(run, run.stage + 1);
     const go = await modal({
       title: 'Walk past it?',
-      body: `Stage ${spec.stage} is simply gone — no spoils, and it does not count towards your score. The next board is harder all the same.`,
+      body:
+        `Stage ${spec.stage} is gone — no spoils, and it does not count towards your score. ` +
+        'The next board is harder all the same. Clear a board after this and the market will set something aside for you; fall here and it will not.',
       actions: [
         { label: 'Stay and play it', kind: 'ghost', value: false },
         { label: 'Walk past it', kind: 'danger', value: true },
@@ -800,6 +802,7 @@ export class App {
     const run = this.run!;
     if (run.stage % SHOP_EVERY === 0) {
       run.shop = makeShop(run);
+      run.marketCredit = 0; // the market has honoured it; it is not owed twice
       run.phase = 'shop';
       this.persist();
       renderShop(this.ctx, run);
