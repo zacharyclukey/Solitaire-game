@@ -77,13 +77,46 @@ export function buildRules(mods: ModifierId[], charms: CharmId[], ranks: number[
   return r;
 }
 
-/** Number of cards each column starts with face-up. */
-function faceUpPerColumn(depth: number, _mods: ModifierId[]): number {
-  return depth <= 4 ? 2 : 1;
+/**
+ * Column heights in the Klondike silhouette — a single card on the left rising
+ * to a deep pile on the right — scaled to however many cards the tableau gets.
+ *
+ * Even columns read as a grid rather than a game of solitaire, which is the
+ * whole reason this exists.
+ */
+export function staircase(total: number, columns: number): number[] {
+  const idealTotal = (columns * (columns + 1)) / 2;
+  const h = Array.from({ length: columns }, (_, i) =>
+    Math.max(1, Math.round(((i + 1) * total) / idealTotal)),
+  );
+  let sum = h.reduce((a, b) => a + b, 0);
+  // Shave the deepest column first and pad the deep end, so the ascent holds.
+  while (sum > total) {
+    let k = 0;
+    for (let i = 1; i < columns; i++) if (h[i] >= h[k]) k = i;
+    if (h[k] <= 1) break;
+    h[k]--;
+    sum--;
+  }
+  while (sum < total) {
+    h[columns - 1]++;
+    sum++;
+  }
+  return h;
 }
 
-/** Share of the deck that starts in the draw pile rather than the tableau. */
-export const STOCK_SHARE = 0.3;
+/**
+ * Share of the deck that starts in the draw pile rather than the tableau.
+ *
+ * This is how the early game is eased without spoiling the silhouette: a
+ * bigger pile means a shorter staircase and fewer buried cards, while the
+ * board still looks exactly like solitaire.
+ */
+export function stockShareFor(depth: number): number {
+  if (depth <= 2) return 0.46;
+  if (depth <= 5) return 0.38;
+  return 0.3;
+}
 
 /**
  * How many cards start in the draw pile.
@@ -92,8 +125,14 @@ export const STOCK_SHARE = 0.3;
  * shorter tableau — fewer buried cards and easier columns to empty — but every
  * card in it still has to be turned, and each turn costs a move.
  */
-export function stockFor(deckSize: number, mods: ModifierId[], charms: CharmId[], bonus: number): number {
-  let n = Math.round(deckSize * STOCK_SHARE) + bonus;
+export function stockFor(
+  deckSize: number,
+  mods: ModifierId[],
+  charms: CharmId[],
+  bonus: number,
+  depth = 99,
+): number {
+  let n = Math.round(deckSize * stockShareFor(depth)) + bonus;
   if (charms.includes('casing')) n += 2;
   if (has(mods, 'thindraw')) n -= 4;
   if (has(mods, 'deepdraw')) n += 4;
@@ -141,8 +180,14 @@ function layout(
 ): Candidate {
   const order = rng.shuffle(cards.map((_, i) => i));
   const stockCards = order.slice(0, stockSize); // the pile's end is its top
-  const cols: number[][] = Array.from({ length: columns }, () => []);
-  order.slice(stockSize).forEach((id, i) => cols[i % columns].push(id));
+  const rest = order.slice(stockSize);
+  const heights = staircase(rest.length, columns);
+  const cols: number[][] = [];
+  let at = 0;
+  for (const h of heights) {
+    cols.push(rest.slice(at, at + h));
+    at += h;
+  }
   const up = new Uint8Array(cards.length);
   for (const col of cols) {
     for (let i = Math.max(0, col.length - faceUp); i < col.length; i++) up[col[i]] = 1;
@@ -219,8 +264,10 @@ export function dealLevel(opts: DealOptions): Level {
   const rng = new Rng(spec.seed);
   const mods = spec.modifiers;
   const columns = columnsFor(deck.length, mods, charms);
-  const baseStock = stockFor(deck.length, mods, charms, opts.bonusCells);
-  const baseFaceUp = faceUpPerColumn(spec.depth, mods);
+  const baseStock = stockFor(deck.length, mods, charms, opts.bonusCells, spec.depth);
+  // Exactly one card face-up per column: the classic silhouette, and the
+  // configuration that measured most reliably solvable.
+  const baseFaceUp = 1;
   const attempts = opts.attempts ?? 3;
   const deadline = Date.now() + (opts.budgetMs ?? 1200);
 
@@ -291,6 +338,11 @@ export function dealLevel(opts: DealOptions): Level {
   if (charms.includes('sleeve')) budget += CHARM_MOVE_BONUS.sleeve;
   if (charms.includes('pact')) budget += CHARM_MOVE_BONUS.pact;
   budget += opts.bonusMoves;
+  // The floor is absolute. Austerity, gauntlets and wardens all scale the
+  // allowance down, and with slack this tight they can otherwise push it under
+  // par — which would hand out a board that cannot be cleared. A loss has to be
+  // the player's line, never the deal.
+  budget = Math.max(budget, par + 1);
 
   const sim = createSim(cand.defs, cand.cols, cand.stock, cand.up, rules, budget);
 

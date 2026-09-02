@@ -9,7 +9,7 @@
  *
  *   node --experimental-strip-types scripts/probe.ts [stockSize] [faceUp] [columns]
  */
-import { buildRules } from '../src/game/deal.ts';
+import { buildRules, staircase } from '../src/game/deal.ts';
 import { Rng, randomSeed } from '../src/game/rng.ts';
 import { applyMove, cloneSim, createSim, isWon, legalMoves, simKey, type Sim } from '../src/game/sim.ts';
 import { findSolution } from '../src/game/solver.ts';
@@ -17,7 +17,7 @@ import { starterDeck } from '../src/game/run.ts';
 import { makeCardDef } from '../src/game/types.ts';
 
 const STOCK = Number(process.argv[2] ?? 11);
-const FACE_UP = Number(process.argv[3] ?? 2);
+const FACE_UP = Number(process.argv[3] ?? 1);
 const COLUMNS = Number(process.argv[4] ?? 6);
 const TRIALS = Number(process.argv[5] ?? 12);
 
@@ -26,8 +26,13 @@ function deal(seed: number): Sim {
   const defs = starterDeck().map(makeCardDef);
   const order = rng.shuffle(defs.map((_, i) => i));
   const stock = order.slice(0, STOCK);
-  const cols: number[][] = Array.from({ length: COLUMNS }, () => []);
-  order.slice(STOCK).forEach((id, i) => cols[i % COLUMNS].push(id));
+  const rest = order.slice(STOCK);
+  const cols: number[][] = [];
+  let at = 0;
+  for (const h of staircase(rest.length, COLUMNS)) {
+    cols.push(rest.slice(at, at + h));
+    at += h;
+  }
   const up = new Uint8Array(defs.length);
   for (const col of cols) for (let i = Math.max(0, col.length - FACE_UP); i < col.length; i++) up[col[i]] = 1;
   const rules = buildRules([], [], defs.map((d) => d.rank));

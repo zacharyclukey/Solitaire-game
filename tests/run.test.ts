@@ -32,6 +32,18 @@ function deal(depth: number, mods: ModifierId[] = [], seed = 999) {
 }
 
 describe('dealing', () => {
+  it('deals a staircase: one card face-up per column, deepening to the right', () => {
+    const level = deal(6, [], 31337);
+    const heights = level.sim.cols.slice(0, level.columns).map((c) => c.length);
+    expect(heights[heights.length - 1]).toBeGreaterThan(heights[0]);
+    for (let c = 0; c < level.columns; c++) {
+      const col = level.sim.cols[c];
+      const faceUp = col.filter((id) => level.sim.up[id]).length;
+      expect(faceUp).toBe(1);
+      expect(level.sim.up[col[col.length - 1]]).toBe(1); // and it is the top one
+    }
+  });
+
   it('always produces a board the solver can clear inside the allowance', () => {
     for (let i = 0; i < 12; i++) {
       const level = deal(1 + (i % 10), [], 1000 + i * 7919);
@@ -60,6 +72,8 @@ describe('dealing', () => {
     for (const id of Object.keys(MODIFIERS) as ModifierId[]) {
       const level = deal(Math.max(1, MODIFIERS[id].minDepth), [id], 77);
       expect(level.solution ?? []).toBeTruthy();
+      // No modifier may scale the allowance below the line the solver found.
+      expect(level.budget).toBeGreaterThan(level.par);
       expect(level.sim.cols.length).toBe(level.columns + 2); // tableau + pile + waste
       expect(status(level.sim)).not.toBe('lost');
     }
