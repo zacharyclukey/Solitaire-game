@@ -32,8 +32,16 @@ const snap = async (n) => { const p = `${out}-${n}.png`; await page.screenshot({
 await mkdir(dirname(out), { recursive: true });
 const visible = async (sel) => (await page.locator(sel).count()) > 0 && (await page.locator(sel).first().isVisible());
 
-// dismiss the first-run help
-if (await visible('.scrim .icon-btn')) await page.click('.scrim .icon-btn');
+// First run offers the guided board; decline it, then close the help sheet
+// it falls back to.
+if (await visible('.scrim .btn.ghost')) {
+  await page.click('.scrim .btn.ghost');
+  await page.waitForTimeout(400);
+}
+if (await visible('.scrim .icon-btn')) {
+  await page.click('.scrim .icon-btn');
+  await page.waitForTimeout(400);
+}
 await page.click('text=Begin a run');
 await page.waitForTimeout(400);
 

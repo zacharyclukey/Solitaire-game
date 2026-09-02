@@ -332,3 +332,51 @@ html.four-colour .mini.s3 { color: var(--suit-green); }
 
 .over-actions { margin-top: 22px; }
 .section-label.centred { text-align: center; }
+
+/* -------------------------------------------------------------- records */
+
+.title-stats {
+  display: block;
+  width: 100%;
+  text-align: left;
+  position: relative;
+}
+.title-stats-more {
+  display: block;
+  padding: 10px 0 4px;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--gold);
+}
+
+.badges { display: grid; gap: 9px; }
+.badge-row { display: flex; gap: 11px; align-items: flex-start; opacity: 0.42; }
+.badge-row.got { opacity: 1; }
+.badge-mark { flex: none; width: 22px; text-align: center; font-size: 15px; color: var(--ink-faint); line-height: 1.4; }
+.badge-row.got .badge-mark { color: var(--gold); }
+.badge-row strong { display: block; color: var(--ink); font-size: 13.5px; font-weight: 650; }
+.badge-row span span { font-size: 12.5px; color: var(--ink-faint); }
+
+.records { display: grid; gap: 8px; }
+.record-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 9px 12px;
+  border-radius: var(--r-sm);
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid var(--line);
+}
+.record-depth {
+  flex: none;
+  width: 34px;
+  text-align: center;
+  font-size: 19px;
+  font-weight: 750;
+  color: var(--gold);
+  font-variant-numeric: tabular-nums;
+}
+.record-body strong { display: block; font-size: 13.5px; font-weight: 600; }
+.record-body span { font-size: 11.5px; color: var(--ink-faint); }

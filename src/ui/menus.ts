@@ -11,7 +11,8 @@ import {
   type ShopItem,
 } from '../game/run.ts';
 import { RANK_LABEL, SUIT_GLYPH, type DeckCard } from '../game/types.ts';
-import { DEFAULT_SETTINGS, load, save, settings, stats, wipe } from '../storage.ts';
+import { ACHIEVEMENTS, ACHIEVEMENT_COUNT } from '../game/achievements.ts';
+import { DEFAULT_SETTINGS, load, save, settings, stats, wipe, type RunRecord } from '../storage.ts';
 import { charmChip, menuSheet, miniCard, modChip, screen, sheetPanel, statRow } from './shell.ts';
 import { el } from './dom.ts';
 
@@ -77,11 +78,17 @@ export function renderTitle(ctx: MenuCtx, hasRun: boolean): void {
           btn('Settings', 'small', () => openSettings()),
         ]),
       ]),
-      el('div', { class: 'title-stats' }, [
-        statRow('Deepest run', m.bestDepth ? `Level ${m.bestDepth}` : '—'),
-        statRow('Best score', m.bestScore ? m.bestScore.toLocaleString() : '—'),
-        statRow('Cards turned', m.cardsTurned.toLocaleString()),
-      ]),
+      (() => {
+        const earned = Object.keys(m.achievements).length;
+        const panel = el('button', { class: 'title-stats', type: 'button' }, [
+          statRow('Deepest run', m.bestDepth ? `Level ${m.bestDepth}` : '—'),
+          statRow('Best score', m.bestScore ? m.bestScore.toLocaleString() : '—'),
+          statRow('Achievements', `${earned} / ${ACHIEVEMENT_COUNT}`),
+          el('span', { class: 'title-stats-more' }, ['Records →']),
+        ]);
+        panel.addEventListener('click', () => openRecords());
+        return panel;
+      })(),
     ]),
   );
 }
@@ -359,6 +366,57 @@ function openRunMenu(ctx: MenuCtx, run: RunState): void {
     { label: 'Settings', fn: () => openSettings() },
     { label: 'Abandon run', kind: 'danger', fn: () => ctx.abandon() },
   ]);
+}
+
+function relativeDay(at: number): string {
+  const days = Math.floor((Date.now() - at) / 86400000);
+  if (days <= 0) return 'today';
+  if (days === 1) return 'yesterday';
+  if (days < 30) return `${days} days ago`;
+  return new Date(at).toLocaleDateString();
+}
+
+function runRow(r: RunRecord): HTMLElement {
+  return el('div', { class: 'record-row' }, [
+    el('span', { class: 'record-depth' }, [String(r.depth)]),
+    el('span', { class: 'record-body' }, [
+      el('strong', {}, [`${r.score.toLocaleString()} points`, r.daily ? el('em', { class: 'tag' }, ['daily']) : null]),
+      el('span', {}, [`${r.reason} · ${seedToCode(r.seed)} · ${relativeDay(r.at)}`]),
+    ]),
+  ]);
+}
+
+export function openRecords(): void {
+  const m = stats();
+  const earned = Object.keys(m.achievements).length;
+
+  const badges = el('div', { class: 'badges' }, ACHIEVEMENTS.map((a) => {
+    const got = !!m.achievements[a.id];
+    return el('div', { class: `badge-row${got ? ' got' : ''}` }, [
+      el('span', { class: 'badge-mark' }, [got ? '★' : '☆']),
+      el('span', {}, [el('strong', {}, [a.name]), el('span', {}, [a.text])]),
+    ]);
+  }));
+
+  const body = el('div', {}, [
+    el('p', { class: 'section-label' }, ['Lifetime']),
+    el('div', {}, [
+      statRow('Deepest run', m.bestDepth ? `Level ${m.bestDepth}` : '—'),
+      statRow('Best score', m.bestScore ? m.bestScore.toLocaleString() : '—'),
+      statRow('Runs begun', String(m.runs)),
+      statRow('Levels cleared', String(m.levelsCleared)),
+      statRow('Cards turned', m.cardsTurned.toLocaleString()),
+      statRow('Moves spent', m.movesSpent.toLocaleString()),
+      m.dailyDepth ? statRow('Best daily', `Level ${m.dailyDepth}`) : null,
+    ].filter(Boolean) as Node[]),
+    el('p', { class: 'section-label' }, [`Achievements — ${earned} of ${ACHIEVEMENT_COUNT}`]),
+    badges,
+    el('p', { class: 'section-label' }, ['Recent runs']),
+    m.history.length
+      ? el('div', { class: 'records' }, m.history.map(runRow))
+      : el('p', { class: 'hint' }, ['No finished runs yet.']),
+  ]);
+  sheetPanel({ title: 'Records', body });
 }
 
 export function openHelp(): void {

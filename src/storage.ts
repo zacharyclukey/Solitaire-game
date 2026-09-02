@@ -17,6 +17,16 @@ export interface Settings {
   confirmRestart: boolean;
 }
 
+/** One finished run, for the records screen. */
+export interface RunRecord {
+  depth: number;
+  score: number;
+  seed: number;
+  reason: string;
+  daily: boolean;
+  at: number;
+}
+
 export interface MetaStats {
   runs: number;
   bestDepth: number;
@@ -28,6 +38,10 @@ export interface MetaStats {
   dailyDepth: number;
   seenHelp: boolean;
   tutorialDone: boolean;
+  /** Achievement id -> unlock timestamp. */
+  achievements: Record<string, number>;
+  /** Most recent finished runs, newest first. */
+  history: RunRecord[];
 }
 
 export interface SaveData {
@@ -59,6 +73,8 @@ export const DEFAULT_STATS: MetaStats = {
   dailyDepth: 0,
   seenHelp: false,
   tutorialDone: false,
+  achievements: {},
+  history: [],
 };
 
 function blank(): SaveData {
@@ -76,7 +92,13 @@ export function load(): SaveData {
       cache = {
         version: 1,
         run: parsed.run ?? null,
-        stats: { ...DEFAULT_STATS, ...(parsed.stats ?? {}) },
+        stats: {
+          ...DEFAULT_STATS,
+          ...(parsed.stats ?? {}),
+          // Nested defaults survive a save written by an older version.
+          achievements: { ...(parsed.stats?.achievements ?? {}) },
+          history: parsed.stats?.history ?? [],
+        },
         settings: { ...DEFAULT_SETTINGS, ...(parsed.settings ?? {}) },
       };
       return cache;
@@ -118,6 +140,23 @@ export function setRun(run: RunState | null): void {
 
 export function getRun(): RunState | null {
   return load().run;
+}
+
+export const HISTORY_LIMIT = 25;
+
+/** Records a finished run, newest first, keeping the list bounded. */
+export function pushRunRecord(record: RunRecord): void {
+  const st = stats();
+  st.history = [record, ...st.history].slice(0, HISTORY_LIMIT);
+  save();
+}
+
+export function unlock(id: string): boolean {
+  const st = stats();
+  if (st.achievements[id]) return false;
+  st.achievements[id] = Date.now();
+  save();
+  return true;
 }
 
 export function todayKey(): string {

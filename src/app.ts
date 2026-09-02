@@ -28,10 +28,18 @@ import {
 } from './game/run.ts';
 import { applyMove, cloneSim, isWon, legalMoves, settle, type Sim, type SimEvent } from './game/sim.ts';
 import {
+  emptyStreak,
+  emptyTally,
+  newlyEarned,
+  type AchieveCtx,
+  type LevelTally,
+  type RunStreak,
+} from './game/achievements.ts';
+import {
   buildTutorialLevel,
   coachMove,
   COACH_STEPS,
-  emptyTally,
+  emptyTally as emptyCoachTally,
   stepFor,
   type CoachTally,
 } from './game/tutorial.ts';
@@ -86,6 +94,8 @@ export class App {
   private freeHints = 0;
   private dealing = false;
   private tutorial: { tally: CoachTally; step: number } | null = null;
+  private tally: LevelTally = emptyTally();
+  private streak: RunStreak = emptyStreak();
   private ctx: MenuCtx;
 
   constructor(root: HTMLElement) {
@@ -194,6 +204,8 @@ export class App {
     this.tutorial = null;
     this.hud.setCoach(null);
     this.hud.setHintEnabled(store.settings().showHint);
+    this.streak = emptyStreak();
+    this.tally = emptyTally();
     const run = newRun(seed, daily);
     store.stats().runs += 1;
     this.run = run;
@@ -295,6 +307,7 @@ export class App {
 
     this.level = level;
     this.history = [];
+    this.tally = emptyTally();
     this.freeHints = spec.depth <= 2 ? 3 : 0;
     this.hud.mount(level);
     this.hud.setHintEnabled(store.settings().showHint);
@@ -370,8 +383,11 @@ export class App {
     }
     haptic('light');
 
+    if (applied.kind === 'm' && applied.to >= sim.cellStart) this.tally.reserveMoves += 1;
+
     this.board.layout(true);
     const flips = events.filter((e) => e.t === 'flip').map((e) => (e.t === 'flip' ? e.id : -1));
+    this.tally.maxFlips = Math.max(this.tally.maxFlips, flips.length);
     if (flips.length) {
       this.board.pulseFlip(flips);
       setTimeout(() => sfx.flip(), 90);
@@ -414,6 +430,7 @@ export class App {
     const level = this.level;
     if (!level || !this.history.length || level.undosLeft <= 0) return;
     const snap = this.history.pop()!;
+    this.tally.undos += 1;
     restoreSim(level.sim, snap.sim);
     level.undosLeft = snap.undosLeft - 1;
     level.peeksLeft = snap.peeksLeft;
@@ -451,6 +468,7 @@ export class App {
     } else {
       this.freeHints -= 1;
     }
+    this.tally.hints += 1;
     this.board.showHint(mv);
     sfx.boon();
     this.refresh();
@@ -505,6 +523,10 @@ export class App {
     run.depth = level.spec.depth;
     run.stats.levelsCleared += 1;
     run.stats.cardsTurned += level.sim.revealed;
+    this.tally.spare = Math.max(0, level.sim.movesLeft);
+    this.tally.secondsLeft = level.timeLimit ? Math.max(0, this.timeLeft) : 0;
+    this.streak.cleanLevels = this.tally.hints === 0 ? this.streak.cleanLevels + 1 : 0;
+    this.streak.patientLevels = this.tally.undos === 0 ? this.streak.patientLevels + 1 : 0;
 
     const spare = Math.max(0, level.sim.movesLeft);
     let gold = level.baseGold + level.sim.gold;
@@ -522,6 +544,8 @@ export class App {
       st.dailyDate = store.todayKey();
       st.dailyDepth = Math.max(st.dailyDepth, run.depth);
     }
+
+    this.award();
 
     await new Promise((r) => setTimeout(r, 900));
     this.board.busy = false;
@@ -568,6 +592,15 @@ export class App {
     run.score = computeScore(run);
     if (run.score > st.bestScore) st.bestScore = run.score;
     run.phase = 'over';
+    this.award();
+    store.pushRunRecord({
+      depth: run.depth,
+      score: run.score,
+      seed: run.seed,
+      reason,
+      daily: run.daily,
+      at: Date.now(),
+    });
     store.setRun(null);
     store.save();
 
@@ -727,10 +760,11 @@ export class App {
   private async startTutorial(): Promise<void> {
     this.stopTimer();
     this.run = null;
-    this.tutorial = { tally: emptyTally(), step: 0 };
+    this.tutorial = { tally: emptyCoachTally(), step: 0 };
     const level = buildTutorialLevel();
     this.level = level;
     this.history = [];
+    this.tally = emptyTally();
     this.freeHints = 0;
 
     // The board must be on screen before it is measured, or every card is
@@ -792,6 +826,7 @@ export class App {
     sfx.win();
     haptic('success');
     store.stats().tutorialDone = true;
+    if (store.unlock('taught')) toast('Unlocked — Taught', 'good');
     store.save();
     await new Promise((r) => setTimeout(r, 1100));
     this.board.busy = false;
@@ -894,6 +929,23 @@ export class App {
       ],
       facts,
     );
+  }
+
+  /** Evaluates every achievement against the current moment. */
+  private award(): void {
+    const st = store.stats();
+    const ctx: AchieveCtx = {
+      totals: { cardsTurned: st.cardsTurned, runs: st.runs },
+      run: this.run,
+      level: this.level,
+      tally: this.tally,
+      streak: this.streak,
+    };
+    for (const a of newlyEarned(ctx, st.achievements)) {
+      if (!store.unlock(a.id)) continue;
+      toast(`Unlocked — ${a.name}`, 'good');
+      sfx.boon();
+    }
   }
 
   private persist(): void {
