@@ -48,6 +48,7 @@ import { haptic } from './haptics.ts';
 import { hideSplash, initNative } from './native.ts';
 import * as store from './storage.ts';
 import { BoardView } from './ui/board.ts';
+import { playVictory } from './ui/victory.ts';
 import { describeCard } from './ui/cardview.ts';
 import { el } from './ui/dom.ts';
 import { Hud } from './ui/hud.ts';
@@ -514,7 +515,6 @@ export class App {
     const run = this.run!;
     this.stopTimer();
     this.board.busy = true;
-    this.board.celebrate();
     sfx.win();
     haptic('success');
 
@@ -549,7 +549,7 @@ export class App {
 
     this.award();
 
-    await new Promise((r) => setTimeout(r, 900));
+    await this.playVictorySort();
     this.board.busy = false;
 
     const rewards = makeRewards(run, level.spec.kind, rewardCount(run, level.spec.kind));
@@ -826,7 +826,6 @@ export class App {
 
   private async finishTutorial(): Promise<void> {
     this.board.busy = true;
-    this.board.celebrate();
     this.hud.setCoach(null);
     this.board.setCoachMove(null);
     sfx.win();
@@ -834,7 +833,7 @@ export class App {
     store.stats().tutorialDone = true;
     if (store.unlock('taught')) toast('Unlocked — Taught', 'good');
     store.save();
-    await new Promise((r) => setTimeout(r, 1100));
+    await this.playVictorySort();
     this.board.busy = false;
     this.tutorial = null;
     const choice = await modal({
@@ -935,6 +934,30 @@ export class App {
       ],
       facts,
     );
+  }
+
+  /**
+   * The payoff: a cleared board sorts itself into the four foundations the
+   * game never lets you use while playing. A tap anywhere cuts it short.
+   */
+  private async playVictorySort(): Promise<void> {
+    const snap = this.board.victorySnapshot();
+    const handle = playVictory(snap.layer, snap.cards, {
+      cardW: snap.cardW,
+      cardH: snap.cardH,
+      reduceMotion: store.settings().reduceMotion,
+      onLand: () => sfx.flip(),
+    });
+    const skip = (): void => handle.skip();
+    this.hud.boardHost.addEventListener('pointerdown', skip);
+    try {
+      await handle.done;
+      // A beat on the finished foundations before the reward screen takes over,
+      // so the sorted board is something you actually get to look at.
+      await new Promise((r) => setTimeout(r, 450));
+    } finally {
+      this.hud.boardHost.removeEventListener('pointerdown', skip);
+    }
   }
 
   /** Evaluates every achievement against the current moment. */

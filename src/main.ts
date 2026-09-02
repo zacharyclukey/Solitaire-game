@@ -1,6 +1,7 @@
 import './styles/base.css';
 import './styles/board.css';
 import './styles/screens.css';
+import './styles/victory.css';
 import { App } from './app.ts';
 
 const root = document.getElementById('app');

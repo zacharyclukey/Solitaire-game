@@ -14,6 +14,7 @@ import { legalMoves, stock, stockIdx, wasteIdx, type Sim } from '../game/sim.ts'
 import type { CardDef, Move } from '../game/types.ts';
 import { makeCardEl } from './cardview.ts';
 import { el } from './dom.ts';
+import type { VictoryCard } from './victory.ts';
 
 export interface BoardCallbacks {
   onMove(move: Move): void;
@@ -571,6 +572,23 @@ export class BoardView {
       e.classList.add('just-flipped');
       setTimeout(() => e.classList.remove('just-flipped'), 700);
     }
+  }
+
+  /**
+   * Everything the victory sequence needs to sort the board: the layer the
+   * cards live in, and where each one is resting right now. Burned cards are
+   * absent, because they are no longer on the board to sort.
+   */
+  victorySnapshot(): { layer: HTMLElement; cards: VictoryCard[]; cardW: number; cardH: number } {
+    const cards: VictoryCard[] = [];
+    for (const col of this.sim.cols) {
+      for (const id of col) {
+        const d = this.sim.defs[id];
+        const p = this.positions[id] ?? { x: 0, y: 0 };
+        cards.push({ el: this.cardEls[id], rank: d.rank, suit: d.suit, x: p.x, y: p.y });
+      }
+    }
+    return { layer: this.cardsLayer, cards, cardW: this.geom.cardW, cardH: this.geom.cardH };
   }
 
   celebrate(): void {
