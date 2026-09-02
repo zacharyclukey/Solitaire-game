@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit and integration tests
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: Install browser for the smoke test
+        run: npx playwright install --with-deps chromium
+
+      - name: End-to-end smoke test
+        run: |
+          npx vite preview --port 4173 &
+          npx wait-on -t 60000 http://localhost:4173
+          node scripts/qa.mjs http://localhost:4173/?qa=1 qa-out/shot 6
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: screenshots
+          path: qa-out/
+          if-no-files-found: ignore

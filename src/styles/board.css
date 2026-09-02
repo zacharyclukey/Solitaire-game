@@ -1,0 +1,370 @@
+/* The play screen: HUD, action bar, and the cards themselves. */
+
+.play {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  padding: var(--safe-t) max(6px, var(--safe-r)) var(--safe-b) max(6px, var(--safe-l));
+}
+
+/* ------------------------------------------------------------------ hud */
+
+.hud {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 6px 6px;
+  flex: none;
+}
+
+.hud-depth {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--ink-faint);
+}
+.hud-depth b { color: var(--ink); font-size: 15px; margin-left: 2px; }
+
+.hud-moves {
+  margin-left: auto;
+  text-align: right;
+  line-height: 1;
+  transition: color 0.2s ease;
+}
+.hud-moves b {
+  display: block;
+  font-size: 30px;
+  font-weight: 750;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+.hud-moves span {
+  font-size: 9.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+.hud-moves.low b { color: var(--gold); }
+.hud-moves.critical b { color: var(--bad); animation: pulse 1s ease-in-out infinite; }
+.hud-moves.spend b { animation: knock 0.4s ease; }
+.hud-moves.gain b { animation: bump 0.5s ease; }
+
+@keyframes pulse { 50% { opacity: 0.55; } }
+@keyframes knock { 40% { transform: translateY(2px) scale(0.94); } }
+@keyframes bump { 40% { transform: translateY(-3px) scale(1.1); color: var(--good); } }
+
+.hud-turned {
+  text-align: right;
+  line-height: 1.05;
+  padding-left: 10px;
+  border-left: 1px solid var(--line);
+}
+.hud-turned b { display: block; font-size: 14px; font-variant-numeric: tabular-nums; color: var(--ink-dim); }
+.hud-turned span { font-size: 9.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-faint); }
+
+.hud-timer {
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-dim);
+  padding: 4px 9px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+}
+.hud-timer.urgent { color: var(--bad); border-color: rgba(229, 103, 95, 0.4); animation: pulse 1s ease-in-out infinite; }
+
+.progress {
+  flex: none;
+  height: 3px;
+  margin: 2px 6px 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07);
+  overflow: hidden;
+}
+.progress i {
+  display: block;
+  height: 100%;
+  width: 0;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--violet), var(--gold));
+  transition: width calc(0.35s * var(--dur)) ease;
+}
+
+.mods-strip {
+  flex: none;
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 8px 6px 6px;
+}
+.mods-strip::-webkit-scrollbar { display: none; }
+.mods-strip.empty { padding: 2px; }
+.mods-strip .chip { font-size: 11px; padding: 4px 9px 4px 7px; }
+
+/* ---------------------------------------------------------------- board */
+
+.board-wrap { position: relative; flex: 1 1 auto; min-height: 0; }
+.board { position: absolute; inset: 0; }
+.slots, .cards { position: absolute; inset: 0; }
+
+.slot {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: var(--card-w);
+  height: var(--card-h);
+  border-radius: calc(var(--card-w) * 0.115);
+  border: 1.5px dashed rgba(255, 255, 255, 0.09);
+  background: rgba(255, 255, 255, 0.015);
+  opacity: 0;
+  transition: opacity 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+.slot.open { opacity: 1; }
+.slot.cell {
+  opacity: 1;
+  border-style: solid;
+  border-color: rgba(255, 255, 255, 0.13);
+  background: rgba(255, 255, 255, 0.03);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25) inset;
+}
+.slot.target { border-color: rgba(227, 178, 98, 0.75); background: rgba(227, 178, 98, 0.1); opacity: 1; }
+.slot.hover { background: rgba(227, 178, 98, 0.22); }
+.slot.hint-dst { border-color: var(--good); background: rgba(110, 209, 149, 0.18); opacity: 1; animation: pulse 0.9s ease-in-out infinite; }
+
+.card {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: var(--card-w);
+  height: var(--card-h);
+  transform: translate3d(0, 0, 0);
+  transition: transform calc(0.24s * var(--dur)) cubic-bezier(0.22, 0.68, 0.36, 1), opacity calc(0.2s * var(--dur)) ease;
+  perspective: 800px;
+  will-change: transform;
+}
+
+.card .flip {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  transition: transform calc(0.36s * var(--dur)) cubic-bezier(0.42, 0.05, 0.2, 1);
+}
+.card.down .flip { transform: rotateY(180deg); }
+.board.peeking .card .flip { transform: none; }
+
+.face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  border-radius: calc(var(--card-w) * 0.115);
+  overflow: hidden;
+}
+
+.face.front {
+  background: linear-gradient(168deg, var(--card-face) 0%, var(--card-face-2) 100%);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.6) inset,
+    0 0 0 1px rgba(0, 0, 0, 0.22),
+    0 3px 8px rgba(0, 0, 0, 0.42);
+  color: var(--suit-black);
+}
+
+.face.back {
+  transform: rotateY(180deg);
+  background:
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.045) 0 3px, rgba(0, 0, 0, 0) 3px 6px),
+    repeating-linear-gradient(-45deg, rgba(255, 255, 255, 0.035) 0 3px, rgba(0, 0, 0, 0) 3px 6px),
+    linear-gradient(160deg, #3a3170 0%, #241f4a 60%, #1a1738 100%);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.35),
+    0 0 0 2px rgba(227, 178, 98, 0.12) inset,
+    0 3px 8px rgba(0, 0, 0, 0.42);
+}
+
+.face.back .weave {
+  position: absolute;
+  inset: 12%;
+  border-radius: 3px;
+  border: 1px solid rgba(227, 178, 98, 0.24);
+  background: radial-gradient(circle at 50% 50%, rgba(227, 178, 98, 0.18), rgba(227, 178, 98, 0) 62%);
+}
+
+/* --- front content: the top strip is the only part visible when stacked --- */
+
+.corner {
+  position: absolute;
+  top: 3.5%;
+  left: 6%;
+  display: flex;
+  align-items: baseline;
+  gap: 0.1em;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  font-size: calc(var(--card-w) * 0.44);
+}
+.corner .p { font-size: 0.82em; letter-spacing: 0; }
+
+.centre {
+  position: absolute;
+  right: 7%;
+  bottom: 4%;
+  font-size: calc(var(--card-w) * 0.62);
+  line-height: 1;
+  opacity: 0.16;
+}
+
+.face.front.s0, .face.front.s3 { color: var(--suit-black); }
+.face.front.s1, .face.front.s2 { color: var(--suit-red); }
+html.four-colour .face.front.s2 { color: var(--suit-blue); }
+html.four-colour .face.front.s3 { color: var(--suit-green); }
+
+.badge {
+  position: absolute;
+  top: 4%;
+  right: 5%;
+  width: calc(var(--card-w) * 0.34);
+  height: calc(var(--card-w) * 0.34);
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: calc(var(--card-w) * 0.23);
+  line-height: 1;
+}
+.badge.ench { background: #2f2a1a; color: #f3ce88; box-shadow: 0 0 0 1px rgba(227, 178, 98, 0.5); }
+.badge.curse { background: #2b1720; color: #f0a8a2; box-shadow: 0 0 0 1px rgba(229, 103, 95, 0.55); top: auto; bottom: 4%; right: 5%; }
+
+/* ------------------------------------------------------------- states */
+
+.card.picked .face { box-shadow: 0 0 0 2.5px #fff, 0 0 18px rgba(255, 255, 255, 0.35), 0 12px 24px rgba(0, 0, 0, 0.6); }
+.card.picked .flip { transform: translateY(-6px) scale(1.045); }
+.card.picked { z-index: 500 !important; }
+.card.target .face.front { box-shadow: 0 0 0 2px rgba(227, 178, 98, 0.8), 0 4px 14px rgba(0, 0, 0, 0.5); }
+.card.hover .face.front { box-shadow: 0 0 0 3px var(--gold), 0 6px 18px rgba(0, 0, 0, 0.6); }
+.card.drag { transition: none; }
+.card.drag .face { box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.3), 0 18px 30px rgba(0, 0, 0, 0.55); }
+.card.burned { opacity: 0; transform: translate3d(0, -30px, 0) scale(0.7) !important; pointer-events: none; }
+
+.card.just-flipped .face.front { animation: reveal calc(0.6s * var(--dur)) ease; }
+@keyframes reveal {
+  0% { box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.9), 0 0 22px rgba(255, 255, 255, 0.55); }
+  100% { box-shadow: 0 1px 0 rgba(255, 255, 255, 0.6) inset, 0 0 0 1px rgba(0, 0, 0, 0.22), 0 3px 8px rgba(0, 0, 0, 0.42); }
+}
+
+.card.hint-src .face { animation: hintglow calc(1s * var(--dur)) ease-in-out infinite; }
+.card.hint-dst .face.front { box-shadow: 0 0 0 2px var(--good), 0 0 18px rgba(110, 209, 149, 0.5); }
+@keyframes hintglow {
+  0%, 100% { box-shadow: 0 0 0 2px rgba(110, 209, 149, 0.9), 0 0 18px rgba(110, 209, 149, 0.5); }
+  50% { box-shadow: 0 0 0 2px rgba(110, 209, 149, 0.35), 0 0 6px rgba(110, 209, 149, 0.2); }
+}
+
+.card.shake { animation: shake 0.36s cubic-bezier(0.36, 0.07, 0.19, 0.97); }
+@keyframes shake {
+  10%, 90% { margin-left: -2px; }
+  30%, 70% { margin-left: 3px; }
+  50% { margin-left: -3px; }
+}
+
+.card.burning .face.front { animation: burn calc(0.4s * var(--dur)) ease forwards; }
+@keyframes burn {
+  to { filter: brightness(2.2) saturate(2) hue-rotate(-20deg); opacity: 0; }
+}
+
+.board.cleared::after {
+  content: '';
+  position: absolute;
+  inset: -10%;
+  pointer-events: none;
+  background: radial-gradient(circle at 50% 55%, rgba(227, 178, 98, 0.28), rgba(227, 178, 98, 0) 62%);
+  animation: flash calc(1.6s * var(--dur)) ease forwards;
+}
+@keyframes flash { 0% { opacity: 0; } 25% { opacity: 1; } 100% { opacity: 0; } }
+
+.deal-banner {
+  position: absolute;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  background: rgba(9, 11, 18, 0.55);
+  backdrop-filter: blur(2px);
+  z-index: 900;
+}
+.deal-banner.on { display: flex; animation: pulse 1.2s ease-in-out infinite; }
+
+/* ----------------------------------------------------------- action bar */
+
+.actions {
+  flex: none;
+  display: flex;
+  gap: 8px;
+  padding: 10px 6px 8px;
+}
+html.left-handed .actions { flex-direction: row-reverse; }
+
+.act {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 9px 4px 8px;
+  border-radius: var(--r-md);
+  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid var(--line);
+  color: var(--ink-dim);
+  transition: transform 0.12s ease, opacity 0.15s ease;
+}
+.act:active { transform: scale(0.96); background: rgba(255, 255, 255, 0.1); }
+.act:disabled { opacity: 0.32; }
+.act-glyph { font-size: 17px; line-height: 1; }
+.act-label { font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 600; }
+.act-count { font-style: normal; font-size: 10.5px; color: var(--gold); font-weight: 700; }
+
+.actions { max-width: 460px; width: 100%; margin: 0 auto; }
+
+.actions { justify-content: center; }
+.act { flex: 0 1 128px; }
+
+/* A faint table surface so a shallow tableau does not float in a void. */
+.board-wrap::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(120% 70% at 50% 42%, rgba(120, 140, 220, 0.07), rgba(0, 0, 0, 0) 70%);
+}
+
+/* ------------------------------------------------------------- reserve */
+
+.reserve-label {
+  position: absolute;
+  top: calc(var(--card-h) * 0.42);
+  right: 8px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.24em;
+  color: var(--ink-faint);
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+/* A hairline under the reserve row separates it from the tableau. */
+.board::after {
+  content: '';
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  top: calc(var(--tableau-top, 0px) - 9px);
+  height: 1px;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0));
+  pointer-events: none;
+}
