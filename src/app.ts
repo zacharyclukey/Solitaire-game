@@ -26,7 +26,9 @@ import {
   type RunState,
   type ShopItem,
 } from './game/run.ts';
+import { analyse, type PostMortem } from './game/postmortem.ts';
 import { applyMove, cloneSim, isWon, legalMoves, settle, waste, type Sim, type SimEvent } from './game/sim.ts';
+import { findSolution } from './game/solver.ts';
 import {
   emptyStreak,
   emptyTally,
@@ -63,6 +65,7 @@ import {
   renderReward,
   renderShop,
   renderTitle,
+  type Epitaph,
   type MenuCtx,
 } from './ui/menus.ts';
 import {
@@ -96,6 +99,14 @@ export class App {
   private dealing = false;
   private tutorial: { tally: CoachTally; step: number } | null = null;
   private tally: LevelTally = emptyTally();
+  /** Pristine copy of the deal, kept so a loss can be analysed afterwards. */
+  private initialSim: Sim | null = null;
+  /**
+   * Moves spent on things that are not moves in the replayed list — hints, and
+   * undos under Glasswork. The post-mortem has to start from the budget the
+   * player actually had, or it will report a line as reachable that never was.
+   */
+  private offBookSpend = 0;
   private streak: RunStreak = emptyStreak();
   private ctx: MenuCtx;
 
@@ -307,8 +318,10 @@ export class App {
     rehydrate(level);
 
     this.level = level;
+    this.initialSim = cloneSim(level.sim);
     this.history = [];
     this.tally = emptyTally();
+    this.offBookSpend = 0;
     this.freeHints = spec.depth <= 2 ? 3 : 0;
     this.hud.mount(level);
     this.hud.setHintEnabled(store.settings().showHint);
@@ -433,7 +446,10 @@ export class App {
     restoreSim(level.sim, snap.sim);
     level.undosLeft = snap.undosLeft - 1;
     level.peeksLeft = snap.peeksLeft;
-    if (level.undoCostsMove) level.sim.movesLeft -= 1;
+    if (level.undoCostsMove) {
+      level.sim.movesLeft -= 1;
+      this.offBookSpend += 1;
+    }
     this.run?.levelMoves.pop();
     this.board.clearSelection();
     this.board.clearHint();
@@ -462,6 +478,7 @@ export class App {
     }
     if (cost > 0) {
       level.sim.movesLeft -= cost;
+      this.offBookSpend += cost;
       if (this.run) this.run.stats.movesSpent += cost;
       this.hud.flashMoves(-1);
     } else {
@@ -491,11 +508,12 @@ export class App {
     const canUndo = level.undosLeft > 0 && this.history.length > 0;
     const outOfMoves = level.sim.movesLeft <= 0;
     if (canUndo) {
+      const margin = this.marginFromHere(level.sim);
       const choice = await modal({
         title: outOfMoves ? 'Out of moves' : 'No legal moves',
-        body: outOfMoves
+        body: margin ?? (outOfMoves
           ? 'Step back and try a different line, or let the run end here.'
-          : 'Nothing can be played from this position.',
+          : 'Nothing can be played from this position.'),
         dismissable: false,
         actions: [
           { label: `Undo (${level.undosLeft})`, kind: 'primary', value: 'undo' },
@@ -508,6 +526,40 @@ export class App {
       }
     }
     await this.onLose(outOfMoves ? 'Out of moves' : 'Stuck');
+  }
+
+  /**
+   * How far the current position is from a win, ignoring the allowance. Shown
+   * at the moment of failure, because "two moves short" is the difference
+   * between a wall and a near miss you want to try again.
+   */
+  private marginFromHere(sim: Sim): string | null {
+    const probe = cloneSim(sim);
+    probe.movesLeft = Number.MAX_SAFE_INTEGER / 4;
+    const sol = findSolution(probe, 320);
+    if (!sol) return null;
+    const short = sol.cost - Math.max(0, sim.movesLeft);
+    if (short <= 0) return 'There is still a line here — you have the moves for it.';
+    return `A win is still ${short} ${short === 1 ? 'move' : 'moves'} out of reach from this position. Step back and try a different line, or let the run end here.`;
+  }
+
+  /** Turns the solver's account of the run into something worth reading. */
+  private epitaphFor(pm: PostMortem): Epitaph {
+    const lines: string[] = [];
+    if (pm.lastWinnableAfter !== null && pm.movesAfterLoss !== null && pm.movesAfterLoss > 0) {
+      lines.push(`Winnable through move ${pm.lastWinnableAfter} of ${pm.movesPlayed}.`);
+    }
+    if (pm.shortBy !== null && pm.shortBy > 0) {
+      lines.push(`${pm.shortBy} ${pm.shortBy === 1 ? 'move' : 'moves'} short at the end.`);
+      if (pm.shortBy <= 3) {
+        lines.push('A Beacon, a Kickback or a Spare Sleeve each buy back exactly that.');
+      } else {
+        lines.push('A thinner deck, or more of it in the draw pile, buys back that much room.');
+      }
+    } else if (pm.movesAfterLoss !== null && pm.movesAfterLoss > 3) {
+      lines.push('Loaded Dice would have let you take those moves back.');
+    }
+    return { verdict: pm.verdict, lines };
   }
 
   private async onWin(): Promise<void> {
@@ -610,13 +662,27 @@ export class App {
     store.setRun(null);
     store.save();
 
-    renderOver(run, reason, isBest, {
+    const actions = {
       again: () => void this.startRun(randomSeed(), false),
       replay: () => void this.startRun(run.seed, false),
       title: () => this.toTitle(),
-    });
+    };
+    renderOver(run, reason, isBest, actions);
     show('over');
     this.board.busy = false;
+
+    // The analysis takes a few hundred milliseconds, so the screen goes up
+    // first and the verdict arrives into it rather than delaying it.
+    const start = this.initialSim;
+    const played = run.levelMoves as Move[];
+    if (start && played.length) {
+      const from = cloneSim(start);
+      from.movesLeft -= this.offBookSpend;
+      setTimeout(() => {
+        const pm = analyse(from, played, { budgetMs: 900 });
+        if (activeScreen() === 'over') renderOver(run, reason, isBest, actions, this.epitaphFor(pm));
+      }, 60);
+    }
   }
 
   private async abandon(): Promise<void> {
@@ -769,6 +835,8 @@ export class App {
     this.tutorial = { tally: emptyCoachTally(), step: 0 };
     const level = buildTutorialLevel();
     this.level = level;
+    this.initialSim = cloneSim(level.sim);
+    this.offBookSpend = 0;
     this.history = [];
     this.tally = emptyTally();
     this.freeHints = 0;
