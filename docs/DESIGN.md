@@ -220,7 +220,7 @@ table per level.
   backend, and the game is deliberately offline for now. The daily deal is
   seeded from the date, so a leaderboard is a small addition later.
 - No localisation pass; all copy is English and hard-coded.
-- The solver's line is a good line, not an optimal one. Optimal search is
-  intractable at this board size, so the allowance is slightly generous relative
-  to true optimum — deliberately, at the shallow end.
+- Difficulty at the shallow end is set by `slack`, not by search quality (see
+  the measurement in §2). Whether level 1 at ~1.9× is the right welcome is a
+  judgement call that wants real players, not more telemetry.
 - Landscape and tablet layouts are locked to portrait rather than designed.

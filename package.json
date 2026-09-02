@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "Facedown — a solitaire roguelite. Turn every card.",
+  "description": "Facedown \u2014 a solitaire roguelite. Turn every card.",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
@@ -15,7 +15,8 @@
     "sync": "npm run build && npx cap sync",
     "qa": "node scripts/qa.mjs",
     "balance": "node --experimental-strip-types scripts/balance.ts",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "screenshots": "node scripts/screenshots.mjs"
   },
   "devDependencies": {
     "@capacitor/android": "^8.5.1",
