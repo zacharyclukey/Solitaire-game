@@ -18,15 +18,16 @@ Klondike ends when the foundations are full. Facedown removes the foundations
 entirely, so the tableau is the whole game and the only goal is excavation. That
 alone would lock up constantly, so the game adds two things:
 
-- **A reserve** of a few free cells to park single cards in — the pressure valve
-  that keeps a foundation-less tableau alive, and the sharpest difficulty dial in
-  the game.
+- **A draw pile.** One pass, no recycle. Turning a card off it costs a move, and
+  every card in it has to be turned, so the pile is a resource you spend rather
+  than a safety net. Play what you draw while you can — the next draw buries it.
 - **A move allowance.** Every level gives you a fixed number of moves. Spend them
   all and the run is over. Moves, not luck, are the resource you manage.
 
 Every deal is verified before you see it: a solver plays the board first, and the
 allowance you get is derived from the length of the line it actually found. Every
-board you are given is clearable. The question is whether you find the line.
+board you are given is clearable. The question is whether you find the line — and
+that line is shown to you as par, so you always know how close you are running.
 
 There is a two-minute guided board the first time you open the game: fourteen
 cards and five lessons, each arriving at the moment it is needed.
@@ -36,9 +37,10 @@ cards and five lessons, each arriving at the moment it is needed.
 | Action | How |
 | --- | --- |
 | Pick up a card | Tap it. Legal destinations light up. |
-| Place it | Tap a highlighted card, column or reserve cell. |
+| Place it | Tap a highlighted card or column. |
 | Send it somewhere sensible | Tap the same card again. |
 | Precise placement | Drag it. |
+| Turn the next card | Tap the draw pile. |
 | Inspect a card | Press and hold. |
 
 Stacks build down in alternating colours — 7♥ onto 8♠ — and a correctly ordered
@@ -115,6 +117,9 @@ src/app.ts    the controller that ties them together
   exactly the rules the player is given.
 - **`solver.ts` is a weighted A\*** over that engine. It certifies deals, sizes the
   move allowance, and powers the Hint button.
+- **Rules changes are measured, not assumed.** Removing the foundations, and
+  later the reserve, both risked making boards unwinnable; each was settled by
+  exhaustively searching raw boards before it shipped. See `docs/DESIGN.md` §1.
 - **Everything is seeded.** A run is a 32-bit seed plus a depth; a save is a small
   JSON blob, and an interrupted level is restored by replaying its moves.
 - **No framework and no runtime dependencies.** Around 30 kB of gzipped

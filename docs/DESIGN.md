@@ -19,26 +19,38 @@ state space terminated in fewer than a dozen states. The board simply locks.
 
 Two mechanisms fix it, and both became central to the design.
 
-### The reserve
+### The draw pile
 
-A small number of free cells, FreeCell-style, that hold one card each. Any
-face-up card can be parked there; anything in the reserve can come back out onto
-a legal stack or an empty column.
+A stock and a waste, in the Klondike shape but with one pass and no recycle.
+Turning a card off the pile costs a move; pile cards count as face-down, so the
+pile has to be emptied to win. The waste's top card is playable and everything
+under it is buried until you play it off — so the real decision is *when* to
+draw, not whether.
 
-Measured on the same deals that were 70% unwinnable with no reserve:
+An earlier version used a FreeCell-style reserve of free cells instead. Both
+were chosen the same way — by exhaustively searching the reachable state space
+of raw boards, no relaxation and no retries, and asking whether a win exists at
+all:
 
-| Reserve cells | Provably unwinnable |
+| Board | Provably unwinnable |
 | --- | --- |
-| 0 | 7 / 10 |
-| 1 | 0 / 10 |
+| No reserve, no pile, 7 columns | 7 / 10 |
+| Reserve of 1 cell | 0 / 10 |
+| Draw pile of 11, 5 columns | 6 / 10 |
+| Draw pile of 11, 6 columns | 0 / 10 |
+| Draw pile of 8, 7 columns, 1 face-up | 0 / 10, solver cleared 10 / 10 |
 
-One cell is transformative; three is the base. It is now the single most
-powerful difficulty dial in the game — `Tight Quarters` takes one away, the
-`Card Case` charm adds one, and a permanent cell is the most expensive thing in
-the market.
+The headline is the third row. **Column count dominates, not pile size.** Empty
+columns are the only true sink in the game — the one place any card can go —
+so a narrow tableau locks solid no matter how generous the pile is. That is why
+the column floor is six, why `Cramped` was retired (against a six-column floor
+it could only ever deliver one fewer column while promising two), and why
+relaxation now *widens the pile*, which shortens the tableau, rather than
+handing out more parking space.
 
-The reserve also solved a layout problem. Seven columns of four cards on a phone
-leaves the top third of the screen empty; the reserve now lives there.
+The pile is 30% of the deck. That leaves the tableau wide and shallow: more
+columns to work with, fewer cards buried in each, and a steady trickle of new
+destinations from the waste.
 
 ### The move allowance
 
@@ -67,16 +79,17 @@ This gives three properties that would otherwise be very hard to get:
   levels demand that you match a searcher move for move. That *is* the top of the
   difficulty curve, and it is reachable rather than arbitrary.
 
-`slack` runs from 1.8 at depth 1 down to 1.0 by depth ~16. Measured across
+`slack` runs from 1.45 at depth 1 down to a floor of 1.05 by depth 10 — a
+deliberate tightening after a playtest reported never coming close to running
+out. Since par is near-optimal, 1.05 means near-perfect play. Measured across
 simulated runs:
 
 ```
-depth   cards cols cell hidden   par budget slack
-    1      28  7.0  3.0    7.0  25.4   50.0  1.97
-    5      29  6.6  3.2   18.0  29.4   44.8  1.52
-   10      29  6.7  3.4   17.8  30.1   37.3  1.24
-   15      29  6.3  3.6   17.7  35.2   36.3  1.03
-   20      30  6.5  4.0   15.1  30.6   29.2  1.02
+depth   cards cols pile hidden   par budget slack
+    1      28  7.0  8.0   14.0  23.4   36.3  1.55
+    5      29  7.0  7.9   22.1  32.1   38.3  1.19
+   10      29  6.8  8.8   22.1  31.3   30.0  1.05
+   14      30  6.6 11.0   20.0  30.5   32.8  1.07
 ```
 
 `npm run balance` regenerates this table.
@@ -87,8 +100,9 @@ If a modifier combination resists the solver, the deal is **eased in steps**
 rather than shipped broken: widen the reserve, then widen it again, then turn one
 more card face-up per column, and only as a last resort drop the placement-rule
 modifiers. The level records how far it had to be eased, which is what the
-telemetry column `relaxed` reports. In current tuning, no relaxation is needed at
-all through depth 11, and it affects 10–30% of deals in the deep game.
+telemetry column `relaxed` reports. In current tuning it is untouched
+through the early game and affects roughly a third of deals past depth twelve,
+where several modifiers stack.
 
 ### The search
 
@@ -143,6 +157,11 @@ the puzzle rather than the numbers: *Torch* turns the deepest hidden card in its
 column when it flips; *Twin* turns every hidden card of its rank; *Anchor* lets
 anything at all stack on it; *Ember* can be burned off the board entirely.
 
+Par — the length of the line the solver found — is shown on the HUD as you
+play (`8 of par 24`), because a comfortable clear and a narrow one otherwise
+look identical. Beating it pays gold, which is a hard ask when par is close to
+optimal.
+
 **4 curses** — *Leaden* (costs an extra move), *Frozen* (immovable until enough
 cards have turned), *Rooted* (never enters an empty column) and *Shrouded* (does
 not turn by itself; you pay a move for it).
@@ -153,10 +172,10 @@ restrictions; `Sorting Tray` ignores Rust).
 
 **22 level modifiers**, each tagged:
 
-- `rule` — rewrites placement (Suit Lock, Inversion, Rust, Gridlock, Royal Gates,
-  Tithe, Reserve Toll, Tight Quarters, Cramped, Low Ceiling, Loose Weave)
-- `board` — reshapes the deal (Narrow, Open Ground, Buried, Deep Frost, Leadfoot,
-  Shroud, Overgrowth, Doppelgänger)
+- `rule` — rewrites placement (Suit Lock, Inversion, Rust, Gridlock, Royal
+  Gates, Tithe, Stiff Deck, Low Ceiling, Loose Weave)
+- `board` — reshapes the deal (Narrow, Open Ground, Shallow Deal, Deep Deal,
+  Deep Frost, Leadfoot, Shroud, Overgrowth, Doppelgänger)
 - `meta` — touches the surrounding resources (Austerity, Rush, Steady Hand,
   Glasswork, Bounty, Windfall)
 
@@ -238,7 +257,7 @@ their seeds, because "that was a good one" should be replayable.
 | The guided board and its lessons | `src/game/tutorial.ts` |
 | Achievements | `src/game/achievements.ts` |
 | Difficulty curve | `slackFor` / `flatBonus` in `src/game/deal.ts` |
-| Reserve size | `BASE_CELLS`, `cellsFor` in `src/game/deal.ts` |
+| Tableau / pile split | `STOCK_SHARE`, `stockFor`, `MIN_COLUMNS` in `src/game/deal.ts` |
 | Modifier threat and availability | `MODIFIERS` in `src/game/content.ts` |
 | Rule-modifier cap | `pickModifiers` in `src/game/run.ts` |
 | Reward and shop mix | `makeRewards`, `makeShop` in `src/game/run.ts` |
