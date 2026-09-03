@@ -156,3 +156,41 @@ describe('the bounded-lookahead player', () => {
     expect(r.movesUsed).toBeLessThanOrEqual(l.par);
   });
 });
+
+describe('which deck a level is guaranteed against', () => {
+  it('promises early boards to a standard deck, so a build is pure advantage', () => {
+    // While the ratio pays for the whole plain board, the budget is lifted to
+    // cover plainPar outright. Without this the deal quietly assumes the
+    // player's enchantments, and no board can ever produce the thought "I
+    // needed the card I passed on".
+    for (const stage of [1, 4, 8, 12]) {
+      for (const seed of [4242, 90210, 1357]) {
+        const l = level(deck(0), stage, seed, 0);
+        expect(ratioFor(stage)).toBeGreaterThanOrEqual(1);
+        expect(l.budget).toBeGreaterThanOrEqual(l.plainPar);
+        expect(l.needsBuild).toBe(false);
+        expect(l.slack).toBeGreaterThanOrEqual(0);
+      }
+    }
+  });
+
+  it('withdraws that promise once the ratio drops under 1.0', () => {
+    // Deep enough that the geometric tail has taken the ratio below 1: the
+    // budget no longer covers the plain line and the difference is the build's
+    // to find. A bare deck at an empty bank simply cannot afford it.
+    const stage = 30;
+    expect(ratioFor(stage)).toBeLessThan(1);
+    const l = level(deck(0), stage, 5150, 0);
+    expect(l.slack).toBeLessThan(0);
+    expect(l.needsBuild).toBe(true);
+  });
+
+  it('never deals a board the player cannot win, at any depth', () => {
+    for (const stage of [1, 10, 20, 30]) {
+      for (const seed of [4242, 90210]) {
+        const l = level(deck(8), stage, seed, 80);
+        if (l.affordable) expect(l.par).toBeLessThanOrEqual(l.budget);
+      }
+    }
+  });
+});

@@ -96,6 +96,8 @@ export function buildTutorialLevel(): Level {
     par: 16,
     plainPar: 16,
     stipend: TUTORIAL_BUDGET,
+    slack: TUTORIAL_BUDGET - 16,
+    needsBuild: false,
     bank: 0,
     surplus: TUTORIAL_BUDGET - 16,
     budget: TUTORIAL_BUDGET,

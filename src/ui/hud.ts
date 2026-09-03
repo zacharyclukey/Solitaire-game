@@ -121,7 +121,25 @@ export class Hud {
         return c;
       }),
     );
-    this.strip.classList.toggle('empty', level.modifiers.length === 0);
+    // A board priced past what a standard deck could afford says so, up front.
+    // The whole point of withdrawing that guarantee is the moment where the
+    // player realises their build is what has to close the gap — which only
+    // lands if they are told before the board is lost, not after.
+    if (level.needsBuild) {
+      const n = level.plainPar - level.budget;
+      const chip = el('span', { class: 'chip needs-build' }, [`⚠ ${n} beyond a standard deck`]);
+      chip.addEventListener('click', () =>
+        sheetPanel({
+          title: 'Beyond a standard deck',
+          body: el('p', { class: 'prose' }, [
+            `This board costs ${level.plainPar} moves to clear with no enchantments, and you have ${level.budget}. ` +
+            `Your deck has to make up the difference — every move your cards save you is a move you needed.`,
+          ]),
+        }),
+      );
+      this.strip.prepend(chip);
+    }
+    this.strip.classList.toggle('empty', level.modifiers.length === 0 && !level.needsBuild);
     this.peekBtn.classList.toggle('hidden', level.peeksLeft === 0);
     this.timer.classList.toggle('hidden', level.timeLimit === 0);
   }

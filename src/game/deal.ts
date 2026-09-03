@@ -47,6 +47,14 @@ export interface Level {
   plainPar: number;
   /** Moves this level grants. Build-blind: derived from plainPar, never par. */
   stipend: number;
+  /**
+   * The allowance against the plain board, as a signed number of moves.
+   * Positive means a standard deck has room; negative is the deficit the
+   * player's build has to cover.
+   */
+  slack: number;
+  /** True when no standard deck could have afforded this board. */
+  needsBuild: boolean;
   /** Moves carried in from earlier levels. */
   bank: number;
   budget: number; // bank + stipend: what movesLeft actually starts at
@@ -489,8 +497,36 @@ export function dealLevel(opts: DealOptions): Level {
   const plainSol = findSolution(probe, PLAIN_SOLVE_MS);
   const plainPar = Math.max(plainSol ? plainSol.cost : Math.round(par * 1.2), par);
 
-  const stipend = stipendFor(plainPar, spec.stage, m, spec.kind) + flatBonus;
+  let stipend = stipendFor(plainPar, spec.stage, m, spec.kind) + flatBonus;
+
+  /**
+   * Which deck the level is guaranteed against, and it changes with depth.
+   *
+   * While the ratio pays for the whole plain board, the guarantee is that a
+   * *standard* deck could clear this: the budget is lifted to cover plainPar
+   * outright. That makes the player's build pure advantage rather than
+   * something the deal quietly assumes, which is the only way a board can
+   * produce the thought "I needed the card I passed on".
+   *
+   * Once the ratio falls under 1.0 that guarantee is withdrawn on purpose. The
+   * budget no longer covers the plain line, so the difference has to come out
+   * of the build, and a deck that never committed to one runs out of room. The
+   * board is still certified against the deck the player actually holds — they
+   * can always win it — but a bare deck no longer can.
+   */
+  const guaranteePlain = ratioFor(spec.stage) >= 1;
+  if (guaranteePlain) stipend = Math.max(stipend, plainPar);
+
   const budget = bank + stipend;
+
+  /**
+   * True when a standard deck could not have afforded this board. Late levels
+   * are meant to read this way, and the player is told rather than left to
+   * discover it by losing.
+   */
+  const needsBuild = plainPar > budget;
+  /** The +/- n the allowance sits at against the plain board. */
+  const slack = stipend - plainPar;
   // Nothing is clamped up to par here, and that is the point. If the purse
   // cannot cover the board the run is over on economy — but the relaxation
   // loop above has already spent every easing it has trying to avoid that, so
@@ -538,6 +574,8 @@ export function dealLevel(opts: DealOptions): Level {
     par,
     plainPar,
     stipend,
+    slack,
+    needsBuild,
     bank,
     budget,
     surplus,
