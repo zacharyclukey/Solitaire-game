@@ -13,6 +13,7 @@
  */
 import { dealLevel } from '../src/game/deal.ts';
 import { CAREFUL, playBot, type BotOptions } from '../src/game/bot.ts';
+import { MODIFIERS, type ModifierId } from '../src/game/content.ts';
 import { newRun, stageSpec } from '../src/game/run.ts';
 import { Rng } from '../src/game/rng.ts';
 import type { DeckCard, EnchantId, Suit } from '../src/game/types.ts';
@@ -85,6 +86,84 @@ function boardSweep(perStage: number): void {
       `${(med * 100).toFixed(0).padStart(11)}%   ${(worst * 100).toFixed(0).padStart(5)}%`,
     );
   }
+}
+
+/**
+ * One line per board: the features of the deal, and whether the fallible player
+ * cleared it with money no object. Feeding a correlation, not a summary — the
+ * question is which generator knobs predict a board no person can finish.
+ */
+function diagnose(perStage: number): void {
+  console.log('stage cols stock hidden deepest par relaxed won left mods');
+  for (const stage of [6, 8, 10, 12, 14, 16, 18, 20]) {
+    for (let i = 0; i < perStage; i++) {
+      // A fresh run seed per board, or every board at a stage draws the same
+      // modifiers and the sweep says nothing about which of them hurt.
+      const run = newRun((31337 + i * 104729) >>> 0);
+      run.stage = stage;
+      const spec = stageSpec(run, stage);
+      const l = dealLevel({ deck: run.deck, charms: [], spec, bonusMoves: 0, bonusCells: 0, bank: 999 });
+      const heights = l.sim.cols.slice(0, l.columns).map((c) => c.length);
+      const deepest = Math.max(...heights);
+      const hidden = l.sim.hidden; // before play: playBot mutates the sim
+      const r = playBot(l.sim, CAREFUL);
+      console.log(
+        `${String(stage).padStart(5)} ${String(l.columns).padStart(4)} ${String(l.stockSize).padStart(5)} ` +
+        `${String(hidden).padStart(6)} ${String(deepest).padStart(7)} ${String(l.par).padStart(3)} ` +
+        `${String(l.relaxed).padStart(7)} ${r.won ? '  1' : '  0'} ${String(r.remaining).padStart(4)} ${l.modifiers.join(',')}`,
+      );
+    }
+  }
+}
+
+/**
+ * One modifier at a time, against the same seeds with none.
+ *
+ * The marginal deltas from `diagnose` cannot be trusted: modifiers are drawn
+ * together and more of them means a deeper stage, so every effect is confounded
+ * with every other. The proof is in that sweep's own output — Steady Hand (no
+ * undos) scored -23pp and Austerity (stipend only, irrelevant at an unlimited
+ * bank) -18pp, and neither can affect this player at all. That is the noise
+ * floor, and it swallowed most of the table.
+ *
+ * So: same stage, same seeds, one modifier or none. Anything that survives here
+ * is real.
+ */
+function isolate(per: number): void {
+  const STAGE = 12;
+  const seeds = Array.from({ length: per }, (_, i) => (5000 + i * 7919) >>> 0);
+  const deck = newRun(4242).deck;
+
+  const run1 = (mods: ModifierId[]): number => {
+    let won = 0;
+    for (const seed of seeds) {
+      const l = dealLevel({
+        deck, charms: [], spec: { stage: STAGE, kind: 'trial', modifiers: mods, seed },
+        bonusMoves: 0, bonusCells: 0, bank: 999,
+      });
+      if (playBot(l.sim, CAREFUL).won) won++;
+    }
+    return (won / seeds.length) * 100;
+  };
+
+  const base = run1([]);
+  console.log(`control (no modifiers): ${base.toFixed(0)}% of ${per} at stage ${STAGE}\n`);
+  console.log('modifier      won    delta');
+  const rows: { id: string; p: number }[] = [];
+  for (const id of Object.keys(MODIFIERS) as ModifierId[]) rows.push({ id, p: run1([id]) });
+  for (const r of rows.sort((a, b) => a.p - b.p)) {
+    console.log(`${r.id.padEnd(12)} ${r.p.toFixed(0).padStart(4)}%  ${(r.p - base >= 0 ? '+' : '')}${(r.p - base).toFixed(0)}pp`);
+  }
+}
+
+if (process.argv[2] === 'isolate') {
+  isolate(Number(process.argv[3] ?? 10));
+  process.exit(0);
+}
+
+if (process.argv[2] === 'diagnose') {
+  diagnose(Number(process.argv[3] ?? 12));
+  process.exit(0);
 }
 
 if (process.argv[2] === 'boards') {

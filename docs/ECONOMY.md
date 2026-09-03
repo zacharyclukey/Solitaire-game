@@ -192,6 +192,35 @@ recognises shapes. The real number sits somewhere between this and the solver's
 large, that it widens with depth, and that tuning the ratio against solver play
 alone was measuring the wrong thing.
 
+## Which boards a person cannot clear, and a warning about measuring it
+
+`scripts/humanrun.ts diagnose` deals across stages 6-20 with an unlimited bank
+and records the board's shape, its modifiers, and whether the fallible player
+cleared it. 112 boards:
+
+| stage | 6 | 8 | 10 | 12 | 14 | 16 | 18 | 20 |
+|---|---|---|---|---|---|---|---|---|
+| cleared | 100% | 86% | 79% | 86% | 71% | 57% | 57% | 71% |
+
+The stage effect is real and it is the problem: by the deep game a shallow
+player fails two boards in five with money no object. Column count barely
+matters (75% at six columns, 76% at seven), and neither does how far the deal
+had to be relaxed.
+
+**The per-modifier breakdown from that sweep is not trustworthy, and it says so
+itself.** Modifiers are drawn together and more of them means a deeper stage, so
+every marginal effect is confounded with every other. The sweep's own output
+contains two controls that prove it: Steady Hand scored -23pp and Austerity
+-18pp, and *neither can affect this player at all* — Steady Hand only removes
+undos, which the bot never uses, and Austerity only scales the stipend, which is
+irrelevant at an unlimited bank. That is a noise floor of roughly 20 points, and
+it swallows most of the table. Suit Lock at -34pp and Doppelganger at -32pp
+clear it, but only by about twelve.
+
+So the numbers worth acting on come from `scripts/humanrun.ts isolate`: the same
+stage, the same seeds, one modifier or none. It is the slower experiment and the
+only one that attributes anything.
+
 ## Measuring it honestly
 
 The solver banks perfectly. A human does not. Every number produced by solver play is

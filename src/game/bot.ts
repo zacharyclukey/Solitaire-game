@@ -13,7 +13,7 @@
  * horizon and a narrow branching cap, so it walks into dead ends that a
  * searcher would see coming, which is the entire point of having it.
  */
-import { applyMove, cloneSim, isWon, legalMoves, simKey, type Sim } from './sim.ts';
+import { applyMove, cloneSim, isWon, legalMoves, remaining, simKey, type Sim } from './sim.ts';
 import type { Move } from './types.ts';
 import { heuristic } from './solver.ts';
 
@@ -130,6 +130,27 @@ export function playBot(s: Sim, o: BotOptions = CASUAL, moveCap = 400): BotResul
     won: isWon(s),
     movesUsed: s.movesUsed,
     movesLeft: Math.max(0, s.movesLeft),
-    remaining: s.hidden + s.cols[s.cols.length - 1].length,
+    remaining: remaining(s),
   };
+}
+
+/**
+ * Could a person finish this board at all?
+ *
+ * "Clearable" has meant clearable by a weighted A* search, and past the mid
+ * game that stopped meaning clearable by a player: the bot lost four of eight
+ * stage-10 boards with 999 moves in hand. This asks the weaker question the
+ * player actually cares about — is there a line a bounded-lookahead player can
+ * find — with moves deliberately not the constraint, so it tests the shape of
+ * the board rather than the size of the purse.
+ *
+ * The bot is a lower bound on human skill, so this filter is conservative in
+ * the player's favour: boards it rejects might well have been clearable by a
+ * person, but boards it accepts almost certainly are.
+ */
+export function humanlyClearable(s: Sim, budget: number, o: BotOptions = CAREFUL): boolean {
+  const probe = cloneSim(s);
+  probe.movesLeft = budget;
+  probe.movesUsed = 0;
+  return playBot(probe, o).won;
 }
