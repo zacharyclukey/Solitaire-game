@@ -18,7 +18,7 @@ import { newRun, stageSpec } from '../src/game/run.ts';
 import { Rng } from '../src/game/rng.ts';
 import type { DeckCard, EnchantId, Suit } from '../src/game/types.ts';
 
-const KIT: EnchantId[] = ['torch', 'bridge', 'wild', 'free', 'spring', 'twin', 'anchor', 'prism'];
+const KIT: EnchantId[] = ['torch', 'bridge', 'wild', 'free', 'spring', 'twin', 'anchor', 'prism', 'conduit', 'resonance'];
 const MAX_STAGE = 40;
 
 /**

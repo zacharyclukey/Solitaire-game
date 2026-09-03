@@ -22,7 +22,9 @@ export type EnchantId =
   | 'anchor'
   | 'gild'
   | 'beacon'
-  | 'prism';
+  | 'prism'
+  | 'conduit'
+  | 'resonance';
 
 export type CurseId = 'heavy' | 'frozen' | 'stuck' | 'dim';
 
@@ -58,6 +60,8 @@ export interface CardDef {
   gild: boolean;
   beacon: boolean;
   prism: boolean;
+  conduit: boolean;
+  resonance: boolean;
   heavy: boolean;
   frozen: boolean;
   stuck: boolean;
@@ -151,6 +155,8 @@ export function makeCardDef(c: DeckCard): CardDef {
     gild: e === 'gild',
     beacon: e === 'beacon',
     prism: e === 'prism',
+    conduit: e === 'conduit',
+    resonance: e === 'resonance',
     heavy: k === 'heavy',
     frozen: k === 'frozen',
     stuck: k === 'stuck',

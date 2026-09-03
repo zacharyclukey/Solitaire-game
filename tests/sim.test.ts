@@ -364,3 +364,41 @@ describe('recycling the draw pile', () => {
     expect(isWon(s)).toBe(false);
   });
 });
+
+describe('compounding enchantments', () => {
+  // 5H sits on a face-down card; moving it onto 6S exposes whatever is beneath.
+  const uncover = (beneath: DeckCard, rest: DeckCard[][] = [], up: boolean[][] = []) =>
+    build(
+      [[card(6, 0)], [beneath, card(5, 1)], ...rest],
+      [[true], [false, true], ...up],
+    );
+
+  it('Resonance pays for the rest of the build, not for itself', () => {
+    const s = uncover(
+      card(9, 1, 'resonance'),
+      [[card(2, 0, 'torch')], [card(3, 1, 'beacon')]],
+      [[true], [true]],
+    );
+    const before = s.movesLeft;
+    applyMove(s, legalMoves(s).find((m) => m.kind === 'm' && m.from === 1)!);
+    // One move spent, two enchanted cards already face-up, so two back.
+    expect(s.movesLeft).toBe(before - 1 + 2);
+  });
+
+  it('pays nothing when there is no build to resonate with', () => {
+    const s = uncover(card(9, 1, 'resonance'));
+    const before = s.movesLeft;
+    applyMove(s, legalMoves(s).find((m) => m.kind === 'm' && m.from === 1)!);
+    expect(s.movesLeft).toBe(before - 1);
+  });
+
+  it('Conduit reaches another enchanted card, and the chain terminates', () => {
+    // Exposing the Conduit should also turn the buried Torch two columns over,
+    // which a plain reveal would have left alone.
+    const s = uncover(card(9, 1, 'conduit'), [[card(4, 2, 'torch'), card(7, 3)]], [[false, true]]);
+    const hiddenBefore = s.hidden;
+    expect(hiddenBefore).toBe(2);
+    applyMove(s, legalMoves(s).find((m) => m.kind === 'm' && m.from === 1)!);
+    expect(s.hidden).toBe(0);
+  });
+});

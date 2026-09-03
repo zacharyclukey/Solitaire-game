@@ -104,6 +104,27 @@ export const ENCHANTS: Record<EnchantId, EnchantDef> = {
     rarity: 'rare',
     price: 30,
   },
+  conduit: {
+    id: 'conduit',
+    name: 'Conduit',
+    glyph: '⇢',
+    // The point of this card is that it reaches for other cards you chose.
+    // Everything else in the set adds; a Conduit into a Torch into a Twin
+    // multiplies, and a Conduit into a Conduit runs the whole chain.
+    text: 'When turned, also turns the nearest face-down enchanted card.',
+    rarity: 'epic',
+    price: 44,
+  },
+  resonance: {
+    id: 'resonance',
+    name: 'Resonance',
+    glyph: '≋',
+    // Pays for density rather than for any single card, so a deck that commits
+    // to enchantments is worth more than the sum of them.
+    text: 'When turned, grants 1 move for every other enchanted card face-up.',
+    rarity: 'epic',
+    price: 40,
+  },
   anchor: {
     id: 'anchor',
     name: 'Anchor',

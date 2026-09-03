@@ -10,7 +10,7 @@ import { starterDeck } from '../src/game/run.ts';
 import type { LevelSpec } from '../src/game/deal.ts';
 import type { DeckCard, EnchantId } from '../src/game/types.ts';
 
-const KIT: EnchantId[] = ['torch', 'bridge', 'wild', 'free', 'spring', 'twin', 'anchor', 'prism'];
+const KIT: EnchantId[] = ['torch', 'bridge', 'wild', 'free', 'spring', 'twin', 'anchor', 'prism', 'conduit', 'resonance'];
 
 /** The same deck every time, with the first `n` distinct cards enchanted. */
 function deck(n: number): DeckCard[] {

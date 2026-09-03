@@ -10,7 +10,7 @@ import { dealLevel, ratioFor, type LevelSpec } from '../src/game/deal.ts';
 import { starterDeck } from '../src/game/run.ts';
 import type { DeckCard, EnchantId } from '../src/game/types.ts';
 
-const KIT: EnchantId[] = ['torch', 'bridge', 'wild', 'free', 'spring', 'twin', 'anchor', 'prism'];
+const KIT: EnchantId[] = ['torch', 'bridge', 'wild', 'free', 'spring', 'twin', 'anchor', 'prism', 'conduit', 'resonance'];
 
 function deck(n: number): DeckCard[] {
   const d = starterDeck().map((c) => ({ ...c }));

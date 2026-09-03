@@ -338,6 +338,49 @@ function flipCard(s: Sim, id: number, col: number, idx: number, ev: SimEvent[] |
       }
     }
   }
+  if (d.resonance) {
+    // Pays for the build's density rather than for any one card. It counts what
+    // is already face-up, so a deck that commits to enchantments compounds as
+    // the board opens up instead of adding a fixed amount per card.
+    let others = 0;
+    for (let i = 0; i < s.defs.length; i++) {
+      if (i !== id && s.defs[i].ench !== null && s.up[i] && !s.gone[i]) others++;
+    }
+    if (others > 0) {
+      s.movesLeft += others;
+      ev?.push({ t: 'moves', n: others, src: 'resonance' });
+    }
+  }
+  if (d.conduit) {
+    // Reaches for another card the player chose, so chains are buildable rather
+    // than accidental: a Conduit into a Torch into a Twin does more than the
+    // three of them apart, and a Conduit into a Conduit runs the whole line.
+    // flipCard returns early on an already-turned card, so a chain terminates.
+    let best = -1;
+    let bestIdx = -1;
+    let bestCol = -1;
+    for (let ci = 0; ci < s.tableau; ci++) {
+      const c = s.cols[ci];
+      for (let i = c.length - 1; i >= 0; i--) {
+        const cid = c[i];
+        if (!s.up[cid] && s.defs[cid].ench !== null) {
+          // Nearest means closest to the top of its column: the one the player
+          // would have reached soonest anyway.
+          if (i > bestIdx) {
+            best = cid;
+            bestIdx = i;
+            bestCol = ci;
+          }
+          break;
+        }
+      }
+    }
+    if (best >= 0) {
+      const before = s.revealed;
+      flipCard(s, best, bestCol, bestIdx, ev);
+      if (s.revealed > before) ev?.push({ t: 'cascade', src: 'conduit', n: s.revealed - before });
+    }
+  }
   if (d.twin) {
     const before = s.revealed;
     for (let ci = 0; ci < s.tableau; ci++) {
