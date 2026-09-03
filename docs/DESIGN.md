@@ -136,12 +136,19 @@ Three consequences, all of them the point:
 Measured across simulated runs:
 
 ```
-stage   cards cols pile hidden   par budget spare
-    1      28  7.0 13.0   21.0  34.6   49.1  14.5
-    5      29  6.8 10.3   22.4  34.4   41.8   6.9
-   10      30  6.6  9.4   23.1  36.6   42.0   4.3
-   12      31  6.9  9.6   23.5  35.8   43.0   4.8
+stage   cards cols pile hidden   par budget spare  relaxed
+    1      28  7.0 13.0   20.9  34.9   49.6  14.7     0/20
+    5      29  6.8 10.1   21.8  40.4   49.8   8.6     0/20
+   10      29  6.7  7.8   22.1  35.5   41.9   4.9     2/20
+   15      30  6.5  8.6   22.7  37.0   43.9   4.5     4/20
+   20      30  6.6 10.8   22.3  38.9   46.3   4.3    10/20
 ```
+
+A methodological note, because it nearly cost a wrong conclusion: at twelve
+samples a stage the run-to-run noise on the relaxation rate is about ±14
+points. Two intermediate tunings that looked like a 19%-versus-31% difference
+were inside that noise. The numbers above are from 400 deals; per-stage
+comparisons below about 20 samples should not be trusted.
 
 `npm run balance` regenerates this table.
 
@@ -160,9 +167,13 @@ If a modifier combination resists the solver, the deal is **eased in steps**
 rather than shipped broken: widen the reserve, then widen it again, then turn one
 more card face-up per column, and only as a last resort drop the placement-rule
 modifiers. The level records how far it had to be eased, which is what the
-telemetry column `relaxed` reports. In current tuning it is untouched
-through the early game and affects roughly a third of deals past depth twelve,
-where several modifiers stack.
+telemetry column `relaxed` reports. Measured over 400 deals, it is untouched
+through the first five stages and affects about 22% of deals past stage 12 —
+down from 42%, with deals the solver could not clear at all falling from 3.8%
+to 0.5%. What closed most of that gap was structural rather than per-modifier:
+**board-tag modifiers are now capped at two per level** (three on a Warden).
+Those are the ones that add cards and curses, and stacking three or four of
+them was what made the deep game unshippable at its stated difficulty.
 
 ### The search
 
@@ -282,16 +293,24 @@ restrictions; `Sorting Tray` ignores Rust).
 
 **22 level modifiers**, each tagged:
 
-- `rule` — rewrites placement (Suit Lock, Inversion, Rust, Gridlock, Royal
-  Gates, Tithe, Stiff Deck, Low Ceiling, Loose Weave)
+- `rule` — rewrites placement (Suit Lock, Inversion, Gridlock, Tithe, Stiff
+  Deck, Low Ceiling, Loose Weave)
 - `board` — reshapes the deal (Narrow, Open Ground, Shallow Deal, Deep Deal,
   Deep Frost, Leadfoot, Shroud, Overgrowth, Doppelgänger)
 - `meta` — touches the surrounding resources (Austerity, Rush, Steady Hand,
   Glasswork, Bounty, Windfall)
 
-**A level takes at most one `rule` modifier** (two on deep Wardens). This is the
-single most important balance constraint in the game: rule modifiers compose
-badly, and stacking two of them was the main source of unwinnable boards.
+**A level takes at most one `rule` modifier and at most two `board` modifiers**
+(three on a Warden). These are the most important balance constraints in the
+game: rule modifiers compose badly, and board modifiers each add cards or
+curses, so three or four together bloat a deal past what the solver can clear.
+
+Three rule modifiers have been retired outright rather than retuned, each after
+measurement showed it broke boards faster than it made them interesting:
+**Sealed Ground** and **Royal Gates** both throttled empty columns, which are
+the only true sink in the game, and **Rust** forbade group moves entirely,
+which Gridlock already does more gently. Royal Gates was retuned twice before
+being cut; at 63% needing relaxation it was still the worst thing in the table.
 
 Every modifier carries a `threat` weight; a node picks modifiers until it hits a
 depth-scaled threat target, so difficulty rises smoothly without a hand-authored

@@ -135,10 +135,12 @@ function pickModifiers(
   maxCount: number,
   allowBoon: boolean,
   maxRules = 1,
+  maxBoard = 2,
 ): ModifierId[] {
   const chosen: ModifierId[] = [];
   let threat = 0;
   let rules = 0;
+  let board = 0;
 
   if (allowBoon && rng.next() < 0.55) {
     const boons = (['wide', 'anyColor', 'bounty', 'rich'] as ModifierId[]).filter(
@@ -147,6 +149,7 @@ function pickModifiers(
     const b = rng.pick(boons);
     chosen.push(b);
     if (MODIFIERS[b].tag === 'rule') rules++;
+    if (MODIFIERS[b].tag === 'board') board++;
     threat += MODIFIERS[b].threat;
   }
 
@@ -157,7 +160,10 @@ function pickModifiers(
         MODIFIERS[id].minDepth <= depth &&
         !chosen.includes(id) &&
         !conflicts(id, chosen) &&
-        (MODIFIERS[id].tag !== 'rule' || rules < maxRules),
+        (MODIFIERS[id].tag !== 'rule' || rules < maxRules) &&
+        // Board modifiers are the ones that add cards and curses. Stacking
+        // three or four of them is what forced the deep game to be eased.
+        (MODIFIERS[id].tag !== 'board' || board < maxBoard),
     );
     if (cands.length === 0) break;
     const entries = cands.map((id) => {
@@ -167,6 +173,7 @@ function pickModifiers(
     const pick = rng.weighted(entries)!;
     chosen.push(pick);
     if (MODIFIERS[pick].tag === 'rule') rules++;
+    if (MODIFIERS[pick].tag === 'board') board++;
     threat += MODIFIERS[pick].threat;
   }
   return chosen;
@@ -199,7 +206,10 @@ export function stageSpec(run: RunState, stage: number): LevelSpec {
     return {
       stage,
       kind: 'boss',
-      modifiers: pickModifiers(rng, stage, stage * 1.35 + 6, maxModsFor(stage) + 1, false, stage >= 15 ? 2 : 1),
+      // A Warden never takes a second placement rule. Raising its threat
+      // target to compensate was tried and measured worse: with fewer slots
+      // the picker simply reaches for the heaviest modifiers it has.
+      modifiers: pickModifiers(rng, stage, stage * 1.35 + 6, maxModsFor(stage) + 1, false, 1, 3),
       seed: subSeed(run.seed, stage, 0xb055),
     };
   }

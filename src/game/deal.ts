@@ -70,14 +70,12 @@ export function buildRules(mods: ModifierId[], charms: CharmId[], ranks: number[
   }
   if (has(mods, 'sameSuit')) r.match = 'suit';
   if (has(mods, 'anyColor')) r.match = 'any';
-  if (has(mods, 'royal')) r.empty = 'top';
-  if (has(mods, 'rust')) r.groups = false;
   if (has(mods, 'tithe')) r.emptyCost = 2;
   if (has(mods, 'heavydraw')) r.drawCost = 2;
   if (has(mods, 'gridlock')) r.maxGroup = 3;
   if (has(mods, 'ceiling')) r.maxHeight = 9;
   if (charms.includes('locksmith')) r.empty = 'any';
-  if (charms.includes('sorter')) r.groups = true;
+  if (charms.includes('sorter')) r.maxGroup = 0;
   return r;
 }
 
@@ -256,7 +254,7 @@ function levelCards(deck: DeckCard[], mods: ModifierId[], rng: Rng): CardDef[] {
   let nextUid = -1;
 
   if (has(mods, 'dense')) {
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < 2; i++) {
       defs.push(
         makeCardDef({
           uid: nextUid--,
@@ -271,7 +269,7 @@ function levelCards(deck: DeckCard[], mods: ModifierId[], rng: Rng): CardDef[] {
     }
   }
   if (has(mods, 'twinned')) {
-    for (const src of rng.sample(deck, 3)) {
+    for (const src of rng.sample(deck, 2)) {
       defs.push(makeCardDef({ ...src, uid: nextUid--, ench: null }));
     }
   }

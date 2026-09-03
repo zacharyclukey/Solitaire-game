@@ -84,8 +84,10 @@ describe('empty column rules', () => {
   const keyed = makeCardDef(card(2, 0, 'key'));
   const rooted = makeCardDef(card(2, 0, null, 'stuck'));
 
-  it('royal gates only admit the top rank', () => {
-    const R = { ...DEFAULT_RULES, empty: 'top' as const, topRank: 13 };
+  // No modifier currently sets `empty: 'top'` — Royal Gates was cut for
+  // throttling the game's only sink — but the rule itself still works.
+  it("the 'top rank only' empty rule admits the ranks nearest the base", () => {
+    const R = { ...DEFAULT_RULES, empty: 'top' as const, baseRank: 13 };
     expect(canPlaceEmpty(k, R)).toBe(true);
     expect(canPlaceEmpty(two, R)).toBe(false);
     expect(canPlaceEmpty(keyed, R)).toBe(true);

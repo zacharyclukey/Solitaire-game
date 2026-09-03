@@ -247,7 +247,7 @@ export const CHARMS: Record<CharmId, CharmDef> = {
     id: 'sorter',
     name: 'Sorting Tray',
     glyph: '≡',
-    text: 'You may always move sequences, even under Rust.',
+    text: 'Sequences of any length may be moved, even under Gridlock.',
     rarity: 'rare',
     price: 52,
   },
@@ -300,12 +300,10 @@ export const CHARM_LIST: CharmDef[] = Object.values(CHARMS);
 export type ModifierId =
   | 'narrow'
   | 'wide'
-  | 'royal'
   | 'gridlock'
   | 'sameSuit'
   | 'anyColor'
   | 'ascend'
-  | 'rust'
   | 'tithe'
   | 'frost'
   | 'lead'
@@ -363,15 +361,6 @@ export const MODIFIERS: Record<ModifierId, ModifierDef> = {
     minDepth: 1,
     excludes: ['narrow'],
   },
-  royal: {
-    id: 'royal',
-    tag: 'rule',
-    name: 'Royal Gates',
-    glyph: '♛',
-    text: 'Only the two ranks nearest the top of the deck may start an empty column.',
-    threat: 7,
-    minDepth: 12,
-  },
   gridlock: {
     id: 'gridlock',
     tag: 'rule',
@@ -380,7 +369,6 @@ export const MODIFIERS: Record<ModifierId, ModifierDef> = {
     text: 'No more than three cards may be moved at once.',
     threat: 5,
     minDepth: 8,
-    excludes: ['rust'],
   },
   sameSuit: {
     id: 'sameSuit',
@@ -389,7 +377,7 @@ export const MODIFIERS: Record<ModifierId, ModifierDef> = {
     glyph: '♠',
     text: 'Stacks must follow the same suit instead of alternating colour.',
     threat: 8,
-    minDepth: 10,
+    minDepth: 12,
     excludes: ['anyColor'],
   },
   anyColor: {
@@ -410,16 +398,6 @@ export const MODIFIERS: Record<ModifierId, ModifierDef> = {
     text: 'Stacks build upward: place a card one rank HIGHER.',
     threat: 4,
     minDepth: 7,
-  },
-  rust: {
-    id: 'rust',
-    tag: 'rule',
-    name: 'Rust',
-    glyph: '⇢',
-    text: 'Only one card may be moved at a time.',
-    threat: 9,
-    minDepth: 13,
-    excludes: ['gridlock'],
   },
   tithe: {
     id: 'tithe',
@@ -507,7 +485,7 @@ export const MODIFIERS: Record<ModifierId, ModifierDef> = {
     tag: 'board',
     name: 'Overgrowth',
     glyph: '❦',
-    text: 'Three extra cards are shuffled into this level.',
+    text: 'Two extra cards are shuffled into this level.',
     threat: 4,
     minDepth: 4,
   },
@@ -516,8 +494,8 @@ export const MODIFIERS: Record<ModifierId, ModifierDef> = {
     tag: 'board',
     name: 'Doppelgänger',
     glyph: '⧉',
-    text: 'Three of your cards are duplicated into this level.',
-    threat: 5,
+    text: 'Two of your cards are duplicated into this level.',
+    threat: 4,
     minDepth: 14,
   },
   steady: {
