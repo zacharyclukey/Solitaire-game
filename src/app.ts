@@ -3,7 +3,7 @@
  * screens, and mediates between the rules engine and the views.
  */
 import { sfx, unlock } from './audio.ts';
-import { CHARMS, ENCHANTS, MODIFIERS } from './game/content.ts';
+import { CHARMS, CONSUMABLES, ENCHANTS, MODIFIERS, REPRIEVE_MOVES, type ConsumableId } from './game/content.ts';
 import { dealLevelAsync, warmUp } from './game/dealAsync.ts';
 import type { Level, LevelSpec } from './game/deal.ts';
 import { Rng, randomSeed, seedFromString, seedToCode } from './game/rng.ts';
@@ -35,7 +35,7 @@ import { analyse, type PostMortem } from './game/postmortem.ts';
 import { findRescue } from './game/rescue.ts';
 import { ask, questionById, type Answer } from './game/oracle.ts';
 import { resolveUndo } from './game/resources.ts';
-import { applyMove, cloneSim, isWon, legalMoves, settle, waste, type Sim, type SimEvent } from './game/sim.ts';
+import { applyMove, cloneSim, dig, isWon, legalMoves, pry, settle, waste, type Sim, type SimEvent } from './game/sim.ts';
 import { findSolution } from './game/solver.ts';
 import {
   emptyStreak,
@@ -142,6 +142,7 @@ export class App {
       undo: () => this.undo(),
       hint: () => this.openOracle(),
       peek: () => this.peek(),
+      use: (id) => void this.useItem(id),
     });
     screen('play').append(this.hud.root);
 
@@ -376,6 +377,7 @@ export class App {
     this.tally = emptyTally();
     this.offBookSpend = 0;
     this.hud.mount(level);
+    this.hud.setItems(run.consumables);
     this.hud.setHintEnabled(store.settings().showHint);
     this.board.mount(level);
     this.hud.setDealing(false);
@@ -588,6 +590,64 @@ export class App {
   }
 
   /* ------------------------------------------------------------ outcomes */
+
+  /**
+   * Spend an escape.
+   *
+   * These cost no moves on purpose. They are bought with gold, and a board that
+   * has gone dead is already punishing the player — charging them again to get
+   * out of it would turn the rescue into another way to lose. They are also
+   * undoable like any other action, so a mis-tap is not fatal.
+   */
+  private async useItem(id: ConsumableId): Promise<void> {
+    const run = this.run!;
+    const level = this.level;
+    if (!level || this.board.busy) return;
+    if ((run.consumables[id] ?? 0) <= 0) return;
+
+    const sim = level.sim;
+    this.history.push({ sim: cloneSim(sim), offBook: this.offBookSpend });
+    const events: SimEvent[] = [];
+    let did = false;
+    if (id === 'reprieve') {
+      sim.movesLeft += REPRIEVE_MOVES;
+      events.push({ t: 'moves', n: REPRIEVE_MOVES });
+      did = true;
+    } else if (id === 'pry') {
+      did = pry(sim, events);
+    } else if (id === 'dig') {
+      did = dig(sim, events);
+    }
+
+    if (!did) {
+      // Nothing buried to work on. Hand the charge back rather than spending it
+      // on nothing, and say why.
+      this.history.pop();
+      toast('Nothing buried to work on', 'bad');
+      return;
+    }
+
+    run.consumables[id] = (run.consumables[id] ?? 0) - 1;
+    this.hud.setItems(run.consumables);
+    toast(`${CONSUMABLES[id].name} used`, 'good');
+    sfx.boon();
+    haptic('medium');
+    // Same tail as an ordinary move: animate, count the reveals, then re-check
+    // whether the board is now won or dead.
+    this.board.layout(true);
+    const flips = events.filter((e) => e.t === 'flip').map((e) => (e.t === 'flip' ? e.id : -1));
+    if (flips.length) this.board.pulseFlip(flips);
+    const burned = events.find((e) => e.t === 'burn');
+    if (burned && burned.t === 'burn') this.board.flashBurn(burned.id);
+    for (const e of events) if (e.t === 'moves') this.hud.flashMoves(e.n);
+    this.refresh();
+    this.persist();
+    if (isWon(sim)) {
+      await this.onWin();
+      return;
+    }
+    if (sim.movesLeft <= 0 || legalMoves(sim, true).length === 0) await this.onStuck();
+  }
 
   private async onStuck(): Promise<void> {
     const level = this.level!;
@@ -941,6 +1001,11 @@ export class App {
         break;
       case 'moves':
         run.bonusMoves += item.n;
+        finish();
+        break;
+      case 'item':
+        run.consumables[item.id] = (run.consumables[item.id] ?? 0) + 1;
+        toast(`${CONSUMABLES[item.id].name} in hand`, 'good');
         finish();
         break;
       case 'cell':

@@ -410,6 +410,57 @@ export function settle(s: Sim, ev: SimEvent[] | null): void {
   }
 }
 
+/** The tableau column with the most face-down cards under its top card. */
+function mostBuried(s: Sim): number {
+  let best = -1;
+  let bestDepth = -1;
+  for (let c = 0; c < s.tableau; c++) {
+    const col = s.cols[c];
+    if (!col.length) continue;
+    let n = 0;
+    for (const id of col) if (!s.up[id]) n++;
+    if (n > bestDepth) {
+      bestDepth = n;
+      best = c;
+    }
+  }
+  return bestDepth > 0 ? best : -1;
+}
+
+/**
+ * Destroy the card on top of the most buried column.
+ *
+ * The escape of last resort, and the only one that cannot fail to change a
+ * locked position: a card that is gone is a card nothing has to be stacked on
+ * and nothing has to be placed. Returns false when there is nothing buried
+ * left to dig toward, which is a board that is not locked in this way.
+ */
+export function pry(s: Sim, ev: SimEvent[] | null = null): boolean {
+  const c = mostBuried(s);
+  if (c < 0) return false;
+  const col = s.cols[c];
+  const id = col.pop()!;
+  s.gone[id] = 1;
+  ev?.push({ t: 'burn', id, from: c });
+  settle(s, ev);
+  return true;
+}
+
+/** Turn the deepest face-down card of the most buried column. */
+export function dig(s: Sim, ev: SimEvent[] | null = null): boolean {
+  const c = mostBuried(s);
+  if (c < 0) return false;
+  const col = s.cols[c];
+  for (let i = 0; i < col.length; i++) {
+    if (!s.up[col[i]]) {
+      flipCard(s, col[i], c, i, ev);
+      settle(s, ev);
+      return true;
+    }
+  }
+  return false;
+}
+
 export function applyMove(s: Sim, mv: Move, ev: SimEvent[] | null = null): void {
   s.movesLeft -= mv.cost;
   s.movesUsed += mv.cost;

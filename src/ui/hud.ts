@@ -1,6 +1,6 @@
 /** The in-level chrome: counters, rule strip and the action bar. */
 import type { Level } from '../game/deal.ts';
-import { MODIFIERS } from '../game/content.ts';
+import { CONSUMABLE_LIST, MODIFIERS, type ConsumableId } from '../game/content.ts';
 import { remaining, type Sim } from '../game/sim.ts';
 import { el } from './dom.ts';
 import { modChip, sheetPanel } from './shell.ts';
@@ -10,6 +10,7 @@ export interface HudActions {
   undo(): void;
   hint(): void;
   peek(): void;
+  use(id: ConsumableId): void;
 }
 
 export class Hud {
@@ -27,6 +28,7 @@ export class Hud {
   private undoBtn!: HTMLButtonElement;
   private hintBtn!: HTMLButtonElement;
   private peekBtn!: HTMLButtonElement;
+  private itemBtns!: HTMLButtonElement[];
   private banner!: HTMLElement;
   private coach!: HTMLElement;
 
@@ -71,6 +73,19 @@ export class Hud {
     ]) as HTMLButtonElement;
     this.peekBtn.addEventListener('click', actions.peek);
 
+    // An escape only helps if it is in reach of the thumb at the moment the
+    // board goes dead, so these sit in the action row rather than behind a menu.
+    // They appear only when one is actually held.
+    this.itemBtns = CONSUMABLE_LIST.map((c) => {
+      const b = el('button', { class: 'act item hidden', type: 'button' }, [
+        el('span', { class: 'act-glyph' }, [c.glyph]),
+        el('span', { class: 'act-label' }, [c.name]),
+        el('em', { class: 'act-count' }, ['0']),
+      ]) as HTMLButtonElement;
+      b.addEventListener('click', () => actions.use(c.id));
+      return b;
+    });
+
     this.root = el('div', { class: 'play' }, [
       el('header', { class: 'hud' }, [
         menuBtn,
@@ -82,8 +97,17 @@ export class Hud {
       this.bar,
       this.strip,
       el('div', { class: 'board-wrap' }, [this.boardHost, this.banner, this.coach]),
-      el('footer', { class: 'actions' }, [this.undoBtn, this.hintBtn, this.peekBtn]),
+      el('footer', { class: 'actions' }, [this.undoBtn, this.hintBtn, this.peekBtn, ...this.itemBtns]),
     ]);
+  }
+
+  /** Show only the escapes actually held, with their remaining charges. */
+  setItems(held: Partial<Record<ConsumableId, number>>): void {
+    CONSUMABLE_LIST.forEach((c, i) => {
+      const n = held[c.id] ?? 0;
+      this.itemBtns[i].classList.toggle('hidden', n <= 0);
+      this.itemBtns[i].querySelector('.act-count')!.textContent = String(n);
+    });
   }
 
   setDealing(on: boolean): void {

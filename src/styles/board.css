@@ -431,6 +431,8 @@ html.left-handed .actions { flex-direction: row-reverse; }
   color: var(--gold);
 }
 
+.act.item .act-glyph { color: var(--good); }
+
 .hud-par {
   display: block;
   margin-top: 2px;

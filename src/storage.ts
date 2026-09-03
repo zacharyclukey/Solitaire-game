@@ -143,6 +143,8 @@ export function getRun(): RunState | null {
   // Saves written before the move bank existed have no purse. Start them empty
   // rather than with an undefined that would poison every sum downstream.
   if (r && typeof r.bank !== 'number') r.bank = 0;
+  // Saves from before escapes existed carry no pouch.
+  if (r && typeof r.consumables !== 'object') r.consumables = {};
   return r;
 }
 

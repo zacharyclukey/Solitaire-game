@@ -1,5 +1,5 @@
 /** Every non-board screen: title, the fork, rewards, the shop and the epitaph. */
-import { CHARMS, CURSES, ENCHANTS, MODIFIER_LIST } from '../game/content.ts';
+import { CHARMS, CONSUMABLES, CURSES, ENCHANTS, MODIFIER_LIST } from '../game/content.ts';
 import { columnsFor, describeModifiers, threatOf, type LevelSpec, type NodeKind } from '../game/deal.ts';
 import { seedToCode } from '../game/rng.ts';
 import {
@@ -354,6 +354,8 @@ export function renderShop(ctx: MenuCtx, run: RunState): void {
 
 function shopFace(item: ShopItem): { glyph: string; title: string; text: string } {
   switch (item.t) {
+    case 'item':
+      return { glyph: CONSUMABLES[item.id].glyph, title: CONSUMABLES[item.id].name, text: CONSUMABLES[item.id].text };
     case 'ench':
       return { glyph: ENCHANTS[item.ench].glyph, title: ENCHANTS[item.ench].name, text: ENCHANTS[item.ench].text };
     case 'charm':

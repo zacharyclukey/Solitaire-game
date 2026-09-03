@@ -6,6 +6,62 @@ import type { CurseId, EnchantId } from './types.ts';
 
 export type Rarity = 'common' | 'rare' | 'epic';
 
+/**
+ * Single-use escapes, bought and carried between levels.
+ *
+ * Deals are honest shuffles now, so a board can be genuinely lost — about one
+ * in five has no line a player will find, whatever the allowance. That is only
+ * a roguelite rather than bad luck if the player can buy their way out of one,
+ * so each of these answers a death mode that was actually measured:
+ *
+ *  - Pry, for a board locked solid. Burning a card away cannot fail to change
+ *    the position, which is what makes it the true escape.
+ *  - Dig, for a board starved of information, where the next face-down card is
+ *    the whole problem.
+ *  - Reprieve, for a board that was winnable and simply outlasted the purse.
+ *
+ * None of them takes a target. A rescue that opens a picker is a rescue the
+ * player has to be good at using, and the point is to be saved, not tested.
+ */
+export type ConsumableId = 'pry' | 'dig' | 'reprieve';
+
+export interface ConsumableDef {
+  id: ConsumableId;
+  name: string;
+  glyph: string;
+  text: string;
+  price: number;
+}
+
+export const CONSUMABLES: Record<ConsumableId, ConsumableDef> = {
+  pry: {
+    id: 'pry',
+    name: 'Pry',
+    glyph: '⚒',
+    text: 'Destroys the card sitting on top of the most buried column.',
+    price: 42,
+  },
+  dig: {
+    id: 'dig',
+    name: 'Dig',
+    glyph: '⇓',
+    text: 'Turns the deepest face-down card of the most buried column.',
+    price: 34,
+  },
+  reprieve: {
+    id: 'reprieve',
+    name: 'Reprieve',
+    glyph: '✛',
+    text: 'Eight more moves, right now.',
+    price: 26,
+  },
+};
+
+export const CONSUMABLE_LIST: ConsumableDef[] = Object.values(CONSUMABLES);
+
+/** Moves a Reprieve is worth. */
+export const REPRIEVE_MOVES = 8;
+
 export interface EnchantDef {
   id: EnchantId;
   name: string;

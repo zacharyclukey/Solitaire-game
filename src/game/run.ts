@@ -8,10 +8,13 @@
 import {
   BANE_IDS,
   CHARMS,
+  CONSUMABLE_LIST,
+  CONSUMABLES,
   ENCHANTS,
   ENCHANT_LIST,
   MODIFIERS,
   type CharmId,
+  type ConsumableId,
   type ModifierId,
   type Rarity,
 } from './content.ts';
@@ -52,6 +55,11 @@ export interface RunState {
    * not have to fund.
    */
   bank: number;
+  /**
+   * Single-use escapes in hand. Deals are honest shuffles, so a board can be
+   * genuinely lost; these are what make that a roguelite rather than bad luck.
+   */
+  consumables: Partial<Record<ConsumableId, number>>;
   bonusMoves: number;
   bonusCells: number;
   /** Skips taken since the last cleared level. They pay nothing until one is. */
@@ -109,6 +117,7 @@ export function newRun(seed: number, daily = false): RunState {
     charms: [],
     gold: 0,
     bank: 0,
+    consumables: {},
     bonusMoves: 0,
     bonusCells: 0,
     skipsPending: 0,
@@ -496,6 +505,7 @@ export type ShopItem =
   | { t: 'add'; card: DeckCard; price: number; sold?: boolean }
   | { t: 'remove'; price: number; sold?: boolean }
   | { t: 'uncurse'; price: number; sold?: boolean }
+  | { t: 'item'; id: ConsumableId; price: number; sold?: boolean }
   | { t: 'moves'; n: number; price: number; sold?: boolean }
   | { t: 'cell'; price: number; sold?: boolean };
 
@@ -522,6 +532,13 @@ export function makeShop(run: RunState): StockedItem[] {
   items.push({ t: 'remove', price: p(run.charms.includes('scalpel') ? 16 : 32) });
   if (run.deck.some((c) => c.curse)) items.push({ t: 'uncurse', price: p(26) });
   items.push({ t: 'moves', n: 2, price: p(45) });
+  // Always an escape on the shelf. A player who cannot buy their way out of a
+  // dead board has no answer to the one deal in five that has no line, and the
+  // whole design rests on that being survivable.
+  {
+    const c = rng.pick(CONSUMABLE_LIST);
+    items.push({ t: 'item', id: c.id, price: p(c.price) });
+  }
   if (run.bonusCells < 2) items.push({ t: 'cell', price: p(110) });
 
   // What the market owes you for the boards you walked past and then made good
@@ -546,6 +563,8 @@ export function makeShop(run: RunState): StockedItem[] {
 
 export function shopLabel(item: ShopItem): string {
   switch (item.t) {
+    case 'item':
+      return CONSUMABLES[item.id].name;
     case 'ench':
       return ENCHANTS[item.ench].name;
     case 'charm':

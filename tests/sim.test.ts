@@ -4,8 +4,10 @@ import {
   canPlaceEmpty,
   canStack,
   createSim,
+  dig,
   isWon,
   legalMoves,
+  pry,
   runStart,
   settle,
   simKey,
@@ -400,5 +402,37 @@ describe('compounding enchantments', () => {
     expect(hiddenBefore).toBe(2);
     applyMove(s, legalMoves(s).find((m) => m.kind === 'm' && m.from === 1)!);
     expect(s.hidden).toBe(0);
+  });
+});
+
+describe('the consumable escapes', () => {
+  it('Pry destroys the blocker on the most buried column', () => {
+    const s = build(
+      [[card(9, 1)], [card(4, 2), card(3, 0), card(7, 3)]],
+      [[true], [false, false, true]],
+    );
+    const before = s.cols[1].length;
+    expect(pry(s)).toBe(true);
+    expect(s.cols[1].length).toBeLessThan(before);
+    // And the card underneath is now exposed and turned by settle.
+    expect(s.up[s.cols[1][s.cols[1].length - 1]]).toBe(1);
+  });
+
+  it('Dig turns the deepest card of that column, not the nearest', () => {
+    const s = build(
+      [[card(9, 1)], [card(4, 2), card(3, 0), card(7, 3)]],
+      [[true], [false, false, true]],
+    );
+    const deepest = s.cols[1][0];
+    expect(dig(s)).toBe(true);
+    expect(s.up[deepest]).toBe(1);
+  });
+
+  it('both report failure rather than doing nothing silently', () => {
+    // Nothing face-down anywhere: no column is buried, so there is no escape
+    // to make and the charge should not be spent.
+    const s = build([[card(9, 1)], [card(8, 0)]], [[true], [true]]);
+    expect(pry(s)).toBe(false);
+    expect(dig(s)).toBe(false);
   });
 });
