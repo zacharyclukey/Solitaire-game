@@ -119,23 +119,27 @@ deficit should outrun the build and the bank should drain.
 to measure. If build savings scale with deck size too, the curve is not enough and the
 ratio needs to decay without a floor.
 
-## The fairness invariant
+## What replaced the fairness invariant
 
-Today: every board is certified clearable inside its own budget.
-With a bank: every board must be certified clearable inside `bank + stipend`.
+**Retired.** It read: every board must be certified clearable inside
+`bank + stipend`, and the generator eased deals until that held. That guarantee
+is what flattened difficulty — it meant no shuffle could ever be unlucky, so no
+card passed over in the shop could ever turn out to have been the one you
+needed.
 
-At deal time, if `realPar > bank + stipend` the board is lost before the first move.
-That must never be dealt. So:
+Deals are honest shuffles now. The solver is a measurement rather than a gate,
+boards are selected on estimated win chance against a band for the stage, and
+roughly a fifth of them have no line a player will find. What survives is a
+floor: a board with essentially no chance is not dealt.
 
-1. Regenerate at reduced difficulty until it fits.
-2. If the generator cannot produce a fitting board even at its floor, the run ends
-   **at the queue screen**, before the player commits — as bankruptcy, not as a
-   board they failed.
+Two things carry the fairness that the invariant used to:
 
-And the drain has to be visible in advance: the queue screen should show each upcoming
-board's stipend so a player can see the wall coming and plan for it. Dying to
-arithmetic you could not see is the failure mode that would make this feel unfair
-even when it is correct.
+- **Escapes.** Pry, Dig and Reprieve are sold in the shop and spent mid-board,
+  so a dead board can be bought out of. The shop always stocks one.
+- **A legible near miss.** `src/game/rescue.ts` replays a lost board with one
+  enchantment added and names the card that would have won it, on the run-over
+  screen. A loss you can see the answer to is a roguelite; one you cannot is
+  bad luck.
 
 ## Mechanics this opens up
 
@@ -198,9 +202,10 @@ with this player end at stage 2-3, not stage 15.
 
 **By stage 10 half the boards are unwinnable for a shallow player at any
 budget.** That is not an economy failure — 4/8 boards were lost with 999 moves
-in hand. Boards are certified clearable *by a weighted A\* search*, and past a
-certain depth that has quietly stopped meaning clearable by a person. The
-guarantee the whole design rests on is weaker than it reads.
+in hand. At the time boards were certified clearable by a weighted A\* search,
+and past a certain depth that had quietly stopped meaning clearable by a person.
+The guarantee has since been retired outright, so this reads now as an early
+measurement of the thing the design later chose to embrace.
 
 The honest caveat in both directions: this bot is a **lower bound** on human
 skill, not a model of a good player. A person plans further than three plies and

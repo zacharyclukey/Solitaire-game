@@ -140,11 +140,13 @@ difference.
 
 Two consequences worth stating plainly:
 
-- **The loss condition is economic.** A run ends because the purse ran out, not
-  because a board was impossible. Every board is still certified clearable, now
-  inside `bank + stipend` rather than inside its own budget. When no board the
-  generator can build is payable, the run ends at the queue screen as
-  bankruptcy — nothing is dealt that was already lost.
+- **The loss condition is ordinary.** A run ends because a board was lost. That
+  used to be impossible by construction — every board was certified clearable
+  inside `bank + stipend` and eased until it was — and that contract is
+  **retired**. Deals are honest shuffles now, selected on estimated win chance
+  rather than proven winnable, and roughly a fifth of boards have no line a
+  player will find. Bankruptcy survives only as a floor: a board with
+  essentially no chance is not dealt at all.
 - **The Oracle and undo got more expensive without changing price.** They always
   cost moves; now those moves would otherwise have carried, so a reading on
   stage 3 is felt on stage 12.
@@ -633,12 +635,15 @@ and cleared them of a loss that was genuinely theirs.
 - Difficulty at the shallow end is set by `ratioFor`, not by search quality (see
   the measurement in §2). Whether stage 1 at 1.30 is the right welcome is a
   judgement call that wants real players, not more telemetry.
-- **The clearability guarantee is weaker than it reads at depth**, though much
-  less so than it was. Boards are certified clearable by a weighted A\* search,
-  and measured with the bounded-lookahead player in `src/game/bot.ts` that used
-  to mean 57% of stage-16 boards were lost with 999 moves in hand. Holding the
-  draw pile at 0.38 and repricing Narrow took the overall figure from 76% to
-  87%. Six-column boards are what is left, at 76% against 91% for seven.
+- **There is no clearability guarantee any more, on purpose.** It was retired
+  when deals became honest shuffles. The number that replaced it is the
+  estimated win chance in `src/game/odds.ts`, and about a fifth of boards are
+  lost whatever the allowance. Six-column boards remain the sharpest edge, at
+  76% against 91% for seven.
+- **The win curve in `odds.ts` was measured before the pivot**, on a generator
+  that eased boards until they fit, and before the deck cap. It is the number
+  the band selects deals on, so it is the most load-bearing stale measurement
+  in the project and wants re-running against the current generator.
 - **The economy is tuned against the wrong player.** A shallow player needs a
   median 1.0-1.7x par and the stipend pays 0.90x plainPar by stage 10, so full
   runs with that player end around stage 2-3 rather than 15. The ratio curve
