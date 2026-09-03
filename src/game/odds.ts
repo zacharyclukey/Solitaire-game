@@ -16,49 +16,52 @@
  */
 
 /**
- * Share of boards where this player finds a win at all, given unlimited moves.
- * The rest are lost to structure — a tableau played into a corner, or a line
- * too narrow for bounded lookahead to see.
+ * The ceiling. However many moves are handed over, about a fifth of boards are
+ * lost anyway — a tableau played into a corner, or a line too narrow for
+ * bounded lookahead to find. Moves do not fix those, which is why the estimate
+ * cannot promise more than this.
  */
-export const FINDABLE = 0.854;
+export const FINDABLE = 0.80;
 
 /**
- * Cumulative share of findable boards cleared within a given multiple of
- * plainPar. Measured, not modelled: the steep stretch between 1.0 and 1.4 is
- * where nearly half the distribution sits, which is why small changes to the
- * allowance move the win rate so sharply there.
+ * Win rate against budget, as a multiple of plainPar. Measured directly at the
+ * budgets it describes (`scripts/odds.ts curve`, 40 boards per point across
+ * stages 1, 6, 12 and 18): certify a board, re-budget it to exactly the
+ * multiple under test, and play it.
+ *
+ * An earlier version derived this from a spend distribution gathered at an
+ * unlimited bank and it was wrong in both directions — 72% predicted against
+ * 88% real at stage 1, and 17% against 0% at stage 12. A player with infinite
+ * moves does not economise, so that distribution sat too far right. A win rate
+ * has to be measured under the pressure it is meant to describe.
+ *
+ * Note how narrow the useful range is: everything between certain loss and the
+ * ceiling happens between 1.0x and 1.4x. That makes the allowance a very sharp
+ * dial, and it means the bands have to come off measurements rather than
+ * intuition.
  */
-const SPEND_CDF: readonly (readonly [number, number])[] = [
-  [0.9, 0.0], [1.0, 0.024], [1.1, 0.256], [1.2, 0.463], [1.3, 0.671],
-  [1.4, 0.768], [1.5, 0.793], [1.6, 0.841], [1.8, 0.841], [2.0, 0.866],
-  [2.2, 0.902], [2.4, 0.927], [2.6, 0.951], [3.0, 0.951],
+const WIN_CURVE: readonly (readonly [number, number])[] = [
+  [0.9, 0.0], [1.0, 0.03], [1.1, 0.20], [1.2, 0.38],
+  [1.4, 0.68], [1.6, 0.73], [2.0, 0.80], [2.6, 0.80],
 ];
 
-/** Share of findable boards clearable within `multiple` x plainPar. */
-export function spendCoverage(multiple: number): number {
-  if (multiple <= SPEND_CDF[0][0]) return 0;
-  const last = SPEND_CDF[SPEND_CDF.length - 1];
+/** Interpolated win rate at a given multiple of plainPar. */
+export function coverAt(multiple: number): number {
+  if (multiple <= WIN_CURVE[0][0]) return 0;
+  const last = WIN_CURVE[WIN_CURVE.length - 1];
   if (multiple >= last[0]) return last[1];
-  for (let i = 1; i < SPEND_CDF.length; i++) {
-    const [x1, y1] = SPEND_CDF[i];
+  for (let i = 1; i < WIN_CURVE.length; i++) {
+    const [x1, y1] = WIN_CURVE[i];
     if (multiple <= x1) {
-      const [x0, y0] = SPEND_CDF[i - 1];
+      const [x0, y0] = WIN_CURVE[i - 1];
       return y0 + ((y1 - y0) * (multiple - x0)) / (x1 - x0);
     }
   }
   return last[1];
 }
 
-/**
- * Estimated chance a fallible player clears this board with this many moves.
- *
- * `solved` is whether the solver found a line at all. When it did not, the
- * board is treated as one of the unfindable ones rather than being given the
- * benefit of the doubt — the whole point of the estimate is to stop pretending
- * a board is winnable because nobody checked.
- */
 export function winChance(budget: number, plainPar: number, solved = true): number {
   if (!solved) return 0.02;
   if (plainPar <= 0) return 1;
-  return FINDABLE * spendCoverage(budget / plainPar);
+  return coverAt(budget / plainPar);
 }

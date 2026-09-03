@@ -1,17 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { FINDABLE, spendCoverage, winChance } from '../src/game/odds.ts';
+import { FINDABLE, coverAt, winChance } from '../src/game/odds.ts';
 
 describe('the win-chance estimate', () => {
   it('never promises a board that par alone would not clear', () => {
     // Spending exactly the solver's line is something almost no fallible player
     // manages: measured, 2.4% of them.
-    expect(spendCoverage(1.0)).toBeLessThan(0.05);
-    expect(spendCoverage(0.8)).toBe(0);
+    expect(coverAt(1.0)).toBeLessThan(0.05);
+    expect(coverAt(0.8)).toBe(0);
   });
 
   it('rises steeply where the distribution actually sits', () => {
-    expect(spendCoverage(1.2)).toBeGreaterThan(spendCoverage(1.1));
-    expect(spendCoverage(1.4) - spendCoverage(1.0)).toBeGreaterThan(0.6);
+    expect(coverAt(1.2)).toBeGreaterThan(coverAt(1.1));
+    expect(coverAt(1.4) - coverAt(1.0)).toBeGreaterThan(0.6);
   });
 
   it('is capped by the boards no budget can rescue', () => {
