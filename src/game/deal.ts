@@ -58,6 +58,13 @@ export interface Level {
   needsBuild: boolean;
   /** Estimated chance a fallible player clears this, from the measured curve. */
   chance: number;
+  /**
+   * Whether a line was actually found on the plain board. When false, plainPar
+   * is an estimate rather than a measurement and the level is priced as a very
+   * long shot — so this is worth watching: a run where it is usually false is a
+   * run the generator cannot see.
+   */
+  plainSolved: boolean;
   /** Moves carried in from earlier levels. */
   bank: number;
   budget: number; // bank + stipend: what movesLeft actually starts at
@@ -279,7 +286,19 @@ function stripEnchantments(defs: CardDef[]): CardDef[] {
  * that the price of a board never depends on how long the rest of the deal
  * happened to take.
  */
+/** Measured at 28 cards: a plain board costs about this much per card. */
+const PAR_PER_CARD_ESTIMATE = 1.4;
+
 const PLAIN_SOLVE_MS = 260;
+
+/**
+ * Bigger decks mean bigger boards and a much larger search. A flat slice was
+ * fine at 28 cards and hopeless by 40, which is why plainPar quietly became a
+ * fabricated number at depth rather than a measured one.
+ */
+function plainSolveMsFor(deckSize: number): number {
+  return Math.round(PLAIN_SOLVE_MS * Math.max(1, deckSize / 28));
+}
 
 /** Charms that hand out rule-level power, rather than flat moves. */
 const RULE_CHARMS: CharmId[] = ['locksmith', 'sorter'];
@@ -470,7 +489,7 @@ export function dealLevel(opts: DealOptions): Level {
       buildRules(mods, charms.filter((c) => !RULE_CHARMS.includes(c)), trial.defs.map((d) => d.rank)),
       Number.MAX_SAFE_INTEGER / 4,
     );
-    const plainSol = findSolution(plainProbe, PLAIN_SOLVE_MS);
+    const plainSol = findSolution(plainProbe, plainSolveMsFor(deck.length));
     const thisPlainPar = plainSol ? plainSol.cost : Math.round(deck.length * PLAIN_PAR_PER_CARD * 1.6);
 
     const chance = winChance(stipendBase, thisPlainPar, plainSol !== null);
@@ -513,25 +532,45 @@ export function dealLevel(opts: DealOptions): Level {
   faceUp = candFaceUp;
   relaxed = candRelaxed;
 
-  const par = Number.isFinite(bestCost) ? bestCost : Math.round(cand.defs.length * 1.4);
+  /**
+   * The solver stops being able to see past about thirty cards, and deck growth
+   * crosses that around stage five, so from there on neither the real line nor
+   * the plain one is found and both numbers below are estimates from board
+   * size. Measured at 28 cards, a plain board runs about 1.4 moves per card.
+   *
+   * This is a real limit rather than a tuning choice, and it is why the game
+   * cannot lean on a certificate at depth. Treating an unsolved board as
+   * hopeless was worse than estimating it: it pinned every deep level to the
+   * unaffordable floor and ended runs at stage five with a bankruptcy screen.
+   */
+  const solvedReal = Number.isFinite(bestCost);
+  const par = solvedReal ? bestCost : Math.round(cand.defs.length * PAR_PER_CARD_ESTIMATE);
 
   const m = activeMods;
 
   // Both lines were measured while the deal was chosen, so nothing is re-solved
   // here. plainPar is what the level is priced against; par is what the deck in
   // hand can do, and is only ever shorter.
-  const plainPar = Math.max(candPlainPar, Number.isFinite(bestCost) ? bestCost : 0);
+  const plainPar = Math.max(candPlainPar, par);
 
   const stipend = stipendBase;
   const budget = bank + stipend;
 
   /**
    * The estimated chance a fallible player clears this, from the measured curve
-   * in odds.ts. This is what the deal was selected on and what the difficulty
-   * curve is actually made of, now that boards are honest shuffles rather than
-   * puzzles eased until they fit.
+   * in odds.ts.
+   *
+   * Estimated against `par` — the board as the player will actually face it,
+   * with their deck — not against plainPar. The two have different jobs and
+   * conflating them was a live bug: past stage 10 the plain solve fails on
+   * essentially every board, so a plain-based chance pinned to the unsolved
+   * floor and every deep level was declared unaffordable. Pricing stays blind
+   * to the build; the odds do not, because the odds are about this player.
    */
-  const chance = winChance(budget, plainPar, candSolved);
+  // Estimated even when nothing was solved. An unseen board is not a hopeless
+  // one — it is a board the generator could not measure, and the player still
+  // has to be given something to play.
+  const chance = winChance(budget, par, true);
 
   /** True when a standard deck could not have afforded this board. */
   const needsBuild = plainPar > budget;
@@ -590,6 +629,7 @@ export function dealLevel(opts: DealOptions): Level {
     slack,
     needsBuild,
     chance,
+    plainSolved: candSolved,
     bank,
     budget,
     surplus,

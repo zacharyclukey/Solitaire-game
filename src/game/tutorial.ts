@@ -99,6 +99,7 @@ export function buildTutorialLevel(): Level {
     slack: TUTORIAL_BUDGET - 16,
     needsBuild: false,
     chance: 1,
+    plainSolved: true,
     bank: 0,
     surplus: TUTORIAL_BUDGET - 16,
     budget: TUTORIAL_BUDGET,
