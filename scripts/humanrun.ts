@@ -63,27 +63,31 @@ function playRun(seed: number, buildEvery: number, o: BotOptions): RunOutcome {
  * Full runs die too early to say much, so this is the more useful instrument.
  */
 function boardSweep(perStage: number): void {
-  console.log('\nstage  won   median over-par   worst   (bank 999, so only skill is being measured)');
-  for (const stage of [1, 3, 6, 10, 14]) {
-    const run = newRun(31337);
-    const ratios: number[] = [];
+  // Measured against plainPar, not par, because plainPar is what the ratio
+  // multiplies. Bank 999, so the only thing under test is skill.
+  console.log('\nstage  won      spend vs plainPar (p50 / p75 / p90)');
+  for (const stage of [1, 3, 6, 8, 10, 14, 18]) {
+    const spends: number[] = [];
     let won = 0;
     for (let i = 0; i < perStage; i++) {
+      // Fresh run seed per board so the modifier draw varies.
+      const run = newRun((31337 + i * 104729) >>> 0);
       run.stage = stage;
-      const spec = { ...stageSpec(run, stage), seed: (1000 + i * 7919) >>> 0 };
-      const l = dealLevel({ deck: newRun(4242).deck, charms: [], spec, bonusMoves: 0, bonusCells: 0, bank: 999 });
+      const l = dealLevel({
+        deck: run.deck, charms: [], spec: stageSpec(run, stage),
+        bonusMoves: 0, bonusCells: 0, bank: 999,
+      });
       const r = playBot(l.sim, CAREFUL);
       if (r.won) {
         won++;
-        ratios.push(r.movesUsed / l.par);
+        spends.push(r.movesUsed / l.plainPar);
       }
     }
-    ratios.sort((a, b) => a - b);
-    const med = ratios.length ? ratios[Math.floor(ratios.length / 2)] : NaN;
-    const worst = ratios.length ? ratios[ratios.length - 1] : NaN;
+    spends.sort((a, b) => a - b);
+    const q = (f: number) => (spends.length ? spends[Math.min(spends.length - 1, Math.floor(spends.length * f))] : NaN);
     console.log(
       `${String(stage).padStart(5)}  ${String(won).padStart(2)}/${perStage}  ` +
-      `${(med * 100).toFixed(0).padStart(11)}%   ${(worst * 100).toFixed(0).padStart(5)}%`,
+      `${(q(0.5) * 100).toFixed(0).padStart(12)}%  ${(q(0.75) * 100).toFixed(0).padStart(4)}%  ${(q(0.9) * 100).toFixed(0).padStart(4)}%`,
     );
   }
 }
