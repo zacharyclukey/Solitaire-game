@@ -21,9 +21,18 @@ import type { DeckCard, EnchantId, Suit } from '../src/game/types.ts';
 const KIT: EnchantId[] = ['torch', 'bridge', 'wild', 'free', 'spring', 'twin', 'anchor', 'prism'];
 const MAX_STAGE = 40;
 
+/**
+ * "Lost the board" was too coarse to act on: running out of moves is an economy
+ * failure and being stuck with moves in hand is a structural one, and they want
+ * opposite fixes. Bankruptcy is a third thing again — it fires only when no
+ * affordable board could be dealt at all, which is why it can read zero while
+ * players are still losing levels to the purse.
+ */
+type Cause = 'bankrupt' | 'ran out of moves' | 'stuck with moves left' | 'reached the cap';
+
 interface RunOutcome {
   depth: number;
-  cause: 'bankrupt' | 'lost the board' | 'reached the cap';
+  cause: Cause;
   peakBank: number;
 }
 
@@ -42,7 +51,10 @@ function playRun(seed: number, buildEvery: number, o: BotOptions): RunOutcome {
     if (!level.affordable) return { depth: stage - 1, cause: 'bankrupt', peakBank };
 
     const r = playBot(level.sim, o);
-    if (!r.won) return { depth: stage - 1, cause: 'lost the board', peakBank };
+    if (!r.won) {
+      const cause: Cause = r.movesLeft <= 0 ? 'ran out of moves' : 'stuck with moves left';
+      return { depth: stage - 1, cause, peakBank };
+    }
 
     bank = r.movesLeft;
     peakBank = Math.max(peakBank, bank);
@@ -177,7 +189,7 @@ if (process.argv[2] === 'boards') {
 
 const RUNS = Number(process.argv[2] ?? 20);
 console.log(`bounded-lookahead player, depth ${CAREFUL.depth} width ${CAREFUL.width}, ${RUNS} runs per build\n`);
-console.log('build          median  mean   range      peak bank   bankrupt  lost board  capped');
+console.log('build          median  mean   range      peak bank   bankrupt  out of moves  stuck  capped');
 for (const [label, buildEvery] of [['none', 0], ['every 4 levels', 4], ['every 2 levels', 2]] as const) {
   const outs: RunOutcome[] = [];
   for (let i = 0; i < RUNS; i++) outs.push(playRun(4242 + i * 7919, buildEvery, CAREFUL));
@@ -189,6 +201,6 @@ for (const [label, buildEvery] of [['none', 0], ['every 4 levels', 4], ['every 2
   console.log(
     `${label.padEnd(14)} ${String(median).padStart(6)} ${mean.toFixed(1).padStart(5)}  ` +
     `${String(depths[0]).padStart(2)}-${String(depths[depths.length - 1]).padEnd(6)} ` +
-    `${peak.toFixed(0).padStart(9)}   ${String(n('bankrupt')).padStart(8)}  ${String(n('lost the board')).padStart(10)}  ${String(n('reached the cap')).padStart(6)}`,
+    `${peak.toFixed(0).padStart(9)}   ${String(n('bankrupt')).padStart(8)}  ${String(n('ran out of moves')).padStart(12)}  ${String(n('stuck with moves left')).padStart(5)}  ${String(n('reached the cap')).padStart(6)}`,
   );
 }

@@ -302,6 +302,56 @@ stranded on the waste. This is the ratio miscalibration arriving at level one
 rather than anything structural, and it is the sharpest evidence yet that the
 curve was fitted to solver play. It belongs to the retune.
 
+## Repricing the curve against a player
+
+The first curve was fitted to solver play, and a solver spends exactly par by
+definition. Measured against the bounded-lookahead player instead
+(`scripts/humanrun.ts boards`, 20 boards a stage, unlimited bank, spend as a
+fraction of plainPar because plainPar is what the ratio multiplies):
+
+| stage | 1 | 3 | 6 | 8 | 10 | 14 | 18 |
+|---|---|---|---|---|---|---|---|
+| cleared | 20/20 | 18/20 | 17/20 | 19/20 | 15/20 | 14/20 | 15/20 |
+| p50 need | 129% | 110% | 113% | 121% | 126% | 120% | 136% |
+| p75 | 137% | 129% | 123% | 153% | 145% | 136% | 181% |
+| p90 | 218% | 156% | 184% | 238% | 200% | 159% | 302% |
+
+**The need is flat.** It does not grow with depth, which means the difficulty
+curve really does live entirely in the ratio, as designed. It also means the old
+curve was wrong at both ends: stage 1 paid 1.30 against a median need of 1.29,
+so half of opening boards ran out of moves and — worse — nothing was ever banked
+on the levels meant to fund the rest of the run; stage 18 paid 0.80 against a
+need that had not fallen a point.
+
+The curve now runs 1.70 down to 1.10 with the same geometric tail. The threshold
+that matters is the player's need near 1.20, not 1.0. Paying par exactly was
+always a loss for anybody who is not a search algorithm, which is why three
+tests asserting a crossing at 1.0 had to be rewritten to assert the real one.
+
+### Where this stops being answerable by measurement
+
+With the new curve, no run in 48 went bankrupt — every one ended having run out
+of moves mid-board, never stuck with moves in hand. The economy is no longer
+what kills runs. But median depth is still 2, and the reason is a fat right
+tail: the median board costs 110-130% and banks well, while the occasional board
+costs this player 170-300% and it loses anyway.
+
+Two controls say that tail is the player, not the boards. Doubling the search
+width leaves the same boards lost at the same cost, and raising the cost weight
+— making it hoard moves — does not lower spend at all at stage 1 and makes stage
+8 markedly worse (126% to 153%). Inspecting a lost stage-1 board with no
+modifiers at all: five cards on the waste, no passes left, and **22 legal moves
+still available**. The position was winnable. The player had simply spent
+everything getting there.
+
+So funding this player to reach depth 10 would mean paying its p90, somewhere
+above 200%, which would make the median board trivial for anyone competent. The
+bot is a lower bound on human skill and its tail is where it plays badly, not
+where the game is hard. **Calibrating run length against it would over-fund the
+game**, so the curve is set from the p50-p75 of need and stops there. Where a
+real player sits between this and the solver's 100% is not something any of
+these instruments can answer; it needs playtest data.
+
 ## Measuring it honestly
 
 The solver banks perfectly. A human does not. Every number produced by solver play is
