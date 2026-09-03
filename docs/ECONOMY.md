@@ -361,6 +361,47 @@ game**, so the curve is set from the p50-p75 of need and stops there. Where a
 real player sits between this and the solver's 100% is not something any of
 these instruments can answer; it needs playtest data.
 
+## Why depth cannot be made harder with the modifiers we have
+
+Board difficulty measured flat — 110-136% of plainPar from stage 1 to 18 — so
+depth only ever made a board more expensive, never harder. The cause looked
+obvious: `maxRules` was pinned at 1 in `pickModifiers` for every stage, so a
+board could carry at most one rule-changing modifier however deep the run went,
+and rule modifiers are the only ones that change how a board must be played.
+Raising it to 1/2/3 with depth was the fix.
+
+**It did not work.** Re-measured at 20 boards a stage, the need is still flat:
+
+| stage | 1 | 3 | 6 | 8 | 10 | 14 | 18 |
+|---|---|---|---|---|---|---|---|
+| p50, before | 129% | 110% | 113% | 121% | 126% | 120% | 136% |
+| p50, after | 129% | 110% | 113% | 124% | 120% | 127% | 127% |
+
+The reason is a contradiction in the plan. Those modifiers were chosen *because*
+the isolate sweep measured them at about 0pp against a 92% control — and
+stacking things that cost a player nothing still costs nothing. The safe
+modifiers are safe precisely because they do not add difficulty, and the ones
+that add difficulty (Narrow -33pp, Thin Deal -25pp, Suit Lock -17pp) do it by
+taking away columns or draw pile, which is what made boards unclearable in the
+first place. **There is no free difficulty anywhere in the current modifier
+set.** The cap change is kept for the variety it adds, not for difficulty, and
+it slightly lowered stage-18 clear rate (15/20 to 13/20) for nothing.
+
+### The lever the data actually points at
+
+Prism Rules is the clue, and it was hiding in a result already dismissed as an
+artifact. It costs the bot 33pp at search width 6 and *nothing at all* at width
+14, because it nearly doubles the branching factor — 3.6 opening legal moves to
+6.3 — and a player that shortlists six candidates per ply simply sees less of
+it. That is not a board with fewer resources. It is a board with more to think
+about, which a better player handles and a worse one does not.
+
+That is exactly the property a deep board wants: harder to play *well*, not
+harder to *solve*. Resource scarcity makes boards unfair; decision density makes
+them demanding. New modifiers should be aimed at branching and interaction —
+more legal placements, more live cards, more ways a line can fork — rather than
+at taking anything away.
+
 ## Measuring it honestly
 
 The solver banks perfectly. A human does not. Every number produced by solver play is
