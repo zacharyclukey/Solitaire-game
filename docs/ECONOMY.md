@@ -63,15 +63,24 @@ that level — the number that decides how long a run lasts.
 
 | stage | ratio | drain, bare deck | 4 enchantments | 8 enchantments |
 |---|---|---|---|---|
-| 2 | 1.30 | +10.4 | +13.1 | +13.0 |
-| 6 | 1.15 | +5.0 | +7.3 | +8.5 |
-| 10 | 0.90 | **-3.1** | -1.1 | **0.0** |
-| 14 | 0.82 | -5.7 | -4.0 | -2.7 |
-| 18 | 0.80 | -6.5 | -4.8 | -3.6 |
-| 22 | 0.70 | -9.5 | -8.0 | -6.6 |
+| 2 | 1.70 | +27.3 | +29.7 | +30.0 |
+| 6 | 1.55 | +20.5 | +22.7 | +23.8 |
+| 10 | 1.25 | +9.5 | +11.5 | +12.6 |
+| 14 | 1.10 | +4.0 | +5.9 | +7.0 |
+| 18 | 1.07 | +2.5 | +4.5 | +5.6 |
+| 22 | 0.94 | **-2.0** | -0.1 | **+1.0** |
 
-Stage 10 is the row the design exists for: a bare deck has started bleeding
-while an eight-enchantment deck is holding even. That is "solvable because of
+**Read this as the optimistic bound, not the balance.** These are solver runs,
+and the solver spends exactly par, so it banks the entire margin the ratio pays
+above 1.0 and does not start bleeding until stage 22. A player who needs 129% of
+plainPar crosses over far earlier — against the measured need the ratio turns
+against them somewhere around stage 14 to 18, which is where the curve is meant
+to bite. The row that used to carry the design's headline claim now sits at 22
+for a solver and much earlier for anybody real.
+
+The build's edge survives the repricing: at every stage an eight-enchantment
+deck banks 2 to 3 more moves a level than a bare one, and its par advantage is
+about 2.5 moves. That is "solvable because of
 the build" as a number rather than a hope — though it is a weaker result than
 before the boards were made humanly clearable, when the same row read +1.4
 rather than break-even.

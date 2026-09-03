@@ -157,19 +157,21 @@ re-measured after the draw-pile floor moved to 0.38:
 
 ```
 stage  ratio   bare    4 ench   8 ench
-    2   1.30  +10.4    +13.1    +13.0
-    6   1.15   +5.0     +7.3     +8.5
-   10   0.90   -3.1     -1.1      0.0
-   14   0.82   -5.7     -4.0     -2.7
-   18   0.80   -6.5     -4.8     -3.6
-   22   0.70   -9.5     -8.0     -6.6
+    2   1.70  +27.3    +29.7    +30.0
+    6   1.55  +20.5    +22.7    +23.8
+   10   1.25   +9.5    +11.5    +12.6
+   14   1.10   +4.0     +5.9     +7.0
+   18   1.07   +2.5     +4.5     +5.6
+   22   0.94   -2.0     -0.1     +1.0
 ```
 
-Stage 10 is the row the whole design exists for: the bare deck has started
-bleeding while the eight-enchantment deck holds even. By 14 everyone bleeds and
-the build only buys a slower bleed. Holding the draw pile shallower cost some of
-this — the same row read +1.4 before, because a shallower tableau leaves Torch
-and Twin fewer buried cards to turn. Full working, caveats and the ways this
+This is the optimistic bound rather than the balance. The solver spends exactly
+par, so it banks everything the ratio pays above 1.0 and does not bleed until
+stage 22. A bounded-lookahead player needs a median 129% of plainPar, and
+against that the ratio turns somewhere around stage 14 to 18 — which is where
+the curve is meant to bite. The build keeps its edge either way: an
+eight-enchantment deck banks 2 to 3 more moves a level than a bare one at every
+stage. Full working, caveats and the ways this
 could still break: `docs/ECONOMY.md`.
 
 A methodological note, because it nearly cost a wrong conclusion: at twelve
