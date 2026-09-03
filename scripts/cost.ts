@@ -20,17 +20,35 @@ import type { DeckCard, Suit } from '../src/game/types.ts';
 const PER = Number(process.argv[2] ?? 12);
 const rng = new Rng(20250904);
 
+/**
+ * Grow a deck the way the game does, which is not the same as adding random
+ * cards. `newCard` in run.ts extends the top of the rank ladder 65% of the time
+ * and otherwise fills in below it, so the ranks stay contiguous.
+ *
+ * An earlier version of this harness added uniform ranks 1-13 to a starter deck
+ * of ranks 1-7, which manufactured lone high cards with nothing to stack on
+ * them and nothing beneath them to receive. Those decks were unwinnable, and
+ * the conclusion drawn from them — that big decks break the game — was about
+ * the harness rather than the game.
+ */
 function grow(base: DeckCard[], to: number): DeckCard[] {
   const d = base.map((c) => ({ ...c }));
   let uid = Math.max(...d.map((c) => c.uid)) + 1;
   while (d.length < to) {
-    d.push({ uid: uid++, rank: rng.range(1, 13), suit: rng.int(4) as Suit, ench: null, curse: null });
+    const hi = Math.max(...d.map((c) => c.rank));
+    const rank = hi < 13 && rng.next() < 0.65 ? hi + 1 : rng.range(1, hi);
+    d.push({ uid: uid++, rank, suit: rng.int(4) as Suit, ench: null, curse: null });
   }
   return d;
 }
 
+// Deck size was originally swept alongside stage, which confounds card count
+// with modifier load — the same trap that made an earlier modifier sweep
+// unusable. Stage is held fixed here so only the deck is moving.
+const STAGE = Number(process.argv[3] ?? 6);
+console.log(`stage ${STAGE} throughout, so only deck size varies\n`);
 console.log('deck  stage   won    median spend   spend/card   solver saw it');
-for (const [size, stage] of [[28, 3], [34, 8], [40, 13], [46, 18], [52, 23]] as const) {
+for (const [size, stage] of [[28, STAGE], [31, STAGE], [34, STAGE], [40, STAGE], [46, STAGE]] as const) {
   const spends: number[] = [];
   let won = 0;
   let saw = 0;

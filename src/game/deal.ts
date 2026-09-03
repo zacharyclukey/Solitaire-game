@@ -404,8 +404,9 @@ export function dealLevel(opts: DealOptions): Level {
   const { deck, charms, spec } = opts;
   const rng = new Rng(spec.seed);
   const mods = spec.modifiers;
-  const columns = columnsFor(deck.length, mods, charms);
-  const baseStock = stockFor(deck.length, mods, charms, opts.bonusCells, spec.stage);
+  const boardSize = deck.length;
+  const columns = columnsFor(boardSize, mods, charms);
+  const baseStock = stockFor(boardSize, mods, charms, opts.bonusCells, spec.stage);
   // Exactly one card face-up per column: the classic silhouette, and the
   // configuration that measured most reliably solvable.
   const baseFaceUp = 1;
@@ -447,7 +448,7 @@ export function dealLevel(opts: DealOptions): Level {
    * The stipend no longer depends on the board, so it can be settled up front
    * and the deal judged against it.
    */
-  const stipendBase = stipendFor(deck.length, spec.stage, mods, spec.kind) + flatBonus;
+  const stipendBase = stipendFor(boardSize, spec.stage, mods, spec.kind) + flatBonus;
 
   /**
    * What the stage is aiming for, and how far a deal may miss it.
@@ -489,8 +490,8 @@ export function dealLevel(opts: DealOptions): Level {
       buildRules(mods, charms.filter((c) => !RULE_CHARMS.includes(c)), trial.defs.map((d) => d.rank)),
       Number.MAX_SAFE_INTEGER / 4,
     );
-    const plainSol = findSolution(plainProbe, plainSolveMsFor(deck.length));
-    const thisPlainPar = plainSol ? plainSol.cost : Math.round(deck.length * PLAIN_PAR_PER_CARD * 1.6);
+    const plainSol = findSolution(plainProbe, plainSolveMsFor(boardSize));
+    const thisPlainPar = plainSol ? plainSol.cost : Math.round(boardSize * PLAIN_PAR_PER_CARD * 1.6);
 
     const chance = winChance(stipendBase, thisPlainPar, plainSol !== null);
     const gap = Math.abs(chance - target);

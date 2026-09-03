@@ -23,7 +23,22 @@ import { Rng } from './rng.ts';
 import type { CurseId, DeckCard, EnchantId, Suit } from './types.ts';
 
 export const MIN_DECK = 16;
-export const MAX_DECK = 48;
+/**
+ * The most cards a deck may hold.
+ *
+ * Measured, and it is a cliff rather than a slope. Holding the stage fixed and
+ * growing the deck the way the game actually grows it, a bounded-lookahead
+ * player with unlimited moves clears 12 of 12 boards at 28 cards, 8 of 12 at
+ * 31, 2 of 12 at 34 and none at 46. With no foundations the only sink is an
+ * empty column, and a deck spread thinly over more ranks stops offering the
+ * alternating card one rank down that a descending run needs.
+ *
+ * Capping the board instead of the deck was tried and measured no different,
+ * because dealing a subset only thins the rank ladder further. The deck itself
+ * has to stay near the size the game works at, so growth is a real but bounded
+ * choice rather than a slow way to lose.
+ */
+export const MAX_DECK = 32;
 export const BOSS_EVERY = 5;
 export const SHOP_EVERY = 3;
 
@@ -528,7 +543,7 @@ export function makeShop(run: RunState): StockedItem[] {
   }
   const charm = randomCharm(run, rng);
   if (charm) items.push({ t: 'charm', id: charm, price: p(CHARMS[charm].price) });
-  items.push({ t: 'add', card: newCard(run, rng, true), price: p(40) });
+  if (run.deck.length < MAX_DECK) items.push({ t: 'add', card: newCard(run, rng, true), price: p(40) });
   items.push({ t: 'remove', price: p(run.charms.includes('scalpel') ? 16 : 32) });
   if (run.deck.some((c) => c.curse)) items.push({ t: 'uncurse', price: p(26) });
   items.push({ t: 'moves', n: 2, price: p(45) });
