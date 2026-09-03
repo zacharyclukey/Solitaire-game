@@ -3,7 +3,7 @@
  * screens, and mediates between the rules engine and the views.
  */
 import { sfx, unlock } from './audio.ts';
-import { CHARMS, MODIFIERS } from './game/content.ts';
+import { CHARMS, ENCHANTS, MODIFIERS } from './game/content.ts';
 import { dealLevelAsync, warmUp } from './game/dealAsync.ts';
 import type { Level, LevelSpec } from './game/deal.ts';
 import { Rng, randomSeed, seedFromString, seedToCode } from './game/rng.ts';
@@ -455,14 +455,30 @@ export class App {
       haptic('medium');
     }
     for (const e of events) {
+      // Every one of these names the enchantment that caused it. An unattributed
+      // "+2 moves" taught the player nothing about the card they chose.
       if (e.t === 'gold') {
         sfx.gold();
-        toast(`+${e.n} gold`, 'good');
+        toast(e.src ? `${ENCHANTS[e.src].name} · +${e.n} gold` : `+${e.n} gold`, 'good');
       }
       if (e.t === 'moves') {
         sfx.boon();
         this.hud.flashMoves(e.n);
-        toast(`+${e.n} moves`, 'good');
+        this.tally.enchantMoves += e.n;
+        toast(e.src ? `${ENCHANTS[e.src].name} · +${e.n} moves` : `+${e.n} moves`, 'good');
+      }
+      if (e.t === 'cascade') {
+        this.tally.enchantFlips += e.n;
+        toast(`${ENCHANTS[e.src].name} · turned ${e.n} more`, 'good');
+      }
+      if (e.t === 'discount') {
+        this.tally.enchantMoves += e.saved;
+        toast(
+          e.src === 'free'
+            ? `${ENCHANTS[e.src].name} · free move`
+            : `${ENCHANTS[e.src].name} · ${e.saved} move back`,
+          'good',
+        );
       }
     }
     if (sim.movesLeft < before) this.hud.flashMoves(-1);
@@ -708,6 +724,17 @@ export class App {
     run.current = null;
     this.persist();
 
+    // What the build did, in the currency the run is played in. Without this
+    // the enchantments are a row of glyphs and the player never finds out
+    // whether choosing them mattered.
+    const built: string[] = [];
+    if (this.tally.enchantMoves > 0) {
+      built.push(`${this.tally.enchantMoves} ${this.tally.enchantMoves === 1 ? 'move' : 'moves'} back`);
+    }
+    if (this.tally.enchantFlips > 0) {
+      built.push(`${this.tally.enchantFlips} extra ${this.tally.enchantFlips === 1 ? 'card' : 'cards'} turned`);
+    }
+
     renderReward(this.ctx, run, rewards, [
       `+${gained} gold`,
       underPar > 0
@@ -716,6 +743,7 @@ export class App {
           ? 'exactly par'
           : `${-underPar} over par`,
       `${spare} ${spare === 1 ? 'move' : 'moves'} carried`,
+      ...(built.length ? [`Your cards: ${built.join(' · ')}`] : []),
     ]);
     show('reward');
   }

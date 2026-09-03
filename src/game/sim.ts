@@ -9,7 +9,7 @@
  * `stockIdx` and the waste at `wasteIdx`. Modelling all three as columns keeps
  * every index, key and search step working on one shape.
  */
-import type { CardDef, Move, RuleSet } from './types.ts';
+import type { CardDef, EnchantId, Move, RuleSet } from './types.ts';
 
 export interface Sim {
   defs: CardDef[];
@@ -36,8 +36,12 @@ export type SimEvent =
   | { t: 'recycle'; n: number }
   | { t: 'flip'; id: number; col: number; idx: number }
   | { t: 'burn'; id: number; from: number }
-  | { t: 'gold'; n: number }
-  | { t: 'moves'; n: number };
+  | { t: 'gold'; n: number; src?: EnchantId }
+  | { t: 'moves'; n: number; src?: EnchantId }
+  /** An enchantment turned cards the move itself would not have. */
+  | { t: 'cascade'; src: EnchantId; n: number }
+  /** An enchantment made this move cost less than it should have. */
+  | { t: 'discount'; src: EnchantId; saved: number };
 
 export const stockIdx = (s: Sim): number => s.tableau;
 export const wasteIdx = (s: Sim): number => s.tableau + 1;
@@ -95,9 +99,22 @@ export function cloneSim(s: Sim): Sim {
  * Cards not yet face-up in a tableau column — the real measure of what is left
  * to do. A card sitting on the waste has been seen but not sorted, and turning
  * the whole draw pile over is not progress.
+ *
+ * The draw pile has to be checked card by card rather than trusted to `hidden`.
+ * A card that has never been drawn is face-down and `hidden` counts it, but one
+ * turned over on an earlier pass and then sent back round is face-up while
+ * sitting in the pile, and `hidden` does not. Without this loop, recycling a
+ * waste into the pile with a fully face-up tableau emptied both terms at once
+ * and won the level outright with every one of those cards still unplaced.
+ *
+ * Turning them face-down again would be the tidier model and is not available:
+ * re-drawing them would re-fire Gilded, Beacon and Torch, so a player could
+ * farm gold and moves by cycling the pile.
  */
 export function remaining(s: Sim): number {
-  return s.hidden + waste(s).length;
+  let out = s.hidden + waste(s).length;
+  for (const id of stock(s)) if (s.up[id]) out++;
+  return out;
 }
 
 export function isWon(s: Sim): boolean {
@@ -289,11 +306,11 @@ function flipCard(s: Sim, id: number, col: number, idx: number, ev: SimEvent[] |
   const d = s.defs[id];
   if (d.gild) {
     s.gold += 2;
-    ev?.push({ t: 'gold', n: 2 });
+    ev?.push({ t: 'gold', n: 2, src: 'gild' });
   }
   if (d.beacon) {
     s.movesLeft += 2;
-    ev?.push({ t: 'moves', n: 2 });
+    ev?.push({ t: 'moves', n: 2, src: 'beacon' });
   }
   if (d.torch) {
     // The most buried tableau column, so a Torch drawn off the pile still
@@ -313,19 +330,23 @@ function flipCard(s: Sim, id: number, col: number, idx: number, ev: SimEvent[] |
       const c = s.cols[best];
       for (let i = 0; i < c.length; i++) {
         if (!s.up[c[i]]) {
+          const before = s.revealed;
           flipCard(s, c[i], best, i, ev);
+          if (s.revealed > before) ev?.push({ t: 'cascade', src: 'torch', n: s.revealed - before });
           break;
         }
       }
     }
   }
   if (d.twin) {
+    const before = s.revealed;
     for (let ci = 0; ci < s.tableau; ci++) {
       const c = s.cols[ci];
       for (let i = 0; i < c.length; i++) {
         if (!s.up[c[i]] && s.defs[c[i]].rank === d.rank) flipCard(s, c[i], ci, i, ev);
       }
     }
+    if (s.revealed > before) ev?.push({ t: 'cascade', src: 'twin', n: s.revealed - before });
   }
 }
 
@@ -384,6 +405,13 @@ export function applyMove(s: Sim, mv: Move, ev: SimEvent[] | null = null): void 
     const tgt = s.cols[mv.to];
     for (const id of moved) tgt.push(id);
     ev?.push({ t: 'move', ids: moved, from: mv.from, to: mv.to });
+
+    // Featherweight and Kickback work by quietly making a move cheaper, which
+    // meant the player saw a number that was lower than expected and nothing
+    // telling them why. Announce the saving and name the card that made it.
+    const head = s.defs[moved[0]];
+    if (head.free) ev?.push({ t: 'discount', src: 'free', saved: 1 });
+    else if (head.spring) ev?.push({ t: 'discount', src: 'spring', saved: 1 });
   }
   settle(s, ev);
 }

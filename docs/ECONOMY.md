@@ -277,6 +277,31 @@ Narrow is repriced from threat 3 to 6, so it crowds out other modifiers rather
 than arriving alongside them, and it no longer combines with Thin Deal or Suit
 Lock — the other two things that shrink the same resource.
 
+## Two corrections from play
+
+**Recycling the pile was a win.** Reported from play: with the tableau fully
+face-up, sending the waste back round emptied the waste and left `hidden` at
+zero, so `remaining` hit zero and the level declared itself won with every one
+of those cards still sitting in the pile. `hidden` counts cards that are
+face-down, and a card turned over on an earlier pass and then recycled is
+face-up *inside the draw pile* — counted by neither term. `remaining` now walks
+the pile. Turning those cards face-down again would be the tidier model and is
+not available, because re-drawing them would re-fire Gilded, Beacon and Torch
+and let a player farm gold and moves by cycling.
+
+This costs clearability, and the honest reading is that the earlier number was
+inflated: over 96 boards the fallible player now clears 80% at an unlimited
+budget, against 90% measured before the fix. Some of that 90% was the bug
+firing. 80% is the first figure measured against a correct win condition, and it
+is still well above the 76% that started task #20.
+
+**The first level is a coin flip.** At the stipend stage 1 actually pays, with
+an empty bank, the bounded-lookahead player clears 5 of 10 opening boards. It
+never gets stuck — it runs out of moves every time, with two to seven cards
+stranded on the waste. This is the ratio miscalibration arriving at level one
+rather than anything structural, and it is the sharpest evidence yet that the
+curve was fitted to solver play. It belongs to the retune.
+
 ## Measuring it honestly
 
 The solver banks perfectly. A human does not. Every number produced by solver play is

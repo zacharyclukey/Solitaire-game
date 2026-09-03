@@ -344,3 +344,23 @@ describe('the draw pile', () => {
     expect(legalMoves(s).find((m) => m.kind === 'd')!.cost).toBe(2);
   });
 });
+
+describe('recycling the draw pile', () => {
+  it('is not a win, even with every tableau card face-up', () => {
+    // Reported from play: with the tableau fully turned, sending the waste back
+    // round emptied the waste and left `hidden` at zero, so the level declared
+    // itself won with those cards still sitting in the pile.
+    const R = { ...DEFAULT_RULES, passes: 2 };
+    const s = build([[card(9, 1)]], [[true]], R, 30, [card(3, 2), card(2, 3)]);
+    applyMove(s, legalMoves(s).find((m) => m.kind === 'd')!);
+    applyMove(s, legalMoves(s).find((m) => m.kind === 'd')!);
+    expect(s.hidden).toBe(0); // nothing face-down anywhere
+    expect(waste(s)).toHaveLength(2);
+
+    applyMove(s, legalMoves(s).find((m) => m.kind === 'r')!);
+    expect(waste(s)).toHaveLength(0); // waste emptied...
+    expect(stock(s)).toHaveLength(2); // ...into the pile, still unplaced
+    expect(remaining(s)).toBe(2);
+    expect(isWon(s)).toBe(false);
+  });
+});

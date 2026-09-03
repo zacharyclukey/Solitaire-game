@@ -21,6 +21,10 @@ export interface LevelTally {
   secondsLeft: number;
   /** Moves saved against the solver's own line; negative means over par. */
   underPar: number;
+  /** Moves the player's enchantments handed back this level. */
+  enchantMoves: number;
+  /** Cards the player's enchantments turned that a plain move would not have. */
+  enchantFlips: number;
 }
 
 /** Counters for the run as a whole. Reset when a run starts. */
@@ -45,7 +49,7 @@ export interface Achievement {
 }
 
 export function emptyTally(): LevelTally {
-  return { hints: 0, undos: 0, wasteLeft: 0, maxFlips: 0, spare: 0, secondsLeft: 0, underPar: 0 };
+  return { hints: 0, undos: 0, wasteLeft: 0, maxFlips: 0, spare: 0, secondsLeft: 0, underPar: 0, enchantMoves: 0, enchantFlips: 0 };
 }
 
 export function emptyStreak(): RunStreak {
