@@ -152,23 +152,24 @@ Two consequences worth stating plainly:
 The HUD reads `12 carry · par 36` — what you would bank if you finished from
 here on the solver's line.
 
-Measured drain per level (20 seeds, fixed 28-card deck, solver play, bank 45).
-**These predate the draw-pile floor change in §4 and are being re-measured** —
-board shape moved, so par moved with it:
+Measured drain per level (20 seeds, fixed 28-card deck, solver play, bank 45),
+re-measured after the draw-pile floor moved to 0.38:
 
 ```
 stage  ratio   bare    4 ench   8 ench
-    2   1.30  +10.3    +13.1    +13.1
-    6   1.15   +4.9     +6.8     +9.6
-   10   0.90   -2.9     -1.1     +1.4
-   14   0.82   -5.2     -3.6     -1.3
-   18   0.80   -6.2     -4.4     -2.0
-   22   0.70   -8.6     -6.9     -5.7
+    2   1.30  +10.4    +13.1    +13.0
+    6   1.15   +5.0     +7.3     +8.5
+   10   0.90   -3.1     -1.1      0.0
+   14   0.82   -5.7     -4.0     -2.7
+   18   0.80   -6.5     -4.8     -3.6
+   22   0.70   -9.5     -8.0     -6.6
 ```
 
 Stage 10 is the row the whole design exists for: the bare deck has started
-bleeding and the eight-enchantment deck is still gaining. By 14 everyone bleeds
-and the build only buys a slower bleed. Full working, caveats and the ways this
+bleeding while the eight-enchantment deck holds even. By 14 everyone bleeds and
+the build only buys a slower bleed. Holding the draw pile shallower cost some of
+this — the same row read +1.4 before, because a shallower tableau leaves Torch
+and Twin fewer buried cards to turn. Full working, caveats and the ways this
 could still break: `docs/ECONOMY.md`.
 
 A methodological note, because it nearly cost a wrong conclusion: at twelve

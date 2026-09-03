@@ -63,16 +63,24 @@ that level — the number that decides how long a run lasts.
 
 | stage | ratio | drain, bare deck | 4 enchantments | 8 enchantments |
 |---|---|---|---|---|
-| 2 | 1.30 | +10.3 | +13.1 | +13.1 |
-| 6 | 1.15 | +4.9 | +6.8 | +9.6 |
-| 10 | 0.90 | **-2.9** | -1.1 | **+1.4** |
-| 14 | 0.82 | -5.2 | -3.6 | -1.3 |
-| 18 | 0.80 | -6.2 | -4.4 | -2.0 |
-| 22 | 0.70 | -8.6 | -6.9 | -5.7 |
+| 2 | 1.30 | +10.4 | +13.1 | +13.0 |
+| 6 | 1.15 | +5.0 | +7.3 | +8.5 |
+| 10 | 0.90 | **-3.1** | -1.1 | **0.0** |
+| 14 | 0.82 | -5.7 | -4.0 | -2.7 |
+| 18 | 0.80 | -6.5 | -4.8 | -3.6 |
+| 22 | 0.70 | -9.5 | -8.0 | -6.6 |
 
-Stage 10 is the row the design exists for: a bare deck has started bleeding and
-an eight-enchantment deck is still *gaining*. That is "solvable because of the
-build" as a number rather than a hope. By stage 14 everyone bleeds and the build
+Stage 10 is the row the design exists for: a bare deck has started bleeding
+while an eight-enchantment deck is holding even. That is "solvable because of
+the build" as a number rather than a hope — though it is a weaker result than
+before the boards were made humanly clearable, when the same row read +1.4
+rather than break-even.
+
+That cost is worth naming. A shallower tableau gives enchantments less to do:
+the build's par advantage fell from 3.1 moves to 2.2, because Torch and Twin
+reveal buried cards and there are fewer cards buried. **Making boards clearable
+by a person made the build worth slightly less.** The two goals pull against
+each other, and #18's retune has to hold both. By stage 14 everyone bleeds and the build
 only buys a slower bleed, which is the other half of the brief — no deck clears
 forever.
 
