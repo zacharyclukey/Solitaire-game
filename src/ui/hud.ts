@@ -121,41 +121,20 @@ export class Hud {
         return c;
       }),
     );
-    // A board priced past what a standard deck could afford says so, up front.
-    // The whole point of withdrawing that guarantee is the moment where the
-    // player realises their build is what has to close the gap — which only
-    // lands if they are told before the board is lost, not after.
-    if (level.needsBuild) {
-      const n = level.plainPar - level.budget;
-      const chip = el('span', { class: 'chip needs-build' }, [`⚠ ${n} beyond a standard deck`]);
-      chip.addEventListener('click', () =>
-        sheetPanel({
-          title: 'Beyond a standard deck',
-          body: el('p', { class: 'prose' }, [
-            `This board costs ${level.plainPar} moves to clear with no enchantments, and you have ${level.budget}. ` +
-            `Your deck has to make up the difference — every move your cards save you is a move you needed.`,
-          ]),
-        }),
-      );
-      this.strip.prepend(chip);
-    }
-    this.strip.classList.toggle('empty', level.modifiers.length === 0 && !level.needsBuild);
+    this.strip.classList.toggle('empty', level.modifiers.length === 0);
     this.peekBtn.classList.toggle('hidden', level.peeksLeft === 0);
     this.timer.classList.toggle('hidden', level.timeLimit === 0);
   }
 
   update(level: Level, sim: Sim, opts: { canUndo: boolean }): void {
     this.moves.textContent = String(Math.max(0, sim.movesLeft));
-    // Par is the length of the line the solver actually found on this board.
-    // Showing it turns a comfortable clear into a score rather than a shrug.
-    // Live surplus: how far ahead of the line that clears this board you are,
-    // which is the number that actually tells you what you can afford to spend.
-    // What you would carry into the next level if you finished from here on
-    // the solver's line. Naming it "carry" rather than "spare" is the whole
-    // lesson: these moves are not use-them-or-lose-them any more.
-    const carry = sim.movesLeft - Math.max(0, level.par - sim.movesUsed);
-    this.par.textContent = carry >= 0 ? `${carry} carry · par ${level.par}` : `${-carry} behind par ${level.par}`;
-    this.par.classList.toggle('over', carry <= 2);
+    // Deliberately no par, no carry, no deficit against a standard deck. While
+    // a board is being played the only number that changes anything the player
+    // does is how many moves are left; everything else was scoreboard dressing
+    // that invited them to play the arithmetic instead of the cards. Par comes
+    // back at the end of the level, as a score.
+    this.par.textContent = '';
+    this.par.classList.toggle('over', sim.movesLeft <= 3);
     const total = sim.defs.length;
     // What is actually left to do: face-down cards plus everything stranded on
     // the waste, which has been seen but not sorted into a column.

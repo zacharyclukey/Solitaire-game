@@ -684,19 +684,26 @@ export class App {
     run.stats.cardsTurned += level.sim.revealed;
     this.tally.spare = Math.max(0, level.sim.movesLeft);
     this.tally.wasteLeft = waste(level.sim).length;
-    this.tally.underPar = level.par - level.sim.movesUsed;
+    // Scored against the STANDARD par — the line on this board with no
+    // enchantments — so the number rewards the build as well as the play, and
+    // means the same thing from one level to the next.
+    this.tally.underPar = level.plainPar - level.sim.movesUsed;
     this.tally.secondsLeft = level.timeLimit ? Math.max(0, this.timeLeft) : 0;
     this.streak.cleanLevels = this.tally.hints === 0 ? this.streak.cleanLevels + 1 : 0;
     this.streak.patientLevels = this.tally.undos === 0 ? this.streak.patientLevels + 1 : 0;
 
     const spare = Math.max(0, level.sim.movesLeft);
     // Beating the solver's own line is the real skill test, so it pays.
-    const underPar = level.par - level.sim.movesUsed;
+    const underPar = level.plainPar - level.sim.movesUsed;
     if (underPar > 0) {
       run.bonusMoves += 1;
       toast('+1 move on every level from here', 'good');
     }
-    let gold = level.baseGold + level.sim.gold + Math.max(0, underPar) * 3;
+    // Gold stays priced off the enchanted line. Scoring moved to standard par
+    // and paying on it too would have quietly inflated every purse in the game
+    // by the size of the player's build, which is a balance change nobody
+    // measured.
+    let gold = level.baseGold + level.sim.gold + Math.max(0, level.par - level.sim.movesUsed) * 3;
     if (run.charms.includes('thrift')) gold += spare * 2;
     const gained = gainGold(run, gold);
     run.score = computeScore(run);
@@ -738,10 +745,10 @@ export class App {
     renderReward(this.ctx, run, rewards, [
       `+${gained} gold`,
       underPar > 0
-        ? `${underPar} under par`
+        ? `${underPar} under standard par`
         : underPar === 0
-          ? 'exactly par'
-          : `${-underPar} over par`,
+          ? 'exactly standard par'
+          : `${-underPar} over standard par`,
       `${spare} ${spare === 1 ? 'move' : 'moves'} carried`,
       ...(built.length ? [`Your cards: ${built.join(' · ')}`] : []),
     ]);
