@@ -640,10 +640,11 @@ and cleared them of a loss that was genuinely theirs.
   estimated win chance in `src/game/odds.ts`, and about a fifth of boards are
   lost whatever the allowance. Six-column boards remain the sharpest edge, at
   76% against 91% for seven.
-- **The win curve in `odds.ts` was measured before the pivot**, on a generator
-  that eased boards until they fit, and before the deck cap. It is the number
-  the band selects deals on, so it is the most load-bearing stale measurement
-  in the project and wants re-running against the current generator.
+- **The win curve in `odds.ts` was re-measured after the pivot and held.** It
+  was originally taken on a generator that eased boards until they fit, so it
+  was the most load-bearing possibly-stale number in the project; a second sweep
+  on honest shuffles moved every point by 5 points or less, inside the noise at
+  40 samples. The two sweeps are pooled, so it now rests on 80 boards a point.
 - **The economy is tuned against the wrong player.** A shallow player needs a
   median 1.0-1.7x par and the stipend pays 0.90x plainPar by stage 10, so full
   runs with that player end around stage 2-3 rather than 15. The ratio curve

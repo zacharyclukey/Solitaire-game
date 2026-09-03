@@ -21,13 +21,21 @@
  * bounded lookahead to find. Moves do not fix those, which is why the estimate
  * cannot promise more than this.
  */
-export const FINDABLE = 0.80;
+export const FINDABLE = 0.78;
 
 /**
  * Win rate against budget, as a multiple of plainPar. Measured directly at the
- * budgets it describes (`scripts/odds.ts curve`, 40 boards per point across
- * stages 1, 6, 12 and 18): certify a board, re-budget it to exactly the
- * multiple under test, and play it.
+ * budgets it describes (`scripts/odds.ts curve`): certify a board, re-budget it
+ * to exactly the multiple under test, and play it. 80 boards per point, pooled
+ * from two independent sweeps across stages 1, 6, 12 and 18.
+ *
+ * The second sweep was run after deals became honest shuffles and after the
+ * deck cap, to check the numbers had not been left behind by the generator
+ * underneath them. They had not: every point moved by 5 points or less, inside
+ * the noise at 40 samples. It transfers where earlier attempts did not because
+ * it re-budgets boards that already exist rather than inferring a budget from a
+ * spend distribution, which made it independent of how those boards were
+ * chosen.
  *
  * An earlier version derived this from a spend distribution gathered at an
  * unlimited bank and it was wrong in both directions — 72% predicted against
@@ -41,8 +49,8 @@ export const FINDABLE = 0.80;
  * intuition.
  */
 const WIN_CURVE: readonly (readonly [number, number])[] = [
-  [0.9, 0.0], [1.0, 0.03], [1.1, 0.20], [1.2, 0.38],
-  [1.4, 0.68], [1.6, 0.73], [2.0, 0.80], [2.6, 0.80],
+  [0.9, 0.0], [1.0, 0.01], [1.1, 0.21], [1.2, 0.36],
+  [1.4, 0.68], [1.6, 0.71], [2.0, 0.78], [2.6, 0.78],
 ];
 
 /** Interpolated win rate at a given multiple of plainPar. */
