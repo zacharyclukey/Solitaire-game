@@ -360,6 +360,32 @@ table per level.
 
 ---
 
+### Two passes over the draw pile is the right number
+
+A card drawn with nowhere to go sits on the waste, and when the passes run out
+it can never come round again. Losses in play end with several cards stranded
+there, which made the two-pass limit look like the culprit.
+
+It is not. `scripts/passes.ts` replays identical boards with the limit raised to
+three and five — only ever raised, so every variant stays inside the board's
+original certification — and the clear rate does not move at all:
+
+```
+stage  passes 2   passes 3   passes 5
+    1    16/16      16/16      16/16
+    8    15/16      15/16      15/16
+   14    15/16      15/16      15/16
+```
+
+Median spend is unchanged too. When this player loses with six cards on the
+waste, three more passes show it the same six unplaceable cards. The waste is
+stranded because the tableau can no longer accept those ranks, not because the
+pile stopped coming round — the limit was never the binding constraint.
+
+So the limit stays at two. The stranded waste is a symptom of a tableau played
+into a corner, and anything that helps is help with the tableau — clearer
+feedback, a better reading — not a more generous pile.
+
 ### Which enchantments actually save a board
 
 Flavour is not evidence, and the run-over screen makes a promise about this. So
