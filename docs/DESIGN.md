@@ -99,50 +99,75 @@ enormously. Instead:
 1. Deal a candidate board.
 2. Run a weighted A\* search over the **same rules engine the player uses**.
 3. If it finds no line, throw the board away and deal another.
-4. The allowance is `ceil(solutionCost × slack(depth)) + flat(depth)`.
+4. Price the level from a second solve of the *same board with the player's
+   enchantments stripped off*, and pay that as a stipend into a bank the player
+   carries between levels.
 
 This gives three properties that would otherwise be very hard to get:
 
 - **Every board is clearable.** Not "probably" — a concrete line exists and was
   found before the cards were dealt.
 - **Difficulty scales with the actual board**, not with a designer's guess.
-- **The ceiling is well-defined.** `slack` never drops below 1.0, so the deepest
-  levels demand that you match a searcher move for move. That *is* the top of the
-  difficulty curve, and it is reachable rather than arbitrary.
+- **The ceiling is well-defined.** The stipend ratio falls through 1.0 and keeps
+  falling, so the deepest levels demand that you match a searcher move for move
+  and then better it. That *is* the top of the difficulty curve, and it is
+  reachable rather than arbitrary.
 
-### The allowance is par plus a surplus
+### Moves are a bank, not an allowance
 
-Stated as a multiplier, the slack was invisible: the player saw one number and
-could not tell how much of it was theirs. It is now an explicit sum.
-
-**Par** is what the board costs — the length of a line the solver actually
-found. **Surplus** is everything on top, and it is the only part the player
-owns: it pays for mistakes, for exploring a line that turns out wrong, and for
-every reading. The HUD shows it live as `15 spare · par 36`, recomputed as
-`movesLeft − (par − movesUsed)`, so the cost of a reading is watched leaving
-the same pot as the cost of a bad move.
-
-Three consequences, all of them the point:
-
-- **There is always something to spend.** The surplus is floored, so a board can
-  never arrive with nothing to work with — which is what made a move-priced hint
-  unusable under the old multiplier.
-- **Modifiers cut the surplus, never par.** Austerity, gauntlets and Wardens all
-  shave the spare. The allowance therefore cannot be pushed below a winnable
-  line by any combination of them, which used to require a separate clamp.
-- **Failure stays real.** The surplus falls from about 15 at stage 1 to 4-6 by
-  stage 10. At that point one reading is a quarter of everything you have.
-
-Measured across simulated runs:
+A level does not hand out its own budget any more. The player carries a **bank**
+across the whole run; each level pays in a **stipend**, and whatever is not
+spent carries forward.
 
 ```
-stage   cards cols pile hidden   par budget spare  relaxed
-    1      28  7.0 13.0   20.9  34.9   49.6  14.7     0/20
-    5      29  6.8 10.1   21.8  40.4   49.8   8.6     0/20
-   10      29  6.7  7.8   22.1  35.5   41.9   4.9     2/20
-   15      30  6.5  8.6   22.7  37.0   43.9   4.5     4/20
-   20      30  6.6 10.8   22.3  38.9   46.3   4.3    10/20
+level start:  movesLeft = bank + stipend
+level clear:  bank = movesLeft
+level fail:   run over
 ```
+
+The stipend is `plainPar × ratio(stage)`, where **plainPar** is the solver's
+line on that same board with the player's enchantments taken off and their
+curses left on. Pricing off the plain board is the load-bearing decision. The
+previous model derived the budget from the player's *own* par, so a better build
+shortened par and shrank the budget with it — the build was absorbed rather than
+rewarded, and a player who improved got a tighter game for it. Priced blind, a
+move the build saves is a move the player keeps.
+
+`ratio` starts at 1.30, crosses 1.0 around stage 9 and decays geometrically
+after 17. Below 1.0 a level no longer funds itself, and `(1 - ratio) × plainPar`
+is an exact statement of how much work the build has to do to cover the
+difference.
+
+Two consequences worth stating plainly:
+
+- **The loss condition is economic.** A run ends because the purse ran out, not
+  because a board was impossible. Every board is still certified clearable, now
+  inside `bank + stipend` rather than inside its own budget. When no board the
+  generator can build is payable, the run ends at the queue screen as
+  bankruptcy — nothing is dealt that was already lost.
+- **The Oracle and undo got more expensive without changing price.** They always
+  cost moves; now those moves would otherwise have carried, so a reading on
+  stage 3 is felt on stage 12.
+
+The HUD reads `12 carry · par 36` — what you would bank if you finished from
+here on the solver's line.
+
+Measured drain per level (20 seeds, fixed 28-card deck, solver play, bank 45):
+
+```
+stage  ratio   bare    4 ench   8 ench
+    2   1.30  +10.3    +13.1    +13.1
+    6   1.15   +4.9     +6.8     +9.6
+   10   0.90   -2.9     -1.1     +1.4
+   14   0.82   -5.2     -3.6     -1.3
+   18   0.80   -6.2     -4.4     -2.0
+   22   0.70   -8.6     -6.9     -5.7
+```
+
+Stage 10 is the row the whole design exists for: the bare deck has started
+bleeding and the eight-enchantment deck is still gaining. By 14 everyone bleeds
+and the build only buys a slower bleed. Full working, caveats and the ways this
+could still break: `docs/ECONOMY.md`.
 
 A methodological note, because it nearly cost a wrong conclusion: at twelve
 samples a stage the run-to-run noise on the relaxation rate is about ±14
@@ -152,14 +177,26 @@ comparisons below about 20 samples should not be trusted.
 
 `npm run balance` regenerates this table.
 
-### The allowance floor is absolute
+### A board is never dealt that cannot be paid for
 
-Austerity, gauntlets and wardens all scale the allowance down. Once slack got
-as tight as 1.05, those multipliers could push the budget *below* par —
-handing out a board that provably could not be cleared. The allowance is now
-clamped above par unconditionally and the modifier sweep asserts it. A loss has
-to be the player's line, never the deal's; that is the one property the whole
-design rests on.
+Austerity, gauntlets and wardens all scale the stipend down, and past stage 9
+the ratio is below 1.0 besides — so unlike the old model there is no clamp
+holding the allowance above par. There cannot be one: a purse that always
+covered the board would be a game that never ended.
+
+What is guaranteed instead is that the *shortfall is never sprung on the
+player*. Before a board is accepted the deal checks it against `bank + stipend`
+and keeps easing until the line fits, and if nothing it can build is payable the
+run ends at the queue screen as bankruptcy rather than dealing a board that was
+lost before the first card moved.
+
+Easing is a real lever here but a bounded one. With plainPar close to par the
+shortfall is `par × (1 - ratio) - bank`, so a shorter board does close the gap —
+but only while the bank is non-empty. Arrive at a sub-1.0 stage broke and with
+no build to widen plainPar, and no board exists that you could afford; the deal
+detects that case up front instead of spending its whole deadline rediscovering
+it. That is the intended way to lose, and it is an economic loss rather than an
+unfair one: it was visible in the bank for several levels beforehand.
 
 ### Guaranteed playability
 
@@ -448,7 +485,7 @@ and cleared them of a loss that was genuinely theirs.
 | Achievements | `src/game/achievements.ts` |
 | Loss analysis and its copy | `src/game/postmortem.ts` |
 | The Oracle's questions and prices | `src/game/oracle.ts` |
-| Difficulty curve | `spareFractionFor` / `surplusFor` in `src/game/deal.ts` |
+| Difficulty curve | `ratioFor` / `stipendFor` in `src/game/deal.ts` |
 | Tableau / pile split | `STOCK_SHARE`, `stockFor`, `MIN_COLUMNS` in `src/game/deal.ts` |
 | Modifier threat and availability | `MODIFIERS` in `src/game/content.ts` |
 | Rule-modifier cap | `pickModifiers` in `src/game/run.ts` |
@@ -463,7 +500,11 @@ and cleared them of a loss that was genuinely theirs.
   deliberately offline for now. The daily deal is seeded from the date, so a
   leaderboard is a small addition later.
 - No localisation pass; all copy is English and hard-coded.
-- Difficulty at the shallow end is set by `slack`, not by search quality (see
-  the measurement in §2). Whether level 1 at ~1.9× is the right welcome is a
+- Difficulty at the shallow end is set by `ratioFor`, not by search quality (see
+  the measurement in §2). Whether stage 1 at 1.30 is the right welcome is a
   judgement call that wants real players, not more telemetry.
+- Every economy number so far is solver play on a fixed 28-card deck. A human
+  banks worse than a perfect player, and a real deck grows; both make the true
+  drain steeper than the measured one. The bounded-lookahead player is the
+  missing instrument.
 - Landscape and tablet layouts are locked to portrait rather than designed.

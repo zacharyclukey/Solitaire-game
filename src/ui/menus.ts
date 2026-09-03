@@ -137,6 +137,12 @@ export function runBar(run: RunState, opts: { onDeck: () => void } = { onDeck: (
       el('span', { class: 'rb-num' }, [String(d.size)]),
       el('span', { class: 'rb-lbl' }, ['cards']),
     ]),
+    // The bank is the run's real health bar, so it sits beside the gold rather
+    // than being something you only discover once a board is already dealt.
+    el('div', { class: 'runbar-bank', title: 'Moves carried into the next board' }, [
+      el('span', { class: 'rb-num' }, [String(run.bank)]),
+      el('span', { class: 'rb-lbl' }, ['banked']),
+    ]),
     el('div', { class: 'runbar-gold' }, [el('span', { class: 'coin' }, ['⛁']), String(run.gold)]),
     el('div', { class: 'runbar-charms' }, run.charms.slice(0, 6).map((c) => charmChip(c))),
   ]);

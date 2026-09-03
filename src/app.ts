@@ -347,8 +347,27 @@ export class App {
       spec,
       bonusMoves: run.bonusMoves,
       bonusCells: run.bonusCells,
+      bank: run.bank,
     });
     rehydrate(level);
+
+    // Bankruptcy. The generator eased this board as far as it goes and the
+    // purse still will not cover it, so the run ends here rather than on a
+    // board that was lost before the first card moved.
+    if (!level.affordable) {
+      this.dealing = false;
+      this.hud.setDealing(false);
+      // A brand-new way to lose deserves an explanation the first time it
+      // happens, not just a word on the results screen.
+      await modal({
+        title: 'Bankrupt',
+        body: `The shallowest board this deep still costs ${level.par} moves, and you can raise ${level.budget}. There was no board here you could have afforded.`,
+        actions: [{ label: 'End the run', kind: 'primary' }],
+        dismissable: false,
+      });
+      await this.onLose('Bankrupt');
+      return;
+    }
 
     this.level = level;
     this.initialSim = cloneSim(level.sim);
@@ -622,6 +641,8 @@ export class App {
 
     bankStage(run);
     clearSunken(run, level.spec.stage);
+    // Everything left on the table carries. This is the whole economy.
+    run.bank = Math.max(0, level.sim.movesLeft);
     run.stats.levelsCleared += 1;
     run.stats.cardsTurned += level.sim.revealed;
     this.tally.spare = Math.max(0, level.sim.movesLeft);
@@ -673,7 +694,7 @@ export class App {
         : underPar === 0
           ? 'exactly par'
           : `${-underPar} over par`,
-      `${spare} ${spare === 1 ? 'move' : 'moves'} to spare`,
+      `${spare} ${spare === 1 ? 'move' : 'moves'} carried`,
     ]);
     show('reward');
   }

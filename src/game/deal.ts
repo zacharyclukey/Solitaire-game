@@ -39,9 +39,24 @@ export interface Level {
   peeksLeft: number;
   solution: Move[] | null;
   par: number; // the solver's own move count
-  budget: number;
+  /**
+   * The solver's line on this same board with the player's enchantments
+   * stripped out. This is what the stipend is priced from, so that a move your
+   * build saves is a move you keep rather than one the deal quietly reclaims.
+   */
+  plainPar: number;
+  /** Moves this level grants. Build-blind: derived from plainPar, never par. */
+  stipend: number;
+  /** Moves carried in from earlier levels. */
+  bank: number;
+  budget: number; // bank + stipend: what movesLeft actually starts at
   /** Moves granted above par: the only ones that are actually yours. */
   surplus: number;
+  /**
+   * False when no board this generator can build is clearable inside
+   * `bank + stipend`. The run is over on economy; nothing is dealt.
+   */
+  affordable: boolean;
   baseGold: number;
   freeFirstMove: boolean;
 }
@@ -150,49 +165,68 @@ export function columnsFor(deckSize: number, mods: ModifierId[], charms: CharmId
 }
 
 /**
- * The allowance is `par + surplus`, and the surplus is the whole game.
+ * Share of a board's plain cost that the level actually pays for.
  *
- * Par is what the board costs — the length of a line the solver actually found.
- * The surplus on top is the only thing you own: it pays for mistakes, for
- * exploring a line that turns out wrong, and for asking the Oracle anything.
- * Stating it as an explicit addition rather than a multiplier means it can be
- * shown to the player, guaranteed never to vanish, and spent deliberately.
+ * This is the spine of the difficulty curve. Above 1.0 a level funds itself
+ * with room to spare; below 1.0 it does not, and the difference has to come
+ * out of the bank or out of the player's build. `(1 - ratio) * plainPar` is
+ * therefore an exact statement of how much work the build is being asked to
+ * do, which is the number to argue about when the game is too easy or too
+ * mean.
  *
- * It shrinks as a run goes deeper. Early on there is room to wander and consult
- * freely; by the deep game you can afford a couple of readings or a couple of
- * wasted moves, and not both.
+ * It has no floor above zero on purpose: a build's saving per level is roughly
+ * fixed, while plainPar grows with the deck, so a curve that flattened out
+ * could be outrun forever by a good enough deck. Runs have to end.
  */
-export function spareFractionFor(stage: number): number {
-  return Math.max(0.12, 0.45 - stage * 0.028);
+export function ratioFor(stage: number): number {
+  if (stage <= 3) return 1.3;
+  if (stage <= 6) return 1.15;
+  if (stage <= 9) return 1.0;
+  if (stage <= 13) return 0.9;
+  if (stage <= 17) return 0.82;
+  // Geometric, so it always falls and never reaches zero. A floor here would
+  // be a ceiling on difficulty, and a good enough deck would sit above it
+  // forever.
+  return 0.82 * Math.pow(0.97, stage - 17);
 }
-
-/** Never fewer than this, so a reading is always affordable in principle. */
-export const MIN_SURPLUS = 6;
 
 /**
- * Floor once modifiers have taken their cut. Tight, but never so tight that
- * the Oracle is unaffordable on the boards where it matters most.
+ * What a level grants, before anything carried in.
+ *
+ * Priced from plainPar — the board without the player's enchantments — so the
+ * stipend cannot shrink just because the player got better at the game. The
+ * node multipliers still bite, but they bite a build-blind number.
  */
-export const HARD_MIN_SURPLUS = 4;
-
-export function surplusFor(
-  par: number,
-  stage: number,
-  mods: ModifierId[],
-  kind: NodeKind,
-): number {
-  let spare = Math.max(MIN_SURPLUS, Math.round(par * spareFractionFor(stage)));
-  // Modifiers and hard nodes cut the surplus, never the par underneath it —
-  // which is why the allowance can no longer be pushed below a winnable line.
-  if (has(mods, 'austere')) spare = Math.round(spare * 0.55);
-  if (kind === 'gauntlet') spare = Math.round(spare * 0.8);
-  if (kind === 'boss') spare = Math.round(spare * 0.8);
-  if (kind === 'cache') spare = Math.round(spare * 1.4);
-  // A board you walked past comes back with less room, not more rules: the
-  // same deal, harder to afford.
-  if (kind === 'sunken') spare = Math.round(spare * 0.65);
-  return Math.max(HARD_MIN_SURPLUS, spare);
+export function stipendFor(plainPar: number, stage: number, mods: ModifierId[], kind: NodeKind): number {
+  let s = plainPar * ratioFor(stage);
+  if (has(mods, 'austere')) s *= 0.85;
+  if (kind === 'gauntlet' || kind === 'boss') s *= 0.9;
+  if (kind === 'cache') s *= 1.15;
+  if (kind === 'sunken') s *= 0.92;
+  return Math.max(4, Math.round(s));
 }
+
+/**
+ * The same board with the player's enchantments taken off and their curses
+ * left on. Curses are not part of the build and should not be paid for.
+ */
+function stripEnchantments(defs: CardDef[]): CardDef[] {
+  return defs.map((d) =>
+    d.ench === null
+      ? d
+      : makeCardDef({ uid: d.uid, rank: d.rank, suit: d.suit, ench: null, curse: d.curse }),
+  );
+}
+
+/**
+ * Time given to the plain-board solve. Fixed rather than "whatever is left" so
+ * that the price of a board never depends on how long the rest of the deal
+ * happened to take.
+ */
+const PLAIN_SOLVE_MS = 260;
+
+/** Charms that hand out rule-level power, rather than flat moves. */
+const RULE_CHARMS: CharmId[] = ['locksmith', 'sorter'];
 
 interface Candidate {
   defs: CardDef[];
@@ -284,6 +318,8 @@ export interface DealOptions {
   bonusMoves: number;
   /** Extra reserve cells bought during the run. */
   bonusCells: number;
+  /** Moves carried over from earlier levels. */
+  bank?: number;
   attempts?: number;
   /** Wall-clock budget for dealing, including every solver attempt. */
   budgetMs?: number;
@@ -300,6 +336,13 @@ export function dealLevel(opts: DealOptions): Level {
   const baseFaceUp = 1;
   const attempts = opts.attempts ?? 3;
   const deadline = Date.now() + (opts.budgetMs ?? 1200);
+  // Flat grants ride on top of the stipend rather than scaling with it, so a
+  // charm bought on stage 2 is still worth the same three moves on stage 20.
+  let flatBonus = opts.bonusMoves;
+  if (charms.includes('sleeve')) flatBonus += CHARM_MOVE_BONUS.sleeve;
+  if (charms.includes('pact')) flatBonus += CHARM_MOVE_BONUS.pact;
+
+  const bank = opts.bank ?? 0;
 
   let cand: Candidate | null = null;
   let bestSolution: Move[] | null = null;
@@ -308,6 +351,37 @@ export function dealLevel(opts: DealOptions): Level {
   let stockSize = baseStock;
   let faceUp = baseFaceUp;
   let relaxed = 0;
+  // The board is chosen across several relaxation passes, but the rules and
+  // shape that go with it are rebuilt every pass. Capture them with the
+  // candidate or they drift apart the moment we keep relaxing past a hit.
+  let candRules: RuleSet = DEFAULT_RULES;
+  let candMods: ModifierId[] = mods;
+  let candStock = baseStock;
+  let candFaceUp = baseFaceUp;
+  let candRelaxed = 0;
+
+  /**
+   * Can the player pay for this line at all?
+   *
+   * Priced off `par` rather than plainPar, which is the strict reading: the
+   * real stipend is computed from plainPar, and stripping enchantments can
+   * only lengthen a line, so plainPar >= par and the real stipend is never
+   * smaller than the one tested here. Anything that clears this check still
+   * clears it once the true number is known.
+   */
+  const canPayFor = (cost: number, ms: ModifierId[]): boolean =>
+    cost <= bank + stipendFor(cost, spec.stage, ms, spec.kind) + flatBonus;
+
+  /**
+   * Easing the board is only an affordability lever some of the time.
+   *
+   * With plainPar ~= par the shortfall is `par * (1 - ratio) - bank`, so a
+   * shorter board does close the gap — but only down to zero bank. Arrive at a
+   * sub-1.0 stage with an empty purse and no build to widen plainPar, and no
+   * board this generator can produce is payable. Detect that up front instead
+   * of burning the whole deal deadline rediscovering it every level.
+   */
+  const hopeless = bank + flatBonus <= 0 && ratioFor(spec.stage) < 1;
 
   /**
    * A board the solver cannot clear is never handed to the player. If a deal
@@ -338,10 +412,18 @@ export function dealLevel(opts: DealOptions): Level {
         cand = trial;
         bestSolution = sol.moves;
         bestCost = sol.cost;
+        candRules = rules;
+        candMods = activeMods;
+        candStock = stockSize;
+        candFaceUp = faceUp;
+        candRelaxed = relax;
       }
-      if (a >= 1) break outer;
+      // Solvable is no longer enough. A board the player cannot pay for is as
+      // dead as one nobody can clear, so keep easing until the line fits the
+      // purse — a shorter board is a smaller bill.
+      if ((hopeless || canPayFor(bestCost, candMods)) && a >= 1) break outer;
     }
-    if (cand) break;
+    if (cand && (hopeless || canPayFor(bestCost, candMods))) break;
   }
 
   if (!cand) {
@@ -354,22 +436,52 @@ export function dealLevel(opts: DealOptions): Level {
     faceUp = baseFaceUp + 2;
     cand = layout(defs, columns, faceUp, stockSize, rng);
     bestCost = Math.round(defs.length * 0.9);
-    relaxed = 5;
+    candRules = rules;
+    candMods = activeMods;
+    candStock = stockSize;
+    candFaceUp = faceUp;
+    candRelaxed = 5;
   }
+  rules = candRules;
+  activeMods = candMods;
+  stockSize = candStock;
+  faceUp = candFaceUp;
+  relaxed = candRelaxed;
 
   const par = Number.isFinite(bestCost) ? bestCost : Math.round(cand.defs.length * 1.4);
 
   const m = activeMods;
-  const surplus = surplusFor(par, spec.stage, m, spec.kind);
-  let budget = par + surplus;
-  if (charms.includes('sleeve')) budget += CHARM_MOVE_BONUS.sleeve;
-  if (charms.includes('pact')) budget += CHARM_MOVE_BONUS.pact;
-  budget += opts.bonusMoves;
-  // The floor is absolute. Austerity, gauntlets and wardens all scale the
-  // allowance down, and with slack this tight they can otherwise push it under
-  // par — which would hand out a board that cannot be cleared. A loss has to be
-  // the player's line, never the deal.
-  budget = Math.max(budget, par + 1);
+
+  /**
+   * Price the level on the board the player would have faced without their
+   * build. Stripping enchantments only ever removes options, so this line is
+   * never shorter than par; when the solver cannot find one in the time left,
+   * assume the build was worth a fifth of the board rather than pretending it
+   * was worth nothing.
+   */
+  const plainDefs = stripEnchantments(cand.defs);
+  const plainRules = buildRules(
+    m,
+    charms.filter((c) => !RULE_CHARMS.includes(c)),
+    plainDefs.map((d) => d.rank),
+  );
+  const probe = createSim(plainDefs, cand.cols, cand.stock, cand.up, plainRules, Number.MAX_SAFE_INTEGER / 4);
+  // Always solved, and always with the same fixed slice, even when there is
+  // nothing to strip. Reusing `par` on an unenchanted deck would be cheaper and
+  // wrong: the two paths do different amounts of searching, so the same board
+  // would be priced differently depending on what the player was carrying —
+  // which is precisely the bias this whole mechanism exists to remove.
+  const plainSol = findSolution(probe, PLAIN_SOLVE_MS);
+  const plainPar = Math.max(plainSol ? plainSol.cost : Math.round(par * 1.2), par);
+
+  const stipend = stipendFor(plainPar, spec.stage, m, spec.kind) + flatBonus;
+  const budget = bank + stipend;
+  // Nothing is clamped up to par here, and that is the point. If the purse
+  // cannot cover the board the run is over on economy — but the relaxation
+  // loop above has already spent every easing it has trying to avoid that, so
+  // reaching this line unaffordable means no board would have fitted.
+  const affordable = par <= budget;
+  const surplus = budget - par;
 
   const sim = createSim(cand.defs, cand.cols, cand.stock, cand.up, rules, budget);
 
@@ -409,8 +521,12 @@ export function dealLevel(opts: DealOptions): Level {
     peeksLeft: charms.includes('xray') ? 1 : 0,
     solution: bestSolution,
     par,
+    plainPar,
+    stipend,
+    bank,
     budget,
     surplus,
+    affordable,
     baseGold,
     freeFirstMove: charms.includes('crowbar'),
   };

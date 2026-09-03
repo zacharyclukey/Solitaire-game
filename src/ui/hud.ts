@@ -132,9 +132,12 @@ export class Hud {
     // Showing it turns a comfortable clear into a score rather than a shrug.
     // Live surplus: how far ahead of the line that clears this board you are,
     // which is the number that actually tells you what you can afford to spend.
-    const spare = sim.movesLeft - Math.max(0, level.par - sim.movesUsed);
-    this.par.textContent = spare >= 0 ? `${spare} spare · par ${level.par}` : `${-spare} behind par ${level.par}`;
-    this.par.classList.toggle('over', spare <= 2);
+    // What you would carry into the next level if you finished from here on
+    // the solver's line. Naming it "carry" rather than "spare" is the whole
+    // lesson: these moves are not use-them-or-lose-them any more.
+    const carry = sim.movesLeft - Math.max(0, level.par - sim.movesUsed);
+    this.par.textContent = carry >= 0 ? `${carry} carry · par ${level.par}` : `${-carry} behind par ${level.par}`;
+    this.par.classList.toggle('over', carry <= 2);
     const total = sim.defs.length;
     // What is actually left to do: face-down cards plus everything stranded on
     // the waste, which has been seen but not sorted into a column.

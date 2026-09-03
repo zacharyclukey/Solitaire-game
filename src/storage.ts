@@ -139,7 +139,11 @@ export function setRun(run: RunState | null): void {
 }
 
 export function getRun(): RunState | null {
-  return load().run;
+  const r = load().run;
+  // Saves written before the move bank existed have no purse. Start them empty
+  // rather than with an undefined that would poison every sum downstream.
+  if (r && typeof r.bank !== 'number') r.bank = 0;
+  return r;
 }
 
 export const HISTORY_LIMIT = 25;

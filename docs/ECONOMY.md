@@ -1,7 +1,7 @@
 # The move economy
 
-Status: **design plan, not yet built.** Numbers here are proposals to be measured,
-not findings. Anything confirmed moves to DESIGN.md with its measurement.
+Status: **built and measured.** The drain table below is real; the run-length
+estimates derived from it are not, and are marked as such.
 
 ## The change
 
@@ -46,11 +46,50 @@ Proposed ratio curve — to be tuned by measurement, the shape matters more than
 | 7-9 | 1.00 | break-even for a perfect line |
 | 10-13 | 0.90 | bare deck now runs a deficit |
 | 14-17 | 0.82 | build is load-bearing |
-| 18+ | 0.75 | floor |
+| 18+ | `0.82 x 0.97^(stage-17)` | keeps falling, never flat |
+
+The tail is geometric rather than floored. A floor would be a ceiling on
+difficulty, and a good enough deck would sit above it forever.
 
 `(1 - ratio) * plainPar` is exactly the gap the build has to cover. That is the
 tunable answer to "eventually only solvable because of their build" — it is a number,
 not a vibe, and it can be pointed at.
+
+## What it actually does
+
+Measured with `scripts/economy.ts`: 20 seeds per row, a fixed 28-card deck, a
+constant bank of 45, solver play. "Drain" is what the bank gains or loses on
+that level — the number that decides how long a run lasts.
+
+| stage | ratio | drain, bare deck | 4 enchantments | 8 enchantments |
+|---|---|---|---|---|
+| 2 | 1.30 | +10.3 | +13.1 | +13.1 |
+| 6 | 1.15 | +4.9 | +6.8 | +9.6 |
+| 10 | 0.90 | **-2.9** | -1.1 | **+1.4** |
+| 14 | 0.82 | -5.2 | -3.6 | -1.3 |
+| 18 | 0.80 | -6.2 | -4.4 | -2.0 |
+| 22 | 0.70 | -8.6 | -6.9 | -5.7 |
+
+Stage 10 is the row the design exists for: a bare deck has started bleeding and
+an eight-enchantment deck is still *gaining*. That is "solvable because of the
+build" as a number rather than a hope. By stage 14 everyone bleeds and the build
+only buys a slower bleed, which is the other half of the brief — no deck clears
+forever.
+
+The mechanism underneath it: a built deck's par is shorter (27.4 vs 30.5 at
+stage 14) while its plainPar is *longer* (31.8 vs 30.9), because a deck that can
+clear harder boards gets given them. The build is paid twice — once in a
+cheaper line, once in a bigger stipend — and neither payment is something the
+old per-level budget could express.
+
+**Two caveats, both of which understate difficulty.** The deck is fixed at 28
+cards, so par barely moves across stages (30.5 at 6, 10 and 14 alike) and the
+entire curve is currently carried by the ratio; in a real run the deck grows and
+plainPar grows with it. And this is solver play. A human banks worse than a
+perfect player, so real drains are steeper than these.
+
+Deal cost rose from roughly 500ms to 450-580ms per level with the second solve
+included, inside the 1200ms budget.
 
 ## Why this should terminate
 

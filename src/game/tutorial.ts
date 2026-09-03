@@ -94,8 +94,12 @@ export function buildTutorialLevel(): Level {
 
     solution: null,
     par: 16,
+    plainPar: 16,
+    stipend: TUTORIAL_BUDGET,
+    bank: 0,
     surplus: TUTORIAL_BUDGET - 16,
     budget: TUTORIAL_BUDGET,
+    affordable: true,
     baseGold: 0,
     freeFirstMove: false,
   };

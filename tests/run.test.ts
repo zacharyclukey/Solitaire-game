@@ -2,11 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   columnsFor,
   dealLevel,
-  HARD_MIN_SURPLUS,
-  MIN_SURPLUS,
-  spareFractionFor,
+  stipendFor,
   stockFor,
-  surplusFor,
   type LevelSpec,
 } from '../src/game/deal.ts';
 import { MODIFIERS, type ModifierId } from '../src/game/content.ts';
@@ -36,13 +33,18 @@ function spec(stage: number, modifiers: ModifierId[] = [], seed = 1234): LevelSp
   return { stage, kind: 'trial', modifiers, seed };
 }
 
-function deal(depth: number, mods: ModifierId[] = [], seed = 999) {
+// A bank big enough that these deals are always payable. Affordability is its
+// own question, tested below; these cases are about the board.
+const FLUSH = 60;
+
+function deal(depth: number, mods: ModifierId[] = [], seed = 999, bank = FLUSH) {
   return dealLevel({
     deck: starterDeck(),
     charms: [],
     spec: spec(depth, mods, seed),
     bonusMoves: 0,
     bonusCells: 0,
+    bank,
   });
 }
 
@@ -63,6 +65,7 @@ describe('dealing', () => {
     for (let i = 0; i < 12; i++) {
       const level = deal(1 + (i % 10), [], 1000 + i * 7919);
       expect(level.sim.hidden).toBeGreaterThan(0);
+      expect(level.affordable).toBe(true);
       expect(level.budget).toBeGreaterThanOrEqual(level.par);
       const sol = level.solution;
       expect(sol).not.toBeNull();
@@ -102,26 +105,6 @@ describe('dealing', () => {
     expect(stockFor(28, [], ['casing'], 0)).toBe(stockFor(28, [], [], 0) + 2);
   });
 
-  it('shrinks the surplus as the run goes deeper, and never to nothing', () => {
-    for (let d = 1; d < 40; d++) expect(spareFractionFor(d + 1)).toBeLessThanOrEqual(spareFractionFor(d));
-    expect(surplusFor(34, 12, [], 'trial')).toBeLessThan(surplusFor(34, 1, [], 'trial'));
-    // A reading has to stay affordable in principle at any depth.
-    expect(surplusFor(34, 40, [], 'trial')).toBeGreaterThanOrEqual(MIN_SURPLUS);
-  });
-
-  it('lets modifiers cut the surplus but never the par underneath it', () => {
-    const plain = surplusFor(34, 8, [], 'trial');
-    expect(surplusFor(34, 8, ['austere'], 'trial')).toBeLessThan(plain);
-    expect(surplusFor(34, 8, [], 'boss')).toBeLessThan(plain);
-    expect(surplusFor(34, 8, [], 'cache')).toBeGreaterThan(plain);
-    // Even everything at once leaves something to spend.
-    for (const stage of [1, 5, 10, 20, 40]) {
-      expect(surplusFor(20, stage, ['austere'], 'boss')).toBeGreaterThanOrEqual(HARD_MIN_SURPLUS);
-    }
-  });
-});
-
-describe('run progression', () => {
   it('shows the next few stages, so a run can be read ahead', () => {
     const run = newRun(31337);
     const queue = makeQueue(run);
@@ -225,8 +208,8 @@ describe('run progression', () => {
   });
 
   it('gives a resurfaced board less room rather than more rules', () => {
-    expect(surplusFor(34, 8, [], 'sunken')).toBeLessThan(surplusFor(34, 8, [], 'trial'));
-    expect(surplusFor(34, 8, [], 'sunken')).toBeGreaterThanOrEqual(HARD_MIN_SURPLUS);
+    expect(stipendFor(34, 8, [], 'sunken')).toBeLessThan(stipendFor(34, 8, [], 'trial'));
+    expect(stipendFor(34, 8, [], 'sunken')).toBeGreaterThan(0);
   });
 
   it('will not let a board that came back for you be ducked twice', () => {
@@ -349,11 +332,15 @@ describe('a full simulated run', () => {
         spec: node,
         bonusMoves: run.bonusMoves,
         bonusCells: run.bonusCells,
+        bank: run.bank,
       });
       expect(level.solution).not.toBeNull();
+      expect(level.affordable).toBe(true);
       for (const mv of level.solution!) applyMove(level.sim, mv, null);
       expect(isWon(level.sim)).toBe(true);
       expect(level.sim.movesLeft).toBeGreaterThanOrEqual(0);
+      // What the solver did not spend funds the next board.
+      run.bank = Math.max(0, level.sim.movesLeft);
       bankStage(run);
       run.gold += level.baseGold;
       const rewards = makeRewards(run, node.kind, rewardCount(run, node.kind));

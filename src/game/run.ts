@@ -46,6 +46,12 @@ export interface RunState {
   deck: DeckCard[];
   charms: CharmId[];
   gold: number;
+  /**
+   * Moves carried between levels. This, not any single board, is what a run
+   * actually is: every move a level does not take is one the next level does
+   * not have to fund.
+   */
+  bank: number;
   bonusMoves: number;
   bonusCells: number;
   /** Skips taken since the last cleared level. They pay nothing until one is. */
@@ -102,6 +108,7 @@ export function newRun(seed: number, daily = false): RunState {
     deck,
     charms: [],
     gold: 0,
+    bank: 0,
     bonusMoves: 0,
     bonusCells: 0,
     skipsPending: 0,
