@@ -355,6 +355,65 @@ table per level.
 
 ---
 
+### Which enchantments actually save a board
+
+Flavour is not evidence, and the run-over screen makes a promise about this. So
+it is measured: `scripts/enchaudit.ts` deals boards, keeps the ones the
+bounded-lookahead player loses at a realistic budget, then puts each enchantment
+on each of six plausible cards — buried, column tops, top of the draw pile — and
+counts the ones that turn the loss into a win. 42 boards at stages 4, 8 and 12;
+19 of them lost; the fallible player rather than the solver, because a solver
+extracts value from a card no person would find.
+
+```
+Anchor          7/19   37%
+Ember           5/19   26%
+Prism           5/19   26%
+Torch           4/19   21%
+Bridge          4/19   21%
+Twin            4/19   21%
+Kickback        3/19   16%
+Featherweight   3/19   16%
+Chameleon       1/19    5%
+Keystone        0/19    0%
+Gilded          0/19    0%
+Beacon          0/19    0%
+```
+
+Anchor leads because it manufactures the scarce resource: with no foundations,
+somewhere to put anything is the whole game.
+
+**Keystone was genuinely dead**, and for an embarrassing reason: its entire
+effect was bypassing empty-column restrictions and paying no entry cost, and
+under standard rules there are no restrictions to bypass and the entry cost is
+zero. It did *nothing at all* unless Royal Gates, Sealed Vaults or Tithe
+happened to be in force. It now enters an empty column for free — a real saving
+on every board, and it reads the same on the card.
+
+That buff did **not** move its save rate: still 0/19 on a re-run. Which turned
+out to be the useful finding, because it is the same zero as Gilded's and
+Beacon's, and it exposes what this metric cannot see.
+
+**The audit measures board-saving, and the bank made that a different thing from
+run-saving.** A card worth one move cannot flip a board that was lost
+structurally, so every economy enchantment scores near zero here however good it
+is. Gilded pays gold and should never turn a board. Beacon's two moves now carry
+forward instead of evaporating, which makes it better than it was, not worse.
+Kickback refunding three moves a board is thirty banked moves over ten levels —
+entirely invisible to this test. None of these should be cut on this evidence;
+what they need is a run-level measurement, which the carried bank finally makes
+meaningful.
+
+So the honest reading of the table is narrower than it looks: it ranks
+enchantments by their power to rescue a board that is already going wrong, and
+that is exactly the claim the run-over screen makes. It says nothing about which
+enchantments are worth buying.
+
+One methodological warning. An earlier version of this audit only enchanted deep face-down cards and scored
+every placement effect at zero. That was the method, not the cards — Anchor rose
+from 26% to 37% and Prism from 16% to 26% once the sample spread across column
+tops and the draw pile. Worth remembering before cutting anything on one sweep.
+
 ## 5. Feel
 
 - **Both input models.** Tap-to-select with highlighted destinations for

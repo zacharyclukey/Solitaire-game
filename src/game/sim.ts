@@ -152,7 +152,16 @@ export function moveCost(s: Sim, headId: number, toCol: number): number {
   const d = s.defs[headId];
   let cost = d.free ? 0 : 1;
   if (d.heavy) cost += 1;
-  if (toCol >= 0 && toCol < s.tableau && s.cols[toCol].length === 0 && !d.key) cost += s.rules.emptyCost;
+  const intoEmpty = toCol >= 0 && toCol < s.tableau && s.cols[toCol].length === 0;
+  if (intoEmpty) {
+    // Keystone sets the base for nothing. Bypassing the empty-column rules was
+    // its whole effect, and under standard rules there are none to bypass —
+    // measured, it saved 0 of 19 lost boards. Making the move itself free gives
+    // it something to do on every board rather than only under Royal Gates,
+    // Sealed Vaults or Tithe.
+    if (d.key) return 0;
+    cost += s.rules.emptyCost;
+  }
   if (d.spring) cost -= 1;
   return Math.max(0, cost);
 }

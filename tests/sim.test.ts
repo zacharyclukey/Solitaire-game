@@ -190,7 +190,7 @@ describe('move costs', () => {
     expect(moves.find((m) => m.from === 2)!.cost).toBe(2);
   });
 
-  it('Tithe taxes empty columns and Keystone dodges it', () => {
+  it('Tithe taxes empty columns and Keystone enters one for free', () => {
     const R = { ...DEFAULT_RULES, emptyCost: 2 };
     const s = build(
       [[card(9, 1), card(8, 0)], [], [card(6, 1), card(4, 0, 'key')]],
@@ -199,7 +199,9 @@ describe('move costs', () => {
     );
     const toEmpty = legalMoves(s).filter((m) => m.to === 1);
     expect(toEmpty.find((m) => m.from === 0)!.cost).toBe(3);
-    expect(toEmpty.find((m) => m.from === 2)!.cost).toBe(1);
+    // Keystone no longer merely dodges the tax: setting the base is free, so it
+    // has an effect under standard rules too, where there is no tax to dodge.
+    expect(toEmpty.find((m) => m.from === 2)!.cost).toBe(0);
   });
 
   it('Kickback refunds a move', () => {

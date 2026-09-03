@@ -60,7 +60,7 @@ export const ENCHANTS: Record<EnchantId, EnchantDef> = {
     id: 'key',
     name: 'Keystone',
     glyph: '⚿',
-    text: 'Always allowed into an empty column, and never pays the entry cost.',
+    text: 'Always allowed into an empty column, and moving it into one is free.',
     rarity: 'common',
     price: 24,
   },

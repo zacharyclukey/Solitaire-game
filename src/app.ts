@@ -613,17 +613,38 @@ export class App {
   }
 
   /** Turns the solver's account of the run into something worth reading. */
+  /**
+   * The enchantments that measurably turn a lost board around.
+   *
+   * Named from the audit in `scripts/enchaudit.ts` rather than from flavour:
+   * over 19 boards the bounded-lookahead player lost, Anchor saved 37%, Ember
+   * and Prism 26% each. The line this replaced offered Beacon, which saved
+   * none of them — the losses are structural, not two moves short.
+   */
   private epitaphFor(pm: PostMortem): Epitaph {
     const lines: string[] = [];
+    const level = this.level;
+    const consulted = this.tally.hints + this.tally.undos;
+
     if (pm.lastWinnableAfter !== null && pm.movesAfterLoss !== null && pm.movesAfterLoss > 0) {
       lines.push(`Winnable through move ${pm.lastWinnableAfter} of ${pm.movesPlayed}.`);
     }
+
     if (pm.shortBy !== null && pm.shortBy > 0) {
       lines.push(`${pm.shortBy} ${pm.shortBy === 1 ? 'move' : 'moves'} short at the end.`);
-      if (pm.shortBy <= 3) {
-        lines.push('A Beacon, a Kickback or a Spare Sleeve each buy back exactly that.');
+
+      // In order of how much the player can actually do about it. Spending is
+      // the sharpest thing we can name, because it is theirs and it is exact.
+      if (this.offBookSpend >= pm.shortBy && consulted > 0) {
+        lines.push(
+          `Readings and undos cost you ${this.offBookSpend} — more than you were short by.`,
+        );
+      } else if (level && level.bank < pm.shortBy) {
+        lines.push(
+          `You arrived with ${level.bank} banked. This board was lost on the ones before it.`,
+        );
       } else {
-        lines.push('A thinner deck, or more of it in the draw pile, buys back that much room.');
+        lines.push('An Anchor, an Ember or a Prism most often turns a board like this one.');
       }
     } else if (pm.movesAfterLoss !== null && pm.movesAfterLoss > 3) {
       lines.push('Loaded Dice would have let you take those moves back.');
