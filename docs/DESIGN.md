@@ -503,8 +503,14 @@ and cleared them of a loss that was genuinely theirs.
 - Difficulty at the shallow end is set by `ratioFor`, not by search quality (see
   the measurement in §2). Whether stage 1 at 1.30 is the right welcome is a
   judgement call that wants real players, not more telemetry.
-- Every economy number so far is solver play on a fixed 28-card deck. A human
-  banks worse than a perfect player, and a real deck grows; both make the true
-  drain steeper than the measured one. The bounded-lookahead player is the
-  missing instrument.
+- **The clearability guarantee is weaker than it reads at depth.** Boards are
+  certified clearable by a weighted A\* search. Measured with the
+  bounded-lookahead player in `src/game/bot.ts`, four of eight stage-10 boards
+  were lost *with 999 moves in hand* — clearable by a searcher had stopped
+  meaning clearable by a person. This is the largest open problem in the game.
+- **The economy is tuned against the wrong player.** A shallow player needs a
+  median 1.0-1.7x par and the stipend pays 0.90x plainPar by stage 10, so full
+  runs with that player end around stage 2-3 rather than 15. The ratio curve
+  needs recalibrating against a human-shaped player, not the solver. Numbers and
+  caveats in `docs/ECONOMY.md`.
 - Landscape and tablet layouts are locked to portrait rather than designed.

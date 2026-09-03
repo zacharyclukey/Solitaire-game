@@ -150,6 +150,48 @@ The economy only matters if there are ways to bend it.
    part never arrives. Look at the bank trajectory, not just the death stage.
 5. **Illegible loss.** Correct but unreadable is still a bad loss.
 
+## The skill gap, measured
+
+`src/game/bot.ts` is a bounded-lookahead player — three plies, six moves
+considered per ply, no memory of rejected positions, no undo. It values empty
+columns explicitly, because they are the only real sink on a board with no
+foundations and a human plays for one deliberately where a searcher just
+stumbles into it. That term is a model choice, not a tuned one: at 12 boards,
+weights between 0 and 2.5 were indistinguishable (106% / 105% / 102% moves over
+par), and only an absurd weight of 5 clearly hurt at 223%. It is kept because it
+describes how people play, not because it was measured to help.
+
+Given a bank of 999, so that only skill is being measured
+(`scripts/humanrun.ts boards`, 8 boards per stage):
+
+| stage | boards won | median moves vs par | worst |
+|---|---|---|---|
+| 1 | 8/8 | 100% | 113% |
+| 3 | 8/8 | 112% | 324% |
+| 6 | 8/8 | 166% | 448% |
+| 10 | **4/8** | 143% | 250% |
+| 14 | 8/8 | 115% | 470% |
+
+Two findings, and the second is the serious one.
+
+**The curve is calibrated to a player who does not exist.** A shallow player
+needs a median 1.0-1.7x par; the ratio pays 0.90x plainPar at stage 10. Solver
+play made the economy look survivable because the solver *is* par. Full runs
+with this player end at stage 2-3, not stage 15.
+
+**By stage 10 half the boards are unwinnable for a shallow player at any
+budget.** That is not an economy failure — 4/8 boards were lost with 999 moves
+in hand. Boards are certified clearable *by a weighted A\* search*, and past a
+certain depth that has quietly stopped meaning clearable by a person. The
+guarantee the whole design rests on is weaker than it reads.
+
+The honest caveat in both directions: this bot is a **lower bound** on human
+skill, not a model of a good player. A person plans further than three plies and
+recognises shapes. The real number sits somewhere between this and the solver's
+1.0x, and nothing here says where. What it does establish is that the gap is
+large, that it widens with depth, and that tuning the ratio against solver play
+alone was measuring the wrong thing.
+
 ## Measuring it honestly
 
 The solver banks perfectly. A human does not. Every number produced by solver play is

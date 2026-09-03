@@ -4,6 +4,8 @@
  */
 import { describe, expect, it } from 'vitest';
 import { dealLevel, ratioFor, stipendFor } from '../src/game/deal.ts';
+import { CAREFUL, playBot } from '../src/game/bot.ts';
+import { cloneSim } from '../src/game/sim.ts';
 import { starterDeck } from '../src/game/run.ts';
 import type { LevelSpec } from '../src/game/deal.ts';
 import type { DeckCard, EnchantId } from '../src/game/types.ts';
@@ -103,5 +105,34 @@ describe('the bank', () => {
       expect(first.affordable).toBe(true);
       expect(first.surplus).toBeGreaterThan(0);
     }
+  });
+});
+
+describe('the bounded-lookahead player', () => {
+  it('clears an opening board without help', () => {
+    const l = level(deck(0), 1, 4242, 0);
+    const r = playBot(l.sim, CAREFUL);
+    expect(r.won).toBe(true);
+    // It is meant to be a fallible player, not a second solver, but it should
+    // not be wasteful on a board this shallow.
+    expect(r.movesUsed).toBeLessThan(l.par * 1.5);
+  });
+
+  it('is degraded by over-valuing empty columns, so the term is load-bearing', () => {
+    // Measured: emptyValue 5 roughly doubles moves-over-par. Values between 0
+    // and 2.5 were indistinguishable at 12 boards, so 2.5 is a model choice
+    // rather than a tuned one — see docs/ECONOMY.md.
+    const l = level(deck(0), 4, 8080, 999);
+    const sane = playBot(cloneSim(l.sim), CAREFUL).movesUsed;
+    const obsessed = playBot(cloneSim(l.sim), { ...CAREFUL, emptyValue: 12 }).movesUsed;
+    expect(obsessed).toBeGreaterThan(sane);
+  });
+
+  it('stops rather than looping when a board is dead', () => {
+    const l = level(deck(0), 1, 4242, 0);
+    l.sim.movesLeft = 2;
+    const r = playBot(l.sim, CAREFUL);
+    expect(r.won).toBe(false);
+    expect(r.movesUsed).toBeLessThanOrEqual(l.par);
   });
 });
