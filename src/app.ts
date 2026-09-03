@@ -32,6 +32,7 @@ import {
   type ShopItem,
 } from './game/run.ts';
 import { analyse, type PostMortem } from './game/postmortem.ts';
+import { findRescue } from './game/rescue.ts';
 import { ask, questionById, type Answer } from './game/oracle.ts';
 import { resolveUndo } from './game/resources.ts';
 import { applyMove, cloneSim, isWon, legalMoves, settle, waste, type Sim, type SimEvent } from './game/sim.ts';
@@ -813,6 +814,16 @@ export class App {
       setTimeout(() => {
         const pm = analyse(from, played, { budgetMs: 900 });
         if (activeScreen() === 'over') renderOver(run, reason, isBest, actions, this.epitaphFor(pm));
+        // Then the more useful question, asked second because it costs more:
+        // not "where did it slip" but "what were you missing". A loss the
+        // player cannot see the answer to reads as bad luck however fair it was.
+        setTimeout(() => {
+          const r = findRescue(from, start.movesLeft, { budgetMs: 900 });
+          if (!r || activeScreen() !== 'over') return;
+          const ep = this.epitaphFor(pm);
+          ep.lines.push(`${ENCHANTS[r.ench].name} on the ${r.card} wins this board.`);
+          renderOver(run, reason, isBest, actions, ep);
+        }, 80);
       }, 60);
     }
   }
