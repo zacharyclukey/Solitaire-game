@@ -386,6 +386,46 @@ So the limit stays at two. The stranded waste is a symptom of a tableau played
 into a corner, and anything that helps is help with the tableau — clearer
 feedback, a better reading — not a more generous pile.
 
+### The build has to compound, or it buys nothing
+
+Measured with `scripts/compound.ts` (20 boards at stage 8, bounded-lookahead
+player, unlimited bank so only the build is under test). "Kept" is what the
+level leaves behind — stipend, minus what was spent, plus anything the build
+handed back:
+
+```
+kit           ench   median par   median kept
+bare             0           41             8
+adding           4           39             1
+adding           8           37             2
+adding          12           36             3
+compounding      4           39            12
+compounding      8           38            20
+compounding     12           37            25
+```
+
+The classic enchantments are **flat at 1-3 moves however many you own**, and
+below a bare deck. That is not a tuning problem, it is the shape of the cards:
+one card, one effect, fires when drawn, done. They add and never multiply, so a
+run where the build and the play click together was unreachable by construction.
+
+Worse than flat, they read as slightly negative, and the mechanism is worth
+naming. Par is certified by a solver that plays enchantments perfectly, so an
+enchanted deck is handed a board that needed those enchantments to be solvable —
+and then a human cannot extract what the searcher could. The classic kit buys
+the *board* difficulty without buying the player the means to meet it.
+
+Conduit and Resonance are built to multiply instead. Conduit turns the nearest
+face-down enchanted card, so chains are something the player assembles rather
+than stumbles into; Resonance pays a move for every other enchanted card already
+face-up, so density is worth more than the sum of its cards. Both give value a
+fallible player actually collects, and the result climbs with build size —
+12, 20, 25 — instead of sitting flat.
+
+This is the mechanism behind the rare run where everything clicks, and it is
+deliberately capped by the ratio's geometric decay: a compounding build buys
+depth, not immortality.
+
 ### Which enchantments actually save a board
 
 Flavour is not evidence, and the run-over screen makes a promise about this. So
