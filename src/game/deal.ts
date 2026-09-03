@@ -125,14 +125,22 @@ export function staircase(total: number, columns: number): number[] {
 /**
  * Share of the deck that starts in the draw pile rather than the tableau.
  *
- * This is how the early game is eased without spoiling the silhouette: a
- * bigger pile means a shorter staircase and fewer buried cards, while the
+ * A bigger pile means a shorter staircase and fewer buried cards, while the
  * board still looks exactly like solitaire.
+ *
+ * This used to fall to 0.30 past stage 5, and that was a mistake: shrinking the
+ * draw pile is precisely what the Thin Deal modifier does, and Thin Deal costs
+ * a bounded-lookahead player 25 points of clear rate on its own. The game's
+ * main depth dial was the same lever that makes boards unclearable by a person,
+ * applied to everybody. It stops at 0.38 now.
+ *
+ * Difficulty does not need it. Since moves became a bank carried across the
+ * run, depth is expressed through the stipend rather than by burying more cards
+ * than a player can dig out.
  */
 export function stockShareFor(depth: number): number {
   if (depth <= 2) return 0.46;
-  if (depth <= 5) return 0.38;
-  return 0.3;
+  return 0.38;
 }
 
 /**

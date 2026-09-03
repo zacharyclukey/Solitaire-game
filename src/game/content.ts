@@ -347,9 +347,15 @@ export const MODIFIERS: Record<ModifierId, ModifierDef> = {
     name: 'Narrow',
     glyph: '⇤',
     text: 'One fewer column.',
-    threat: 3,
+    // Measured the harshest single modifier in the game for a human: on its own
+    // it costs a bounded-lookahead player 33 points of clear rate at an
+    // unlimited budget, and unlike the others that looked bad it does not
+    // recover when the player searches wider. Columns are the only sink, so
+    // taking one away is a structural loss, not a puzzle. Priced accordingly,
+    // and kept away from the other two things that shrink the same resource.
+    threat: 6,
     minDepth: 2,
-    excludes: ['wide'],
+    excludes: ['wide', 'thindraw', 'sameSuit'],
   },
   wide: {
     id: 'wide',

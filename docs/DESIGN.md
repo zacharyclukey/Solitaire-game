@@ -152,7 +152,9 @@ Two consequences worth stating plainly:
 The HUD reads `12 carry · par 36` — what you would bank if you finished from
 here on the solver's line.
 
-Measured drain per level (20 seeds, fixed 28-card deck, solver play, bank 45):
+Measured drain per level (20 seeds, fixed 28-card deck, solver play, bank 45).
+**These predate the draw-pile floor change in §4 and are being re-measured** —
+board shape moved, so par moved with it:
 
 ```
 stage  ratio   bare    4 ench   8 ench
@@ -562,11 +564,12 @@ and cleared them of a loss that was genuinely theirs.
 - Difficulty at the shallow end is set by `ratioFor`, not by search quality (see
   the measurement in §2). Whether stage 1 at 1.30 is the right welcome is a
   judgement call that wants real players, not more telemetry.
-- **The clearability guarantee is weaker than it reads at depth.** Boards are
-  certified clearable by a weighted A\* search. Measured with the
-  bounded-lookahead player in `src/game/bot.ts`, four of eight stage-10 boards
-  were lost *with 999 moves in hand* — clearable by a searcher had stopped
-  meaning clearable by a person. This is the largest open problem in the game.
+- **The clearability guarantee is weaker than it reads at depth**, though much
+  less so than it was. Boards are certified clearable by a weighted A\* search,
+  and measured with the bounded-lookahead player in `src/game/bot.ts` that used
+  to mean 57% of stage-16 boards were lost with 999 moves in hand. Holding the
+  draw pile at 0.38 and repricing Narrow took the overall figure from 76% to
+  87%. Six-column boards are what is left, at 76% against 91% for seven.
 - **The economy is tuned against the wrong player.** A shallow player needs a
   median 1.0-1.7x par and the stipend pays 0.90x plainPar by stage 10, so full
   runs with that player end around stage 2-3 rather than 15. The ratio curve

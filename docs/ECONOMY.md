@@ -200,10 +200,18 @@ cleared it. 112 boards:
 
 | stage | 6 | 8 | 10 | 12 | 14 | 16 | 18 | 20 |
 |---|---|---|---|---|---|---|---|---|
-| cleared | 100% | 86% | 79% | 86% | 71% | 57% | 57% | 71% |
+| before | 100% | 86% | 79% | 86% | 71% | 57% | 57% | 71% |
+| after | 86% | 100% | 86% | 93% | 79% | 79% | 100% | 71% |
 
-The stage effect is real and it is the problem: by the deep game a shallow
-player fails two boards in five with money no object. Column count barely
+The stage effect was real and it was the problem: by the deep game a shallow
+player failed two boards in five with money no object. After the fix below,
+112 boards, it is 87% overall against 76%, and the deep-game collapse is gone —
+stages 16 and 18 went from 57% each to 79% and 100%.
+
+What remains is columns. Six-column boards clear at 76% against 91% for seven,
+so Narrow is still the sharpest edge in the game even repriced and unstacked.
+Whether that is acceptable difficulty or the next thing to fix wants a decision
+rather than another sweep. Column count barely
 matters (75% at six columns, 76% at seven), and neither does how far the deal
 had to be relaxed.
 
@@ -219,7 +227,47 @@ clear it, but only by about twelve.
 
 So the numbers worth acting on come from `scripts/humanrun.ts isolate`: the same
 stage, the same seeds, one modifier or none. It is the slower experiment and the
-only one that attributes anything.
+only one that attributes anything. Twelve boards at stage 12, control 92%:
+
+| hurts | | helps | |
+|---|---|---|---|
+| Narrow | -33pp | Wide | +8pp |
+| Prism Rules (anyColor) | -33pp | Dense | +8pp |
+| Thin Deal | -25pp | Deep Deal | +8pp |
+| Suit Lock | -17pp | | |
+
+Everything else landed at exactly +0pp, including Steady Hand, Austerity, Rush,
+Glasswork, Bounty and Riches — which is the design validating itself, because
+not one of them can affect this player.
+
+### The modifier that was innocent
+
+Prism Rules *relaxes* stacking, so -33pp made no sense. It is a bot artifact:
+the modifier nearly doubles the branching factor (3.6 opening legal moves to
+6.3), and a player that shortlists six candidates per ply therefore samples a
+smaller fraction of them. Rerun at width 14 it recovers completely, 58% to 92%,
+exactly matching control. Narrow does not recover — 58% at width 6, 50% at width
+14 — which is how you tell a real structural loss from a limitation of the
+instrument. Prism Rules was left alone; it would have been nerfed on the
+strength of a number about the bot rather than about the game.
+
+### What was actually wrong
+
+Columns are the only sink in a game with no foundations, and the draw pile is
+what keeps the staircase shallow. Both of the confirmed offenders take one of
+those away, and all three helpers give one back.
+
+Which indicts the difficulty model directly: `stockShareFor` fell to 0.30 past
+stage 5, and shrinking the draw pile is *exactly what Thin Deal does*. The
+game's main depth dial was the same lever that makes boards unclearable by a
+person, applied to every player at every deep stage. It now stops at 0.38.
+Depth does not need it any more — since moves became a bank, difficulty is
+expressed through the stipend rather than by burying more cards than a player
+can dig out.
+
+Narrow is repriced from threat 3 to 6, so it crowds out other modifiers rather
+than arriving alongside them, and it no longer combines with Thin Deal or Suit
+Lock — the other two things that shrink the same resource.
 
 ## Measuring it honestly
 
