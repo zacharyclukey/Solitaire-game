@@ -208,8 +208,8 @@ describe('dealing', () => {
   });
 
   it('gives a resurfaced board less room rather than more rules', () => {
-    expect(stipendFor(34, 8, [], 'sunken')).toBeLessThan(stipendFor(34, 8, [], 'trial'));
-    expect(stipendFor(34, 8, [], 'sunken')).toBeGreaterThan(0);
+    expect(stipendFor(28, 8, [], 'sunken')).toBeLessThan(stipendFor(28, 8, [], 'trial'));
+    expect(stipendFor(28, 8, [], 'sunken')).toBeGreaterThan(0);
   });
 
   it('will not let a board that came back for you be ducked twice', () => {

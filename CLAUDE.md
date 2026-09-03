@@ -23,8 +23,14 @@ the schedule is what keeps the project moving.
 - A loss must feel like a near miss — fixable by one different move or one different enchantment.
 - It has to feel like solitaire.
 - Runs should be pretty hard.
-- **Never** deal a board that cannot be cleared with the resources the player actually has.
-- Players must not lose late runs to an unsolvable deck. They must lose to their own economy.
+- **The game is losable by default.** Deals are honest shuffles, not boards
+  certified against the deck in hand. Skill and choices are what make a board
+  winnable, and the ratio of winnable to losable IS the difficulty curve. A
+  run-ending deal is fine; it only has to sit in a range that feels achievable.
+- What must never happen is an *illegible* loss. Every lost board should be able
+  to name what would have won it — a different line, a card passed over in the
+  shop — and the player needs outs they can buy for the boards that are
+  genuinely dead. Variance without escapes is not a roguelite, it is bad luck.
 - Iterate, invent and design along the way — do not just execute the ticket as written.
   If measurement contradicts the plan, change the plan and say so.
 

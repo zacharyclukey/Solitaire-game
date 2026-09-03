@@ -50,10 +50,11 @@ describe('the ratio curve', () => {
   });
 
   it('prices a level off the plain board, not the player, and node kind still bites', () => {
-    expect(stipendFor(40, 1, [], 'trial')).toBeGreaterThan(40 * NEED);
-    expect(stipendFor(40, 30, [], 'trial')).toBeLessThan(40 * NEED);
-    expect(stipendFor(40, 12, [], 'boss')).toBeLessThan(stipendFor(40, 12, [], 'trial'));
-    expect(stipendFor(40, 12, [], 'cache')).toBeGreaterThan(stipendFor(40, 12, [], 'trial'));
+    // Priced off deck size now: 28 cards at about 1.36 moves each.
+    expect(stipendFor(28, 1, [], 'trial')).toBeGreaterThan(28 * 1.36 * NEED);
+    expect(stipendFor(28, 30, [], 'trial')).toBeLessThan(28 * 1.36 * NEED);
+    expect(stipendFor(28, 12, [], 'boss')).toBeLessThan(stipendFor(28, 12, [], 'trial'));
+    expect(stipendFor(28, 12, [], 'cache')).toBeGreaterThan(stipendFor(28, 12, [], 'trial'));
   });
 });
 
@@ -185,12 +186,23 @@ describe('which deck a level is guaranteed against', () => {
     expect(l.needsBuild).toBe(true);
   });
 
-  it('never deals a board the player cannot win, at any depth', () => {
+  it('no longer promises the board is winnable, only that it is worth attempting', () => {
+    // The old contract was that every dealt board could be cleared with the
+    // resources in hand. That is gone on purpose: deals are honest shuffles and
+    // the game is losable by default. What survives is a floor — a board with
+    // essentially no chance is not dealt at all.
     for (const stage of [1, 10, 20, 30]) {
       for (const seed of [4242, 90210]) {
         const l = level(deck(8), stage, seed, 80);
-        if (l.affordable) expect(l.par).toBeLessThanOrEqual(l.budget);
+        if (l.affordable) expect(l.chance).toBeGreaterThan(0.02);
       }
     }
+  });
+
+  it('spreads difficulty across shuffles instead of levelling it', () => {
+    // Pricing the stipend off this deal's own plainPar made every deal at a
+    // stage identically hard, so there was no such thing as an unlucky shuffle.
+    const chances = [11, 22, 33, 44, 55, 66].map((s) => level(deck(0), 8, s * 101, 0).chance);
+    expect(Math.max(...chances) - Math.min(...chances)).toBeGreaterThan(0.1);
   });
 });

@@ -8,6 +8,7 @@
  */
 import { CHARMS, MODIFIERS, type CharmId, type ModifierId } from './content.ts';
 import { Rng } from './rng.ts';
+import { coverAt, winChance } from './odds.ts';
 import { findSolution } from './solver.ts';
 import { createSim, type Sim } from './sim.ts';
 import { DEFAULT_RULES, makeCardDef, type CardDef, type CurseId, type DeckCard, type Move, type RuleSet, type Suit } from './types.ts';
@@ -55,6 +56,8 @@ export interface Level {
   slack: number;
   /** True when no standard deck could have afforded this board. */
   needsBuild: boolean;
+  /** Estimated chance a fallible player clears this, from the measured curve. */
+  chance: number;
   /** Moves carried in from earlier levels. */
   bank: number;
   budget: number; // bank + stipend: what movesLeft actually starts at
@@ -214,14 +217,44 @@ export function ratioFor(stage: number): number {
 }
 
 /**
+ * Measured cost of a plain board, per card in the deck. plainPar came out at
+ * 37-39 moves for a 28-card deck across every stage sampled.
+ */
+export const PLAIN_PAR_PER_CARD = 1.36;
+
+/** Measured: each point of modifier threat costs a plain board about this much. */
+const MOVES_PER_THREAT = 0.48;
+
+/**
+ * How much of that the stipend hands back. Below 1.0 on purpose — modifiers
+ * have to cost the player something net, or they are decoration.
+ */
+const THREAT_COMPENSATION = 0.7;
+
+/**
  * What a level grants, before anything carried in.
  *
- * Priced from plainPar — the board without the player's enchantments — so the
- * stipend cannot shrink just because the player got better at the game. The
- * node multipliers still bite, but they bite a build-blind number.
+ * Priced off the stage and the size of the deck — deliberately NOT off this
+ * particular deal's plainPar. Scaling the allowance to the board it is paying
+ * for made every deal at a stage identical in difficulty: a hard shuffle got
+ * proportionally more moves and an easy one got fewer, so there was no such
+ * thing as an unlucky deal and nothing for the generator to reject. Priced off
+ * the deck instead, a hard shuffle really is harder.
+ *
+ * It stays blind to the player's build for the same reason as before: a move
+ * an enchantment saves has to be a move the player keeps.
  */
-export function stipendFor(plainPar: number, stage: number, mods: ModifierId[], kind: NodeKind): number {
-  let s = plainPar * ratioFor(stage);
+export function stipendFor(deckSize: number, stage: number, mods: ModifierId[], kind: NodeKind): number {
+  // Modifiers make a board cost more, so paying the same for a board carrying
+  // four of them is not the same difficulty at all — measured, a deep deal's
+  // plainPar runs about half a move higher per point of threat. Compensate for
+  // most of that but deliberately not all of it, so rules still add net
+  // difficulty rather than only flavour. Compensating on the modifiers the deal
+  // ROLLED, rather than on the board it produced, is what keeps an unlucky
+  // shuffle unlucky: the whole point of decoupling the stipend was that a hard
+  // deal should be hard.
+  const threat = mods.reduce((t, id) => t + MODIFIERS[id].threat, 0);
+  let s = deckSize * PLAIN_PAR_PER_CARD * ratioFor(stage) + threat * MOVES_PER_THREAT * THREAT_COMPENSATION;
   if (has(mods, 'austere')) s *= 0.85;
   if (kind === 'gauntlet' || kind === 'boss') s *= 0.9;
   if (kind === 'cache') s *= 1.15;
@@ -383,28 +416,6 @@ export function dealLevel(opts: DealOptions): Level {
   let candFaceUp = baseFaceUp;
   let candRelaxed = 0;
 
-  /**
-   * Can the player pay for this line at all?
-   *
-   * Priced off `par` rather than plainPar, which is the strict reading: the
-   * real stipend is computed from plainPar, and stripping enchantments can
-   * only lengthen a line, so plainPar >= par and the real stipend is never
-   * smaller than the one tested here. Anything that clears this check still
-   * clears it once the true number is known.
-   */
-  const canPayFor = (cost: number, ms: ModifierId[]): boolean =>
-    cost <= bank + stipendFor(cost, spec.stage, ms, spec.kind) + flatBonus;
-
-  /**
-   * Easing the board is only an affordability lever some of the time.
-   *
-   * With plainPar ~= par the shortfall is `par * (1 - ratio) - bank`, so a
-   * shorter board does close the gap — but only down to zero bank. Arrive at a
-   * sub-1.0 stage with an empty purse and no build to widen plainPar, and no
-   * board this generator can produce is payable. Detect that up front instead
-   * of burning the whole deal deadline rediscovering it every level.
-   */
-  const hopeless = bank + flatBonus <= 0 && ratioFor(spec.stage) < 1;
 
   /**
    * A board the solver cannot clear is never handed to the player. If a deal
@@ -413,40 +424,71 @@ export function dealLevel(opts: DealOptions): Level {
    * beats an impossible one.
    */
   let activeMods = mods;
-  outer: for (let relax = 0; relax < 5; relax++) {
-    stockSize = Math.min(deck.length - 8, baseStock + Math.min(2, relax) * 3);
-    faceUp = baseFaceUp + (relax >= 3 ? 1 : 0);
-    // Last resort: drop the rules that rewrite placement and keep the flavour
-    // modifiers, rather than serving a board nobody can finish.
-    activeMods = relax >= 4 ? mods.filter((m) => MODIFIERS[m].tag !== 'rule') : mods;
-    relaxed = relax;
-    for (let a = 0; a < (relax === 0 ? attempts : 2); a++) {
-      const left = deadline - Date.now();
-      if (left <= 0 && cand) break outer;
-      const solveMs = Math.max(70, Math.min(340, left / 2));
-      const defs = levelCards(deck, activeMods, rng);
-      applyLevelCurses(defs, activeMods, charms, rng);
-      rules = buildRules(activeMods, charms, defs.map((d) => d.rank));
-      const trial = layout(defs, columns, faceUp, stockSize, rng);
-      const probe = createSim(trial.defs, trial.cols, trial.stock, trial.up, rules, Number.MAX_SAFE_INTEGER / 4);
-      const sol = findSolution(probe, solveMs);
-      if (!sol) continue;
-      if (!cand || sol.cost < bestCost) {
-        cand = trial;
-        bestSolution = sol.moves;
-        bestCost = sol.cost;
-        candRules = rules;
-        candMods = activeMods;
-        candStock = stockSize;
-        candFaceUp = faceUp;
-        candRelaxed = relax;
-      }
-      // Solvable is no longer enough. A board the player cannot pay for is as
-      // dead as one nobody can clear, so keep easing until the line fits the
-      // purse — a shorter board is a smaller bill.
-      if ((hopeless || canPayFor(bestCost, candMods)) && a >= 1) break outer;
+  /**
+   * The stipend no longer depends on the board, so it can be settled up front
+   * and the deal judged against it.
+   */
+  const stipendBase = stipendFor(deck.length, spec.stage, mods, spec.kind) + flatBonus;
+
+  /**
+   * What the stage is aiming for, and how far a deal may miss it.
+   *
+   * The target is what the ratio was designed to deliver, read off the measured
+   * win curve. The band is what makes an honest shuffle usable: a deal far
+   * below it is a run ended by the deck rather than by the player, and one far
+   * above is a level that may as well not have been dealt.
+   */
+  const target = coverAt(ratioFor(spec.stage));
+  const TOLERANCE = 0.12;
+
+  let bestGap = Infinity;
+  let candPlainPar = 0;
+  let candSolved = false;
+
+  /**
+   * Honest shuffles. Nothing here eases the board toward being solvable or
+   * toward fitting the purse — the deal is what the deck gave, and the solve is
+   * a measurement of it rather than a gate on it. Deals are rejected only for
+   * landing outside the stage's band, in either direction, and the closest one
+   * seen is kept when none lands inside.
+   */
+  outer: for (let a = 0; a < attempts + 6; a++) {
+    const left = deadline - Date.now();
+    if (left <= 0 && cand) break;
+    const defs = levelCards(deck, mods, rng);
+    applyLevelCurses(defs, mods, charms, rng);
+    rules = buildRules(mods, charms, defs.map((d) => d.rank));
+    const trial = layout(defs, columns, faceUp, stockSize, rng);
+
+    // The real line, for certainty about what the player is holding.
+    const probe = createSim(trial.defs, trial.cols, trial.stock, trial.up, rules, Number.MAX_SAFE_INTEGER / 4);
+    const sol = findSolution(probe, Math.max(70, Math.min(260, left / 3)));
+
+    // And the plain line, which is what the deal is actually priced against.
+    const plainProbe = createSim(
+      stripEnchantments(trial.defs), trial.cols, trial.stock, trial.up,
+      buildRules(mods, charms.filter((c) => !RULE_CHARMS.includes(c)), trial.defs.map((d) => d.rank)),
+      Number.MAX_SAFE_INTEGER / 4,
+    );
+    const plainSol = findSolution(plainProbe, PLAIN_SOLVE_MS);
+    const thisPlainPar = plainSol ? plainSol.cost : Math.round(deck.length * PLAIN_PAR_PER_CARD * 1.6);
+
+    const chance = winChance(stipendBase, thisPlainPar, plainSol !== null);
+    const gap = Math.abs(chance - target);
+    if (gap < bestGap) {
+      bestGap = gap;
+      cand = trial;
+      bestSolution = sol ? sol.moves : null;
+      bestCost = sol ? sol.cost : Number.POSITIVE_INFINITY;
+      candRules = rules;
+      candMods = mods;
+      candStock = stockSize;
+      candFaceUp = faceUp;
+      candRelaxed = 0;
+      candPlainPar = thisPlainPar;
+      candSolved = plainSol !== null;
     }
-    if (cand && (hopeless || canPayFor(bestCost, candMods))) break;
+    if (gap <= TOLERANCE) break outer;
   }
 
   if (!cand) {
@@ -475,63 +517,34 @@ export function dealLevel(opts: DealOptions): Level {
 
   const m = activeMods;
 
-  /**
-   * Price the level on the board the player would have faced without their
-   * build. Stripping enchantments only ever removes options, so this line is
-   * never shorter than par; when the solver cannot find one in the time left,
-   * assume the build was worth a fifth of the board rather than pretending it
-   * was worth nothing.
-   */
-  const plainDefs = stripEnchantments(cand.defs);
-  const plainRules = buildRules(
-    m,
-    charms.filter((c) => !RULE_CHARMS.includes(c)),
-    plainDefs.map((d) => d.rank),
-  );
-  const probe = createSim(plainDefs, cand.cols, cand.stock, cand.up, plainRules, Number.MAX_SAFE_INTEGER / 4);
-  // Always solved, and always with the same fixed slice, even when there is
-  // nothing to strip. Reusing `par` on an unenchanted deck would be cheaper and
-  // wrong: the two paths do different amounts of searching, so the same board
-  // would be priced differently depending on what the player was carrying —
-  // which is precisely the bias this whole mechanism exists to remove.
-  const plainSol = findSolution(probe, PLAIN_SOLVE_MS);
-  const plainPar = Math.max(plainSol ? plainSol.cost : Math.round(par * 1.2), par);
+  // Both lines were measured while the deal was chosen, so nothing is re-solved
+  // here. plainPar is what the level is priced against; par is what the deck in
+  // hand can do, and is only ever shorter.
+  const plainPar = Math.max(candPlainPar, Number.isFinite(bestCost) ? bestCost : 0);
 
-  let stipend = stipendFor(plainPar, spec.stage, m, spec.kind) + flatBonus;
-
-  /**
-   * Which deck the level is guaranteed against, and it changes with depth.
-   *
-   * While the ratio pays for the whole plain board, the guarantee is that a
-   * *standard* deck could clear this: the budget is lifted to cover plainPar
-   * outright. That makes the player's build pure advantage rather than
-   * something the deal quietly assumes, which is the only way a board can
-   * produce the thought "I needed the card I passed on".
-   *
-   * Once the ratio falls under 1.0 that guarantee is withdrawn on purpose. The
-   * budget no longer covers the plain line, so the difference has to come out
-   * of the build, and a deck that never committed to one runs out of room. The
-   * board is still certified against the deck the player actually holds — they
-   * can always win it — but a bare deck no longer can.
-   */
-  const guaranteePlain = ratioFor(spec.stage) >= 1;
-  if (guaranteePlain) stipend = Math.max(stipend, plainPar);
-
+  const stipend = stipendBase;
   const budget = bank + stipend;
 
   /**
-   * True when a standard deck could not have afforded this board. Late levels
-   * are meant to read this way, and the player is told rather than left to
-   * discover it by losing.
+   * The estimated chance a fallible player clears this, from the measured curve
+   * in odds.ts. This is what the deal was selected on and what the difficulty
+   * curve is actually made of, now that boards are honest shuffles rather than
+   * puzzles eased until they fit.
    */
+  const chance = winChance(budget, plainPar, candSolved);
+
+  /** True when a standard deck could not have afforded this board. */
   const needsBuild = plainPar > budget;
   /** The +/- n the allowance sits at against the plain board. */
   const slack = stipend - plainPar;
-  // Nothing is clamped up to par here, and that is the point. If the purse
-  // cannot cover the board the run is over on economy — but the relaxation
-  // loop above has already spent every easing it has trying to avoid that, so
-  // reaching this line unaffordable means no board would have fitted.
-  const affordable = par <= budget;
+
+  /**
+   * The run only ends here when even the bank cannot make the board worth
+   * attempting. Losing a board is the ordinary way to end a run now — the game
+   * is losable by default — so this is a backstop against dealing something
+   * hopeless, not the economic wall it used to be.
+   */
+  const affordable = chance > 0.02;
   const surplus = budget - par;
 
   const sim = createSim(cand.defs, cand.cols, cand.stock, cand.up, rules, budget);
@@ -576,6 +589,7 @@ export function dealLevel(opts: DealOptions): Level {
     stipend,
     slack,
     needsBuild,
+    chance,
     bank,
     budget,
     surplus,
