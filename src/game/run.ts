@@ -186,6 +186,26 @@ function pickModifiers(
   return chosen;
 }
 
+/**
+ * How many rule-changing modifiers a board may carry.
+ *
+ * This was fixed at one for every stage, and it is the reason depth only ever
+ * made a board more expensive rather than harder: rule modifiers are the ones
+ * that change how the board has to be played, and a deep board could never have
+ * more than a single one. Measured, they are also close to free — the isolate
+ * sweep put Inversion, Tithe, Low Ceiling, Frost, Shroud, Heavy Draw and
+ * Glasswork all at about 0pp against a 92% control, while the modifiers that
+ * genuinely hurt are the ones that take away columns or shrink the draw pile.
+ *
+ * So depth buys more of the interesting kind. The sink-removers are held back
+ * by their own exclusions and threat costs instead.
+ */
+function maxRulesFor(depth: number): number {
+  if (depth <= 6) return 1;
+  if (depth <= 13) return 2;
+  return 3;
+}
+
 function maxModsFor(depth: number): number {
   if (depth <= 2) return 1;
   if (depth <= 6) return 2;
@@ -216,7 +236,7 @@ export function stageSpec(run: RunState, stage: number): LevelSpec {
       // A Warden never takes a second placement rule. Raising its threat
       // target to compensate was tried and measured worse: with fewer slots
       // the picker simply reaches for the heaviest modifiers it has.
-      modifiers: pickModifiers(rng, stage, stage * 1.35 + 6, maxModsFor(stage) + 1, false, 1, 3),
+      modifiers: pickModifiers(rng, stage, stage * 1.35 + 6, maxModsFor(stage) + 1, false, maxRulesFor(stage), 3),
       seed: subSeed(run.seed, stage, 0xb055),
     };
   }
@@ -227,7 +247,7 @@ export function stageSpec(run: RunState, stage: number): LevelSpec {
   return {
     stage,
     kind: hot ? 'gauntlet' : 'trial',
-    modifiers: pickModifiers(rng, stage, target, maxModsFor(stage) + (hot ? 1 : 0), !hot && rng.next() < 0.4),
+    modifiers: pickModifiers(rng, stage, target, maxModsFor(stage) + (hot ? 1 : 0), !hot && rng.next() < 0.4, maxRulesFor(stage)),
     seed: subSeed(run.seed, stage, 2),
   };
 }

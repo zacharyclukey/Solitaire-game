@@ -11,7 +11,14 @@ the schedule is what keeps the project moving.
 
 ## Standing brief
 
+- **Boards provide the difficulty curve; the bank provides the ability to meet
+  it.** Depth should mean a harder puzzle, not a stingier allowance. The economy
+  is what makes a complicated late deck survivable — a buffer that lets the
+  player attempt something hard — not the thing that kills them. Keep it thin:
+  a resource to spend well, not a system to administer.
 - Difficulty must scale as a run goes deeper, and a run must eventually end.
+  Runs end because boards outgrow the player, not because the allowance was
+  quietly throttled.
 - Success must feel like the player's doing, not the game's.
 - A loss must feel like a near miss — fixable by one different move or one different enchantment.
 - It has to feel like solitaire.
