@@ -24,10 +24,25 @@ function level(cards: DeckCard[], stage: number, seed: number, bank: number) {
   return dealLevel({ deck: cards, charms: [], spec, bonusMoves: 0, bonusCells: 0, bank });
 }
 
+/**
+ * The median share of plainPar a bounded-lookahead player actually spends,
+ * measured flat across stages 1-18 by `scripts/humanrun.ts boards`. This, not
+ * 1.0, is the line the curve has to cross: paying par exactly is already a loss
+ * for anyone who is not a search algorithm.
+ */
+const NEED = 1.2;
+
 describe('the ratio curve', () => {
-  it('starts above 1.0 and falls below it', () => {
-    expect(ratioFor(1)).toBeGreaterThan(1);
-    expect(ratioFor(10)).toBeLessThan(1);
+  it('starts above what a player needs and ends below it', () => {
+    expect(ratioFor(1)).toBeGreaterThan(NEED);
+    expect(ratioFor(30)).toBeLessThan(NEED);
+  });
+
+  it('opens generously enough that early levels bank something', () => {
+    // The first curve paid 1.30 against a median need of 1.29, so a real player
+    // banked nothing and had nothing to spend when the ratio turned against
+    // them. Opening levels have to fund the rest of the run.
+    expect(ratioFor(1)).toBeGreaterThan(NEED * 1.25);
   });
 
   it('never stops falling, so no build can outrun it forever', () => {
@@ -35,8 +50,8 @@ describe('the ratio curve', () => {
   });
 
   it('prices a level off the plain board, not the player, and node kind still bites', () => {
-    expect(stipendFor(40, 1, [], 'trial')).toBeGreaterThan(40);
-    expect(stipendFor(40, 12, [], 'trial')).toBeLessThan(40);
+    expect(stipendFor(40, 1, [], 'trial')).toBeGreaterThan(40 * NEED);
+    expect(stipendFor(40, 30, [], 'trial')).toBeLessThan(40 * NEED);
     expect(stipendFor(40, 12, [], 'boss')).toBeLessThan(stipendFor(40, 12, [], 'trial'));
     expect(stipendFor(40, 12, [], 'cache')).toBeGreaterThan(stipendFor(40, 12, [], 'trial'));
   });
@@ -88,13 +103,15 @@ describe('the bank', () => {
   });
 
   it('goes bankrupt rather than dealing a board that cannot be paid for', () => {
-    const broke = level(deck(0), 16, 5150, 0);
+    // Deep enough that the geometric tail has taken the ratio under 1.0, which
+    // is where an empty bank stops being survivable at all.
+    const broke = level(deck(0), 30, 5150, 0);
     expect(broke.affordable).toBe(false);
     expect(broke.budget).toBeLessThan(broke.par);
   });
 
   it('is solvent at the same stage once the run has banked anything worth having', () => {
-    const flush = level(deck(0), 16, 5150, 60);
+    const flush = level(deck(0), 30, 5150, 60);
     expect(flush.affordable).toBe(true);
     expect(flush.budget).toBeGreaterThanOrEqual(flush.par);
   });

@@ -175,27 +175,34 @@ export function columnsFor(deckSize: number, mods: ModifierId[], charms: CharmId
 /**
  * Share of a board's plain cost that the level actually pays for.
  *
- * This is the spine of the difficulty curve. Above 1.0 a level funds itself
- * with room to spare; below 1.0 it does not, and the difference has to come
- * out of the bank or out of the player's build. `(1 - ratio) * plainPar` is
- * therefore an exact statement of how much work the build is being asked to
- * do, which is the number to argue about when the game is too easy or too
- * mean.
+ * This is the spine of the difficulty curve, and 1.0 is not the interesting
+ * threshold — the player's own move need is. A bounded-lookahead player spends
+ * a median 110-136% of plainPar and, measured across stages 1 to 18, that need
+ * does not grow with depth (`scripts/humanrun.ts boards`). So the curve is
+ * priced against roughly 120%, not against par: above it a level funds itself
+ * and banks something, below it the difference has to come out of the bank or
+ * out of the build.
  *
- * It has no floor above zero on purpose: a build's saving per level is roughly
- * fixed, while plainPar grows with the deck, so a curve that flattened out
- * could be outrun forever by a good enough deck. Runs have to end.
+ * The first version was fitted to solver play and was wrong at both ends. It
+ * paid 1.30 at stage 1 against a median need of 1.29, so half of all opening
+ * boards ran out of moves and nothing was ever banked to spend later; and it
+ * fell to 0.80 by stage 18 against a need that had not fallen at all.
+ *
+ * The tail decays geometrically with no floor on purpose: a build's saving per
+ * level is roughly fixed while plainPar grows with the deck, so a curve that
+ * flattened out could be outrun forever by a good enough deck. Runs have to
+ * end.
  */
 export function ratioFor(stage: number): number {
-  if (stage <= 3) return 1.3;
-  if (stage <= 6) return 1.15;
-  if (stage <= 9) return 1.0;
-  if (stage <= 13) return 0.9;
-  if (stage <= 17) return 0.82;
+  if (stage <= 3) return 1.7;
+  if (stage <= 6) return 1.55;
+  if (stage <= 9) return 1.4;
+  if (stage <= 13) return 1.25;
+  if (stage <= 17) return 1.1;
   // Geometric, so it always falls and never reaches zero. A floor here would
   // be a ceiling on difficulty, and a good enough deck would sit above it
   // forever.
-  return 0.82 * Math.pow(0.97, stage - 17);
+  return 1.1 * Math.pow(0.97, stage - 17);
 }
 
 /**
