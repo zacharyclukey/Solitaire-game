@@ -49,6 +49,46 @@ async function validate(per: number): Promise<void> {
   }
 }
 
+/**
+ * P(win) measured directly at the budget it will actually be used at.
+ *
+ * The first attempt derived this from a spend distribution gathered at an
+ * unlimited bank, and it did not transfer: a player with infinite moves does
+ * not economise, so the distribution sat too far right, and the estimate came
+ * out pessimistic in the middle (72% against a real 88% at stage 1) while still
+ * being optimistic where budgets are tight (17% against a real 0% at stage 12).
+ * A win rate has to be measured under the pressure it is meant to describe.
+ */
+async function curve(per: number): Promise<void> {
+  const MULTIPLES = [0.9, 1.0, 1.1, 1.2, 1.4, 1.6, 2.0, 2.6];
+  console.log('multiple  cleared   (budget = multiple x plainPar, no bank)');
+  for (const m of MULTIPLES) {
+    let won = 0;
+    let n = 0;
+    for (const stage of [1, 6, 12, 18]) {
+      for (let i = 0; i < per; i++) {
+        const run = newRun((51001 + i * 104729) >>> 0);
+        run.stage = stage;
+        const l = dealLevel({
+          deck: run.deck, charms: [], spec: stageSpec(run, stage),
+          bonusMoves: 0, bonusCells: 0, bank: 9999,
+        });
+        // Re-budget the certified board to exactly the multiple under test.
+        l.sim.movesLeft = Math.round(m * l.plainPar);
+        l.sim.movesUsed = 0;
+        n++;
+        if (playBot(l.sim, CAREFUL).won) won++;
+      }
+    }
+    console.log(`${m.toFixed(1).padStart(8)}  ${(won / n * 100).toFixed(0).padStart(6)}%   (${won}/${n})`);
+  }
+}
+
+if (process.argv[2] === 'curve') {
+  await curve(Number(process.argv[3] ?? 10));
+  process.exit(0);
+}
+
 if (process.argv[2] === 'validate') {
   await validate(Number(process.argv[3] ?? 14));
   process.exit(0);
