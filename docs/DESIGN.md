@@ -424,6 +424,49 @@ So the limit stays at two. The stranded waste is a symptom of a tableau played
 into a corner, and anything that helps is help with the tableau — clearer
 feedback, a better reading — not a more generous pile.
 
+### Enchantments do two different jobs, and the rankings are near-inverse
+
+Two questions, deliberately measured apart. `scripts/enchaudit.ts` asks which
+cards turn a losing board around — the claim the run-over screen makes.
+`scripts/worth.ts` asks what a player should buy: expected moves banked across
+20 identical boards, six copies of one card, counting a lost board as zero.
+
+```
+card             banked   vs bare      rescues a lost board
+Resonance          14.8    +8.9        (economy card, not audited)
+Beacon             11.2    +5.3         0%
+Kickback            9.8    +3.9        16%
+Featherweight       9.8    +3.9        16%
+Keystone            6.3    +0.4         0%
+Conduit             6.2    +0.3        (new)
+Gilded              5.9     0.0         0%
+Torch               5.7    -0.3        21%
+Bridge              4.7    -1.2        21%
+Prism               4.6    -1.3        26%
+Twin                4.2    -1.8        21%
+Chameleon           3.8    -2.1         5%
+Ember               2.8    -3.2        26%
+Anchor              2.6    -3.3        37%
+```
+
+The two orders are almost reversed, and that is the design working rather than a
+contradiction. **Anchor is the best rescuer in the game and the worst card to
+own.** It lets any card sit on it, which triples the number of legal moves — 4.0
+to 12.5 on an opening board — and most of those moves are bad ones that spend a
+move and bury a card. When a board is otherwise dead that is exactly what saves
+it; the rest of the time it is a tax.
+
+So there are two classes. **Income**: Resonance, Beacon, Kickback,
+Featherweight — all of them grant or save moves and none of them add legal
+moves. **Insurance**: Anchor, Ember, Prism — placement effects that cost moves
+in the ordinary case and rescue the board that would otherwise end the run.
+Insurance has a premium, and here it is about three moves a board.
+
+Checked against a control, because a card that triples the branching factor is
+exactly the shape of an artifact that has caught this project before. Anchor
+does not recover at search width 14 — it drops further, 2.6 to 1.9 — while
+Resonance is unmoved at 14.8 and 14.9. The cost is the card, not the instrument.
+
 ### The build has to compound, or it buys nothing
 
 Measured with `scripts/compound.ts` (20 boards at stage 8, bounded-lookahead
