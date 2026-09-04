@@ -407,7 +407,36 @@ them demanding. New modifiers should be aimed at branching and interaction —
 more legal placements, more live cards, more ways a line can fork — rather than
 at taking anything away.
 
-## Measuring it honestly
+## The economy has stopped being the limiter, and cannot become the answer
+
+48 full runs with the fallible player under the current build:
+
+```
+build            median depth   peak bank   bankrupt   out of moves   stuck
+none                        2          32          0             16       0
+every 4 levels              2          32          0             16       0
+every 2 levels              2          31          0             16       0
+```
+
+**No run in 48 ended on the economy.** Bankruptcy is zero, nothing ever ends
+stuck with moves in hand, and players bank around 32 moves. The buffer exists
+and works, which was the whole of what the economy was asked to do.
+
+Runs are short anyway, and the reason is arithmetic rather than balance. At
+stage 1 the stipend pays 1.70x plainPar, which the measured curve puts at about
+74% per level, and 0.74^5 is 22% — a median depth of 2.3, exactly what is
+observed. To reach a median depth of 8 a player needs about 92% per level.
+
+**The curve tops out at 78%.** Roughly a fifth of boards have no line this
+player finds at any budget, so 78% is the per-level ceiling however much money
+is thrown at it, and that caps median depth at under three. No economy — no
+refund, no interest, no free readings — can move a number that is bounded by
+whether a line gets found at all.
+
+So the economy is finished as a lever and the remaining one is the unfindable
+fifth. Whether that fifth is unfindable by a *person* is the open question: the
+bot is a lower bound on skill, and this is the measurement most in need of a
+human to check it.
 
 The solver banks perfectly. A human does not. Every number produced by solver play is
 a claim about a perfect player, and the entire question here is about imperfect ones —
