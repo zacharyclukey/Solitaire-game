@@ -63,12 +63,12 @@ that level — the number that decides how long a run lasts.
 
 | stage | ratio | drain, bare deck | 4 enchantments | 8 enchantments |
 |---|---|---|---|---|
-| 2 | 1.70 | +27.3 | +29.7 | +30.0 |
-| 6 | 1.55 | +20.5 | +22.7 | +23.8 |
-| 10 | 1.25 | +9.5 | +11.5 | +12.6 |
-| 14 | 1.10 | +4.0 | +5.9 | +7.0 |
-| 18 | 1.07 | +2.5 | +4.5 | +5.6 |
-| 22 | 0.94 | **-2.0** | -0.1 | **+1.0** |
+| 2 | 1.70 | +25.4 | +26.4 | +27.2 |
+| 6 | 1.55 | +20.5 | +21.1 | +22.3 |
+| 10 | 1.25 | +9.8 | +10.5 | +11.5 |
+| 14 | 1.10 | +3.9 | +4.6 | +5.6 |
+| 18 | 1.07 | +2.8 | +3.5 | +4.5 |
+| 22 | 0.94 | **-2.5** | -1.9 | -0.7 |
 
 **Read this as the optimistic bound, not the balance.** These are solver runs,
 and the solver spends exactly par, so it banks the entire margin the ratio pays

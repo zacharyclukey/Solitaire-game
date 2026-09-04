@@ -159,21 +159,33 @@ re-measured after the draw-pile floor moved to 0.38:
 
 ```
 stage  ratio   bare    4 ench   8 ench
-    2   1.70  +27.3    +29.7    +30.0
-    6   1.55  +20.5    +22.7    +23.8
-   10   1.25   +9.5    +11.5    +12.6
-   14   1.10   +4.0     +5.9     +7.0
-   18   1.07   +2.5     +4.5     +5.6
-   22   0.94   -2.0     -0.1     +1.0
+    2   1.70  +25.4    +26.4    +27.2
+    6   1.55  +20.5    +21.1    +22.3
+   10   1.25   +9.8    +10.5    +11.5
+   14   1.10   +3.9     +4.6     +5.6
+   18   1.07   +2.8     +3.5     +4.5
+   22   0.94   -2.5     -1.9     -0.7
 ```
 
-This is the optimistic bound rather than the balance. The solver spends exactly
+Re-measured after the stipend stopped being priced off the deal. Two things to
+read carefully.
+
+This is the optimistic bound rather than the balance: the solver spends exactly
 par, so it banks everything the ratio pays above 1.0 and does not bleed until
-stage 22. A bounded-lookahead player needs a median 129% of plainPar, and
-against that the ratio turns somewhere around stage 14 to 18 — which is where
-the curve is meant to bite. The build keeps its edge either way: an
-eight-enchantment deck banks 2 to 3 more moves a level than a bare one at every
-stage. Full working, caveats and the ways this
+stage 22.
+
+And the enchantment columns are the **classic kit**, which is what
+`scripts/economy.ts` draws from at these counts. The build's edge here is 1.8
+moves a level, down from about 3 before, and the drop is the design working
+rather than a regression: the stipend used to be priced off the deal, so an
+enchanted deck was handed harder boards and a bigger allowance with them. Priced
+off stage and deck size, that channel is gone and the build's whole edge is the
+shorter line it plays — which is what build-blind was always supposed to mean.
+For what a compounding build is worth, see `scripts/compound.ts`; the classic
+kit is flat by measurement and these columns are showing that flatness.
+
+Deal time also fell to 320-390ms from 530-620ms, since honest shuffles do not
+grind through relaxation passes. Full working, caveats and the ways this
 could still break: `docs/ECONOMY.md`.
 
 A methodological note, because it nearly cost a wrong conclusion: at twelve
