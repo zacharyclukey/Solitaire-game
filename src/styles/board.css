@@ -3,6 +3,21 @@
 .play {
   position: absolute;
   inset: 0;
+  /*
+   * Card width is the play area divided by the column count, so on a tablet the
+   * cards simply ballooned — 135px against 50px on a phone — and the tableau
+   * ate the top half of the screen with dead space under it. Capping the column
+   * and centring it keeps the board at a size a hand actually plays at,
+   * whatever the display. Absolute positioning with inset 0 and auto inline
+   * margins centres it once the width is bounded.
+   */
+  width: 100%;
+  max-width: 560px;
+  /* And bounded vertically for the same reason, or the whole column hugs the
+     top of a tall display with half the screen empty beneath it. */
+  height: 100%;
+  max-height: 980px;
+  margin: auto;
   display: flex;
   flex-direction: column;
   padding: var(--safe-t) max(6px, var(--safe-r)) var(--safe-b) max(6px, var(--safe-l));

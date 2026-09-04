@@ -35,7 +35,7 @@ import { analyse, type PostMortem } from './game/postmortem.ts';
 import { findRescue } from './game/rescue.ts';
 import { ask, questionById, type Answer } from './game/oracle.ts';
 import { resolveUndo } from './game/resources.ts';
-import { applyMove, cloneSim, dig, isWon, legalMoves, pry, settle, waste, type Sim, type SimEvent } from './game/sim.ts';
+import { applyMove, cloneSim, dig, isWon, legalMoves, pry, sameMove, settle, waste, type Sim, type SimEvent } from './game/sim.ts';
 import { findSolution } from './game/solver.ts';
 import {
   emptyStreak,
@@ -1131,12 +1131,26 @@ export class App {
   }
 
   /** Plays the solver's own line. Only reachable through the `?qa=1` bridge. */
+  /**
+   * Replay the solver's line, for the smoke test and the screenshot script.
+   *
+   * Skips ahead to wherever the board actually is rather than assuming it is
+   * untouched: the screenshot run plays part of the line, poses the board for a
+   * shot, then asks for the rest, and replaying from the top pushed moves whose
+   * cards had already moved. Stops at the first move the board will not take,
+   * which is also the honest thing to do now that a level's line can be null or
+   * belong to a position the player has since left.
+   */
   async qaSolve(limit = 999): Promise<void> {
     const line = this.level?.solution;
     if (!line) return;
-    for (const mv of line.slice(0, limit)) {
-      if (!this.level) break;
+    let played = 0;
+    for (const mv of line) {
+      if (!this.level || played >= limit) break;
+      const legal = legalMoves(this.level.sim, false).some((m) => sameMove(m, mv));
+      if (!legal) continue; // already played, or no longer reachable
       await this.doMove(mv);
+      played++;
       await new Promise((r) => setTimeout(r, 12));
     }
   }

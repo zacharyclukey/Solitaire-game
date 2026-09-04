@@ -5,7 +5,7 @@
 import { describe, expect, it } from 'vitest';
 import { dealLevel, ratioFor, stipendFor } from '../src/game/deal.ts';
 import { CAREFUL, playBot } from '../src/game/bot.ts';
-import { cloneSim } from '../src/game/sim.ts';
+import { applyMove, cloneSim } from '../src/game/sim.ts';
 import { starterDeck } from '../src/game/run.ts';
 import type { LevelSpec } from '../src/game/deal.ts';
 import type { DeckCard, EnchantId } from '../src/game/types.ts';
@@ -204,5 +204,24 @@ describe('which deck a level is guaranteed against', () => {
     // stage identically hard, so there was no such thing as an unlucky shuffle.
     const chances = [11, 22, 33, 44, 55, 66].map((s) => level(deck(0), 8, s * 101, 0).chance);
     expect(Math.max(...chances) - Math.min(...chances)).toBeGreaterThan(0.1);
+  });
+});
+
+describe('the solution a level hands back', () => {
+  it('always belongs to the board it was dealt with', () => {
+    // A line found on one layout indexes cards another does not have. When the
+    // generator falls back to a fresh board it must drop the old line with it,
+    // or replaying it walks off the end of the card table.
+    for (const stage of [1, 8, 20, 30]) {
+      for (const seed of [4242, 90210, 1357]) {
+        const l = level(deck(4), stage, seed, 40);
+        if (!l.solution) continue;
+        // Replayed in sequence, which is the only way a line is meaningful.
+        const s = cloneSim(l.sim);
+        expect(() => {
+          for (const mv of l.solution!) applyMove(s, mv, null);
+        }).not.toThrow();
+      }
+    }
   });
 });

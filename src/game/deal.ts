@@ -521,6 +521,11 @@ export function dealLevel(opts: DealOptions): Level {
     faceUp = baseFaceUp + 2;
     cand = layout(defs, columns, faceUp, stockSize, rng);
     bestCost = Math.round(defs.length * 0.9);
+    // A line found on a different layout indexes cards this board does not
+    // have. Replaying it walked off the end of `defs` and crashed; drop it.
+    bestSolution = null;
+    candPlainPar = 0;
+    candSolved = false;
     candRules = rules;
     candMods = activeMods;
     candStock = stockSize;

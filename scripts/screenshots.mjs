@@ -156,12 +156,12 @@ async function capture(browser, device, url) {
   await page.waitForTimeout(500);
 
   for (let i = 1; i <= LEVELS; i++) {
-    await page.waitForSelector('#scr-fork.active .node', { timeout: 20000 });
+    // The fork became a queue: there is one board on offer and a Play button,
+    // rather than a row of nodes to choose between.
+    await page.waitForSelector('#scr-fork.active .stage', { timeout: 20000 });
     if (i === AT.fork) await snap('02-fork');
 
-    const nodes = page.locator('#scr-fork.active .node');
-    const n = await nodes.count();
-    await nodes.nth(Math.min(1, n - 1)).click();
+    await page.locator('#scr-fork.active >> text=Play it').first().click();
     await page.waitForTimeout(3400);
     await page.waitForSelector('#scr-play.active');
 

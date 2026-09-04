@@ -75,7 +75,14 @@ In Xcode: select the **App** target → Signing & Capabilities → your team, th
 
 Already configured, so do not re-do it by hand:
 
-- Portrait-only on iPhone; portrait and upside-down on iPad.
+- Portrait-only on iPhone; portrait and upside-down on iPad. Landscape is not
+  supported and is not claimed anywhere: a tableau of columns wants height, and
+  a wide short board would either shrink the cards or crop the deepest column.
+- The play column is capped at 560px wide and 980px tall and centred, so a
+  tablet gets a board at a size a hand plays at rather than a phone layout
+  stretched. Before that, card width was the viewport divided by the column
+  count and iPad cards came out at 135px against 50px on a phone, with the
+  tableau in the top half and dead space beneath it.
 - Light status bar content, `UIRequiresFullScreen`.
 - `ITSAppUsesNonExemptEncryption` false, so export compliance is answered on
   upload.
