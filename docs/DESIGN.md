@@ -362,6 +362,30 @@ table per level.
 
 ---
 
+### Suit Lock is fine on its own; it was the pairing that hurt
+
+Suit Lock forces same-suit stacking instead of alternating colour, and it was
+long recorded as the worst offender in the set at a 53% clear rate. That number
+is from an old generator and does not survive re-measurement. Twenty boards a
+row at stage 8, unlimited bank so only the board is under test:
+
+```
+control            20/20   median spend 113% of plainPar
+Suit Lock          18/20                 114%
+Suit Lock + Narrow 13/20                 110%
+```
+
+On its own it costs ten points and does not change what a board costs to play at
+all — an entirely reasonable price for a threat-8 rule that changes how every
+placement has to be thought about. What was actually expensive was pairing it
+with Narrow, which takes away a column: two different attacks on the same scarce
+resource, since same-suit stacking and one fewer column both reduce where a card
+can go.
+
+That pairing is already impossible. Narrow excludes Suit Lock, added when the
+sink-removing modifiers were repriced, so the combination cannot be drawn. No
+further change was needed and Suit Lock keeps its full effect.
+
 ### Two passes over the draw pile is the right number
 
 A card drawn with nowhere to go sits on the waste, and when the passes run out
