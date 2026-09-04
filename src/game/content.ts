@@ -132,7 +132,7 @@ export const ENCHANTS: Record<EnchantId, EnchantDef> = {
     id: 'beacon',
     name: 'Beacon',
     glyph: '☀',
-    text: 'Grants 2 extra moves when turned.',
+    text: 'Grants 2 moves when turned, or 4 if another card turned it.',
     rarity: 'common',
     price: 26,
   },

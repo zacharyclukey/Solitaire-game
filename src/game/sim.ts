@@ -297,7 +297,12 @@ export function legalMoves(s: Sim, affordableOnly = true): Move[] {
 
 /* ------------------------------------------------------------- transitions */
 
-function flipCard(s: Sim, id: number, col: number, idx: number, ev: SimEvent[] | null): void {
+/**
+ * @param viaEffect true when another card's effect turned this one rather than
+ *   a move exposing it. Beacon pays double on that path, which is what gives a
+ *   chain a reason to run through it.
+ */
+function flipCard(s: Sim, id: number, col: number, idx: number, ev: SimEvent[] | null, viaEffect = false): void {
   if (s.up[id]) return;
   s.up[id] = 1;
   s.hidden--;
@@ -309,8 +314,13 @@ function flipCard(s: Sim, id: number, col: number, idx: number, ev: SimEvent[] |
     ev?.push({ t: 'gold', n: 2, src: 'gild' });
   }
   if (d.beacon) {
-    s.movesLeft += 2;
-    ev?.push({ t: 'moves', n: 2, src: 'beacon' });
+    // Doubled when a Torch, Twin or Conduit turned it. On its own Beacon
+    // measured as rescuing none of nineteen lost boards — two moves cannot
+    // save a board that is going wrong — so its reason to exist is as the
+    // payoff at the end of a chain rather than as a card that stands alone.
+    const n = viaEffect ? 4 : 2;
+    s.movesLeft += n;
+    ev?.push({ t: 'moves', n, src: 'beacon' });
   }
   if (d.torch) {
     // The most buried tableau column, so a Torch drawn off the pile still
@@ -331,7 +341,7 @@ function flipCard(s: Sim, id: number, col: number, idx: number, ev: SimEvent[] |
       for (let i = 0; i < c.length; i++) {
         if (!s.up[c[i]]) {
           const before = s.revealed;
-          flipCard(s, c[i], best, i, ev);
+          flipCard(s, c[i], best, i, ev, true);
           if (s.revealed > before) ev?.push({ t: 'cascade', src: 'torch', n: s.revealed - before });
           break;
         }
@@ -377,7 +387,7 @@ function flipCard(s: Sim, id: number, col: number, idx: number, ev: SimEvent[] |
     }
     if (best >= 0) {
       const before = s.revealed;
-      flipCard(s, best, bestCol, bestIdx, ev);
+      flipCard(s, best, bestCol, bestIdx, ev, true);
       if (s.revealed > before) ev?.push({ t: 'cascade', src: 'conduit', n: s.revealed - before });
     }
   }
@@ -386,7 +396,7 @@ function flipCard(s: Sim, id: number, col: number, idx: number, ev: SimEvent[] |
     for (let ci = 0; ci < s.tableau; ci++) {
       const c = s.cols[ci];
       for (let i = 0; i < c.length; i++) {
-        if (!s.up[c[i]] && s.defs[c[i]].rank === d.rank) flipCard(s, c[i], ci, i, ev);
+        if (!s.up[c[i]] && s.defs[c[i]].rank === d.rank) flipCard(s, c[i], ci, i, ev, true);
       }
     }
     if (s.revealed > before) ev?.push({ t: 'cascade', src: 'twin', n: s.revealed - before });

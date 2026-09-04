@@ -436,3 +436,21 @@ describe('the consumable escapes', () => {
     expect(dig(s)).toBe(false);
   });
 });
+
+describe('Beacon pays for chains', () => {
+  it('grants double when another card turns it, and the base when a move does', () => {
+    const plain = build([[card(6, 0)], [card(9, 1, 'beacon'), card(5, 1)]], [[true], [false, true]]);
+    const before = plain.movesLeft;
+    applyMove(plain, legalMoves(plain).find((m) => m.kind === 'm' && m.from === 1)!);
+    expect(plain.movesLeft).toBe(before - 1 + 2); // exposed by the move itself
+
+    // Now reached through a Conduit instead: the same Beacon pays four.
+    const chained = build(
+      [[card(6, 0)], [card(9, 1, 'conduit'), card(5, 1)], [card(4, 2, 'beacon'), card(7, 3)]],
+      [[true], [false, true], [false, true]],
+    );
+    const before2 = chained.movesLeft;
+    applyMove(chained, legalMoves(chained).find((m) => m.kind === 'm' && m.from === 1)!);
+    expect(chained.movesLeft).toBe(before2 - 1 + 4);
+  });
+});

@@ -441,6 +441,20 @@ enchanted deck is handed a board that needed those enchantments to be solvable �
 and then a human cannot extract what the searcher could. The classic kit buys
 the *board* difficulty without buying the player the means to meet it.
 
+Re-measured after deals became honest shuffles, paired on the same board so
+only the enchantments vary, and at a realistic purse: the adding kit keeps 14, 8
+and 8 moves at 4, 8 and 12 cards, flat and noisy, while the compounding kit
+climbs 11, 20, 28. The direction survived every correction to the instrument.
+
+Getting there took three corrections worth recording, because each produced a
+confident wrong answer first. Dealing separately per kit let honest-shuffle
+variance — plainPar runs 33 to 61 — swamp a build worth a few moves, and the
+results came out non-monotonic. Measuring at an unlimited bank let the player
+wander instead of economising, so it hit the bot's iteration cap with six
+hundred moves still in hand, and the build appeared to LOSE boards a bare deck
+won; every one of those losses was the cap, never the budget. And the median is
+taken over winners, so a kit that clears fewer boards keeps only the easy ones.
+
 Conduit and Resonance are built to multiply instead. Conduit turns the nearest
 face-down enchanted card, so chains are something the player assembles rather
 than stumbles into; Resonance pays a move for every other enchanted card already
@@ -479,6 +493,12 @@ Beacon          0/19    0%
 
 Anchor leads because it manufactures the scarce resource: with no foundations,
 somewhere to put anything is the whole game.
+
+**Beacon now pays for chains.** Two moves cannot rescue a board that is going
+wrong, which is why it saved none of nineteen lost boards on its own. It grants
+four instead of two when a Torch, Twin or Conduit turned it, so its reason to
+exist is as the payoff at the end of a chain rather than as a card that stands
+alone — the same principle that makes Conduit worth building toward.
 
 **Keystone was genuinely dead**, and for an embarrassing reason: its entire
 effect was bypassing empty-column restrictions and paying no entry cost, and
