@@ -693,10 +693,11 @@ export class App {
   /**
    * The enchantments that measurably turn a lost board around.
    *
-   * Named from the audit in `scripts/enchaudit.ts` rather than from flavour:
-   * over 19 boards the bounded-lookahead player lost, Anchor saved 37%, Ember
-   * and Prism 26% each. The line this replaced offered Beacon, which saved
-   * none of them — the losses are structural, not two moves short.
+   * Named from the audit in `scripts/enchaudit.ts` rather than from flavour.
+   * Re-measured against honest shuffles: of 14 boards the bounded-lookahead
+   * player lost, Ember and Anchor each saved 57% and Chameleon 36%. The line
+   * this replaced offered Beacon, which saves none of them — those losses are
+   * structural, not two moves short.
    */
   private epitaphFor(pm: PostMortem): Epitaph {
     const lines: string[] = [];
@@ -721,7 +722,7 @@ export class App {
           `You arrived with ${level.bank} banked. This board was lost on the ones before it.`,
         );
       } else {
-        lines.push('An Anchor, an Ember or a Prism most often turns a board like this one.');
+        lines.push('An Ember, an Anchor or a Chameleon most often turns a board like this one.');
       }
     } else if (pm.movesAfterLoss !== null && pm.movesAfterLoss > 3) {
       lines.push('Loaded Dice would have let you take those moves back.');

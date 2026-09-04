@@ -456,11 +456,16 @@ to 12.5 on an opening board — and most of those moves are bad ones that spend 
 move and bury a card. When a board is otherwise dead that is exactly what saves
 it; the rest of the time it is a tax.
 
-So there are two classes. **Income**: Resonance, Beacon, Kickback,
-Featherweight — all of them grant or save moves and none of them add legal
-moves. **Insurance**: Anchor, Ember, Prism — placement effects that cost moves
-in the ordinary case and rescue the board that would otherwise end the run.
-Insurance has a premium, and here it is about three moves a board.
+So there are two classes. **Income**: Resonance, Beacon, Conduit — they grant or
+save moves, add no legal moves, and rescue nothing at all once a board has gone
+wrong. **Insurance**: Anchor, Ember, Chameleon, Prism — placement effects that
+cost moves in the ordinary case and save the board that would otherwise end the
+run. Insurance has a premium, about three moves a board.
+
+**Kickback and Featherweight sit in both**, at +3.9 moves a board and 29% of
+lost boards saved. They make a move cheaper, which is income when the board is
+going well and a rescue when the last move is unaffordable. They are the best
+cards in the set and nothing else does both jobs.
 
 Checked against a control, because a card that triples the branching factor is
 exactly the shape of an artifact that has caught this project before. Anchor
@@ -532,19 +537,30 @@ counts the ones that turn the loss into a win. 42 boards at stages 4, 8 and 12;
 extracts value from a card no person would find.
 
 ```
-Anchor          7/19   37%
-Ember           5/19   26%
-Prism           5/19   26%
-Torch           4/19   21%
-Bridge          4/19   21%
-Twin            4/19   21%
-Kickback        3/19   16%
-Featherweight   3/19   16%
-Chameleon       1/19    5%
-Keystone        0/19    0%
-Gilded          0/19    0%
-Beacon          0/19    0%
+Ember           8/14   57%
+Anchor          8/14   57%
+Chameleon       5/14   36%
+Twin            5/14   36%
+Torch           4/14   29%
+Kickback        4/14   29%
+Featherweight   4/14   29%
+Bridge          4/14   29%
+Prism           4/14   29%
+Keystone        1/14    7%
+Gilded          0/14    0%
+Beacon          0/14    0%
+Conduit         0/14    0%
+Resonance       0/14    0%
 ```
+
+Re-measured against honest shuffles; the earlier run was on the generator that
+eased boards until they fit and its order no longer holds. Chameleon moved from
+5% to 36% and Ember rose to tie Anchor at the top, so the run-over screen's
+advice and the order `rescue.ts` searches in were both naming the wrong cards.
+Fourteen lost boards is a small sample and these rates carry about thirteen
+points of noise; the ordering at the top and bottom is what to trust, not the
+gaps in the middle.
+
 
 Anchor leads because it manufactures the scarce resource: with no foundations,
 somewhere to put anything is the whole game.

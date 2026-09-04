@@ -11,16 +11,21 @@
  * solver whether the line now fits the moves the player actually had. The first
  * one that does is the answer.
  *
- * Ordered by measured worth rather than flavour — the board-rescue audit in
- * `scripts/enchaudit.ts` put Anchor at 37%, Ember and Prism at 26%, Torch,
- * Bridge and Twin at 21% — so the likeliest answer is found before the search
- * budget runs out.
+ * Ordered by measured worth rather than flavour, so the likeliest answer is
+ * found before the search budget runs out. Re-measured against honest shuffles
+ * (`scripts/enchaudit.ts`, 14 lost boards): Ember and Anchor both save 57% of
+ * them, Chameleon and Twin 36%, and Torch, Bridge and Prism 29%.
+ *
+ * Conduit is deliberately absent. It is one of the strongest cards to own and
+ * it rescues nothing — 0 of 14 — because reaching for another enchanted card
+ * does nothing for a board that has already gone wrong. Searching it here only
+ * spent budget that the cards which do rescue needed.
  */
 import { findSolution } from './solver.ts';
 import { cloneSim, stock, type Sim } from './sim.ts';
 import { cardLabel, makeCardDef, type EnchantId } from './types.ts';
 
-const CANDIDATES: EnchantId[] = ['anchor', 'ember', 'prism', 'torch', 'bridge', 'twin', 'conduit'];
+const CANDIDATES: EnchantId[] = ['ember', 'anchor', 'wild', 'twin', 'torch', 'bridge', 'prism'];
 
 export interface Rescue {
   ench: EnchantId;
