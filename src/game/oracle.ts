@@ -91,7 +91,12 @@ export function ask(id: QuestionId, ctx: AskContext): Answer {
         tone: 'bad',
       };
     }
-    return { text: 'No. There is no line left from this position at any cost.', tone: 'bad' };
+    // Deliberately "was found" rather than "exists". This is a 420ms search,
+    // and measured against solve() at 400k nodes it misses a line that really
+    // is there on about 1% of winnable positions (2 of 218, stages 4-12). The
+    // player pays a move for this reading and will abandon the board on it, so
+    // it must not claim more certainty than the search behind it has.
+    return { text: 'No line was found from here, even with the move limit lifted.', tone: 'bad' };
   }
 
   if (id === 'line') {

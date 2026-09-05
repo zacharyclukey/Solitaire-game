@@ -448,16 +448,6 @@ html.left-handed .actions { flex-direction: row-reverse; }
 
 .act.item .act-glyph { color: var(--good); }
 
-.hud-par {
-  display: block;
-  margin-top: 2px;
-  font-size: 9.5px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  font-variant-numeric: tabular-nums;
-  color: var(--ink-faint);
-}
-.hud-par.over { color: var(--gold); }
 
 /* An empty pile that can still be turned back over. */
 .slot.stock.recyclable {

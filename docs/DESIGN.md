@@ -653,10 +653,15 @@ tops and the draw pile. Worth remembering before cutting anything on one sweep.
 
 ## 5a. The Oracle
 
-Every board is solved before it is dealt, which means this game knows things no
-other card game can know: whether you are still winning, what the line is, and
-exactly which move threw it away. Spending that on a hint button was a waste of
-the only genuinely unusual thing in the design.
+The game ships a solver, which means it can know things no other card game can
+tell you: whether you are still winning, what the line is, and exactly which
+move threw it away. Spending that on a hint button was a waste of the only
+genuinely unusual thing in the design.
+
+(This section used to open "every board is solved before it is dealt". That was
+true under the certification contract and is not true now — deals are honest
+shuffles, the solver runs as a measurement, and a board with no line at all is
+dealt like any other.)
 
 Readings are questions put to the solver, paid for in **moves**:
 
@@ -671,12 +676,23 @@ Two things make this work rather than being a cheat button:
 - **It is paid for out of the surplus** — the same moves you would otherwise
   spend on mistakes. That is the whole trade: certainty now, or room to be wrong
   later. An earlier version gave readings their own currency, which was safer
-  and much less interesting; the allowance was restated as par plus an explicit
-  surplus (below) precisely so that one currency could do everything.
+  and much less interesting; one currency does everything instead, and since the
+  move bank landed that currency carries between levels, so a reading bought
+  now is a move missing from a board two levels deeper.
 - **The cheapest question is the most interesting one.** "Am I still winning?"
   costs one move and tells you nothing about *what* to do — only whether the run
-  is already over. Knowing you are dead and choosing whether to spend undos is a
-  better decision than being handed a move.
+  is already over. Knowing you are dead and choosing whether to spend undos, or
+  an escape, is a better decision than being handed a move.
+
+That reading answers in three ways, and the third is deliberately hedged. It can
+say the board is still winnable, or that it is winnable but needs more moves
+than you hold, or that no line was found. It used to say "there is no line left
+from this position at any cost" — an absolute claim standing on a 420 ms search.
+Measured against `solve` at 400,000 nodes over 218 winnable mid-game positions
+at stages 4 to 12, that search misses a line that really is there about 1% of
+the time. One in a hundred is small, but the player pays a move for the reading
+and will abandon a board on it, so the wording now claims only what the search
+did: no line was found.
 
 The third question closes the loop with the post-mortem: the same analysis that
 explains a loss afterwards can be bought *during* the level, and it offers to
@@ -686,10 +702,16 @@ ended can be recovered, if you have the undos and thought to ask.
 ## 5b. Teaching it, and the reason to come back
 
 **The guided board.** The first level a new player sees is hand-authored, not
-generated, because the teaching order matters more than the variety. Fourteen
-cards, five columns, three reserve cells, and five lessons in the order the
-game actually needs them: stack a card, park one in the reserve, empty a
-column, move an ordered run, and only then the move allowance.
+generated, because the teaching order matters more than the variety. Fifteen
+cards, five columns, a four-card draw pile and a 34-move allowance, with five
+lessons in the order the game actually needs them: stack a card, turn one off
+the draw pile, empty a column, send an ordered run into the gap, and only then
+the move allowance.
+
+(This described "three reserve cells" and a reserve lesson until the
+2026-09-05 review. The reserve was replaced by the draw pile; the lesson that
+teaches it had already been rewritten in `tutorial.ts` and only the prose was
+left behind.)
 
 Two properties make it work, and both are asserted by tests so a future edit to
 the layout cannot quietly break the script:

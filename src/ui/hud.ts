@@ -17,7 +17,6 @@ export class Hud {
   readonly root: HTMLElement;
   readonly boardHost: HTMLElement;
   private moves!: HTMLElement;
-  private par!: HTMLElement;
   private movesBox!: HTMLElement;
   private turned!: HTMLElement;
   private depth!: HTMLElement;
@@ -33,11 +32,9 @@ export class Hud {
   private coach!: HTMLElement;
 
   constructor(actions: HudActions) {
-    this.par = el('span', { class: 'hud-par' }, ['']);
     this.movesBox = el('div', { class: 'hud-moves' }, [
       (this.moves = el('b', {}, ['0'])),
       el('span', {}, ['moves left']),
-      this.par,
     ]);
     this.depth = el('b', {}, ['1']);
     this.depthBox = el('div', { class: 'hud-depth' }, ['LV ', this.depth]);
@@ -157,8 +154,6 @@ export class Hud {
     // does is how many moves are left; everything else was scoreboard dressing
     // that invited them to play the arithmetic instead of the cards. Par comes
     // back at the end of the level, as a score.
-    this.par.textContent = '';
-    this.par.classList.toggle('over', sim.movesLeft <= 3);
     const total = sim.defs.length;
     // What is actually left to do: face-down cards plus everything stranded on
     // the waste, which has been seen but not sorted into a column.
