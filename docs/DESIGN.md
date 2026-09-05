@@ -463,8 +463,8 @@ wrong. **Insurance**: Anchor, Ember, Chameleon, Prism — placement effects that
 cost moves in the ordinary case and save the board that would otherwise end the
 run. Insurance has a premium, about three moves a board.
 
-**Kickback and Featherweight sit in both**, at +3.9 moves a board and 29% of
-lost boards saved. They make a move cheaper, which is income when the board is
+**Kickback and Featherweight sit in both**, at +3.9 moves a board and 28% of
+lost boards saved (43-board re-run). They make a move cheaper, which is income when the board is
 going well and a rescue when the last move is unaffordable. They are the best
 cards in the set and nothing else does both jobs.
 
@@ -533,34 +533,40 @@ Flavour is not evidence, and the run-over screen makes a promise about this. So
 it is measured: `scripts/enchaudit.ts` deals boards, keeps the ones the
 bounded-lookahead player loses at a realistic budget, then puts each enchantment
 on each of six plausible cards — buried, column tops, top of the draw pile — and
-counts the ones that turn the loss into a win. 42 boards at stages 4, 8 and 12;
-19 of them lost; the fallible player rather than the solver, because a solver
-extracts value from a card no person would find.
+counts the ones that turn the loss into a win. 120 boards at stages 4, 8 and 12
+(`scripts/enchaudit.ts 40`); 43 of them lost; the fallible player rather than
+the solver, because a solver extracts value from a card no person would find.
 
 ```
-Ember           8/14   57%
-Anchor          8/14   57%
-Chameleon       5/14   36%
-Twin            5/14   36%
-Torch           4/14   29%
-Kickback        4/14   29%
-Featherweight   4/14   29%
-Bridge          4/14   29%
-Prism           4/14   29%
-Keystone        1/14    7%
-Gilded          0/14    0%
-Beacon          0/14    0%
-Conduit         0/14    0%
-Resonance       0/14    0%
+Anchor         23/43   53%
+Ember          22/43   51%
+Twin           17/43   40%
+Chameleon      13/43   30%
+Kickback       12/43   28%
+Featherweight  12/43   28%
+Bridge         11/43   26%
+Prism          11/43   26%
+Torch           9/43   21%
+Keystone        5/43   12%
+Beacon          1/43    2%
+Gilded          0/43    0%
+Conduit         0/43    0%
+Resonance       0/43    0%
 ```
 
-Re-measured against honest shuffles; the earlier run was on the generator that
-eased boards until they fit and its order no longer holds. Chameleon moved from
-5% to 36% and Ember rose to tie Anchor at the top, so the run-over screen's
-advice and the order `rescue.ts` searches in were both naming the wrong cards.
-Fourteen lost boards is a small sample and these rates carry about thirteen
-points of noise; the ordering at the top and bottom is what to trust, not the
-gaps in the middle.
+This replaces a 14-board run that sat below the >=20 house rule, and the bigger
+sample moved real things rather than just tightening error bars. Twin is clearly
+ahead of Chameleon rather than tied with it, so the run-over screen was naming
+Chameleon in its top three when Twin belongs there. Torch fell clearly behind
+Bridge and Prism rather than sitting beside them, so `rescue.ts` was searching a
+weaker card earlier than two better ones. And Kickback and Featherweight beat
+three cards `rescue.ts` does search while not being searched at all — they were
+filed as pure economy, but a loss for want of moves is still a loss the screen
+has to explain. Both the advice line and the `CANDIDATES` order were corrected
+to this table.
+
+Forty-three lost boards still carries roughly eight points of noise, so trust
+the ordering rather than the gaps between adjacent rows.
 
 
 Anchor leads because it manufactures the scarce resource: with no foundations,
@@ -749,23 +755,37 @@ and cleared them of a loss that was genuinely theirs.
   leaderboard is a small addition later.
 - No localisation pass; all copy is English and hard-coded.
 - Difficulty at the shallow end is set by `ratioFor`, not by search quality (see
-  the measurement in §2). Whether stage 1 at 1.30 is the right welcome is a
-  judgement call that wants real players, not more telemetry.
+  the measurement in §2). Whether stage 1 at 1.70 is the right welcome is a
+  judgement call that wants real players, not more telemetry. (This bullet said
+  1.30 until the 2026-09-05 review; that was the old curve, and `ratioFor` has
+  opened at 1.70 since.)
 - **There is no clearability guarantee any more, on purpose.** It was retired
   when deals became honest shuffles. The number that replaced it is the
   estimated win chance in `src/game/odds.ts`, and about a fifth of boards are
   lost whatever the allowance — those are dead shuffles rather than missed
-  lines, and `rescue.ts` still names a winning card on 22 of 23 of them.
-  Six-column boards remain the sharpest edge, at
-  76% against 91% for seven.
+  lines, and `rescue.ts` still names a winning card on 24 of 25 of them.
+  The claim that used to close this bullet — six-column boards the sharpest
+  edge at 76% against 91% for seven — **does not reproduce and is withdrawn.**
+  Re-measured over 194 boards at stages 2-14 at each level's own budget, six
+  columns cleared 54% and seven cleared 38%: the ordering is reversed and both
+  figures are far from the old ones. No replacement number is given, because
+  that measurement is confounded and so, probably, was the original — column
+  count is set by the Narrow and Wide modifiers, which carry threat that the
+  stipend then compensates, and the stages are not evenly spread across the
+  arms. Answering it properly means holding stage and threat fixed and varying
+  only the column count.
 - **The win curve in `odds.ts` was re-measured after the pivot and held.** It
   was originally taken on a generator that eased boards until they fit, so it
   was the most load-bearing possibly-stale number in the project; a second sweep
   on honest shuffles moved every point by 5 points or less, inside the noise at
   40 samples. The two sweeps are pooled, so it now rests on 80 boards a point.
 - **The economy is tuned against the wrong player.** A shallow player needs a
-  median 1.0-1.7x par and the stipend pays 0.90x plainPar by stage 10, so full
-  runs with that player end around stage 2-3 rather than 15. The ratio curve
+  median 1.0-1.7x par while `ratioFor` pays 1.25x plainPar at stage 10 and falls
+  geometrically past 17, so full runs with that player end around stage 2-3
+  rather than 15. (The 0.90x quoted here before the 2026-09-05 review was from
+  the superseded curve.) Note that §7's other economy bullets are about the
+  allowance, whereas `docs/ECONOMY.md` now concludes the ceiling is set by dead
+  shuffles instead — the allowance is no longer the binding constraint. The ratio curve
   needs recalibrating against a human-shaped player, not the solver. Numbers and
   caveats in `docs/ECONOMY.md`.
 - Landscape and tablet layouts are locked to portrait rather than designed.

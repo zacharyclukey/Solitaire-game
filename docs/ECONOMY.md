@@ -508,9 +508,14 @@ player did not own. So the guarantee that matters is whether the game can still
 name that card. Over every board the bot lost across stages 6, 12 and 18, at
 the setting that actually ships (`budgetMs: 900`, 3 spots):
 
-**`rescue.ts` named a winning card on 22 of 23 lost boards** — 15 of the 16
-genuinely dead ones — median 162 ms, worst case 936 ms. The legibility
+**`rescue.ts` named a winning card on 24 of 25 lost boards** — 16 of the 17
+genuinely dead ones — median 142 ms, worst case 932 ms. The legibility
 guarantee survives honest shuffles.
+
+(Measured after the 43-board audit reordered `CANDIDATES` and added Kickback and
+Featherweight to it. Before that change the same sweep gave 22 of 23 at a median
+of 162 ms — the same coverage rate on a board set that had shifted by two, so
+the reorder is justified by the audit's ranking rather than by that delta.)
 
 Raising the search to 2500 ms and 4 spots was measured and **rejected**: it
 recovered nothing (21/22 either way on that sweep) while tripling the worst-case

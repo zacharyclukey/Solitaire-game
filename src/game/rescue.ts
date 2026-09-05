@@ -13,19 +13,30 @@
  *
  * Ordered by measured worth rather than flavour, so the likeliest answer is
  * found before the search budget runs out. Re-measured against honest shuffles
- * (`scripts/enchaudit.ts`, 14 lost boards): Ember and Anchor both save 57% of
- * them, Chameleon and Twin 36%, and Torch, Bridge and Prism 29%.
+ * over 43 lost boards (`scripts/enchaudit.ts 40`, which clears the >=20 rule
+ * the previous 14-board run did not): Anchor 53%, Ember 51%, Twin 40%,
+ * Chameleon 30%, Kickback and Featherweight 28%, Bridge and Prism 26%,
+ * Torch 21%.
  *
- * Conduit is deliberately absent. It is one of the strongest cards to own and
- * it rescues nothing — 0 of 14 — because reaching for another enchanted card
- * does nothing for a board that has already gone wrong. Searching it here only
- * spent budget that the cards which do rescue needed.
+ * That re-run moved two things. Twin is clearly ahead of Chameleon rather than
+ * tied with it, and Torch is clearly behind Bridge and Prism rather than beside
+ * them — so the old order searched a weaker card first. And Kickback and
+ * Featherweight rescue more boards than three cards that were being searched,
+ * while not being searched at all: they were assumed to be pure economy, but a
+ * loss for want of moves is still a loss this screen has to explain.
+ *
+ * Conduit is deliberately absent, and Gilded and Resonance with it. All three
+ * measure 0 of 43 — reaching for another enchanted card, or being paid, does
+ * nothing for a board that has already gone wrong. Searching them here only
+ * spends budget the cards that do rescue need.
  */
 import { findSolution } from './solver.ts';
 import { cloneSim, stock, type Sim } from './sim.ts';
 import { cardLabel, makeCardDef, type EnchantId } from './types.ts';
 
-const CANDIDATES: EnchantId[] = ['ember', 'anchor', 'wild', 'twin', 'torch', 'bridge', 'prism'];
+const CANDIDATES: EnchantId[] = [
+  'anchor', 'ember', 'twin', 'wild', 'spring', 'free', 'bridge', 'prism', 'torch',
+];
 
 export interface Rescue {
   ench: EnchantId;

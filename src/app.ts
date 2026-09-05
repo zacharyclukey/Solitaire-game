@@ -694,10 +694,11 @@ export class App {
    * The enchantments that measurably turn a lost board around.
    *
    * Named from the audit in `scripts/enchaudit.ts` rather than from flavour.
-   * Re-measured against honest shuffles: of 14 boards the bounded-lookahead
-   * player lost, Ember and Anchor each saved 57% and Chameleon 36%. The line
-   * this replaced offered Beacon, which saves none of them — those losses are
-   * structural, not two moves short.
+   * Re-measured over 43 lost boards, five times the earlier sample: Anchor 53%,
+   * Ember 51%, Twin 40%, Chameleon 30%. The bigger sample demoted Chameleon out
+   * of the top three, which the 14-board run had it tied for. An older line
+   * offered Beacon, which saves none of them — those losses are structural,
+   * not two moves short.
    */
   private epitaphFor(pm: PostMortem): Epitaph {
     const lines: string[] = [];
@@ -722,7 +723,7 @@ export class App {
           `You arrived with ${level.bank} banked. This board was lost on the ones before it.`,
         );
       } else {
-        lines.push('An Ember, an Anchor or a Chameleon most often turns a board like this one.');
+        lines.push('An Anchor, an Ember or a Twin most often turns a board like this one.');
       }
     } else if (pm.movesAfterLoss !== null && pm.movesAfterLoss > 3) {
       lines.push('Loaded Dice would have let you take those moves back.');
