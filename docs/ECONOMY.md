@@ -129,8 +129,9 @@ needed.
 
 Deals are honest shuffles now. The solver is a measurement rather than a gate,
 boards are selected on estimated win chance against a band for the stage, and
-roughly a fifth of them have no line a player will find. What survives is a
-floor: a board with essentially no chance is not dealt.
+roughly a fifth of them have no line at all — not merely none a player finds
+(measured below). What survives is a floor: a board with essentially no chance
+is not dealt.
 
 Two things carry the fairness that the invariant used to:
 
@@ -427,16 +428,14 @@ stage 1 the stipend pays 1.70x plainPar, which the measured curve puts at about
 74% per level, and 0.74^5 is 22% — a median depth of 2.3, exactly what is
 observed. To reach a median depth of 8 a player needs about 92% per level.
 
-**The curve tops out at 78%.** Roughly a fifth of boards have no line this
-player finds at any budget, so 78% is the per-level ceiling however much money
-is thrown at it, and that caps median depth at under three. No economy — no
-refund, no interest, no free readings — can move a number that is bounded by
-whether a line gets found at all.
+**The curve tops out at 78%.** Roughly a fifth of boards are not cleared at any
+budget, so 78% is the per-level ceiling however much money is thrown at it, and
+that caps median depth at under three. No economy — no refund, no interest, no
+free readings — can move a number that is bounded by whether a line gets found
+at all.
 
-So the economy is finished as a lever and the remaining one is the unfindable
-fifth. Whether that fifth is unfindable by a *person* is the open question: the
-bot is a lower bound on skill, and this is the measurement most in need of a
-human to check it.
+So the economy is finished as a lever. The remaining one is that fifth — and it
+turns out not to be a search failure at all. See the next section.
 
 The solver banks perfectly. A human does not. Every number produced by solver play is
 a claim about a perfect player, and the entire question here is about imperfect ones —
@@ -444,3 +443,80 @@ so the bounded-lookahead bot (task #11) is now a prerequisite, not a nice-to-hav
 
 Target shape, to check against: a bare deck dies around stage 8-10, a good build reaches
 15-20, and nothing reliably reaches 30.
+
+## The unfindable fifth is unwinnable, not unfound
+
+This was carried for a long time as "boards the bot cannot find a line on",
+with a standing warning not to treat 22% as a human number because it was the
+instrument's number. It was measured properly, and the warning turns out to
+have been aimed at the wrong risk.
+
+All of the below: current generator, `CAREFUL` bot, unlimited bank, 24 boards a
+stage. Reproduce with `scripts/deadboards.ts`.
+
+**Search width does not explain it.** Ruled out earlier — a wider search
+recovered nothing.
+
+**Search depth does not explain it either.**
+
+| stage | depth 3 | depth 4 |
+|---|---|---|
+| 1 | 24/24 | 24/24 |
+| 6 | 19/24 | 20/24 |
+| 12 | 18/24 | 18/24 |
+| 18 | 13/24 | 13/24 |
+
+Identical at the stages where the failures actually live. An earlier n=20 run at
+stage 8 alone had hinted depth 4 was better; it was noise, and was flagged
+inconclusive at the time rather than banked.
+
+**The boards are dead.** Hand the bot's failures to the solver at unlimited
+budget and it finds a line on 1 of 6 at stage 12 and 1 of 11 at stage 18. The
+control that makes that mean anything: on the boards the bot *cleared*, the
+same solver found a line 18/18 and 13/13. The solver is not blind at these
+stages, so its silence is evidence rather than absence.
+
+That first pass raised `findSolution`'s budget from 2s to 50s and nothing
+changed — but note what that argument is. `findSolution(sim, budgetMs)` takes
+**milliseconds**, and every pass inside it is *also* capped at 9k-22k nodes, so
+past a certain point extra time buys no extra search and the 25x was mostly
+vacuous. Driving `solve` directly at 1,000,000 nodes — about 45x the largest of
+those caps — is the honest version, and it does recover a little more:
+
+| stage | bot lost | solvable at 1M | control: bot won | solvable at 1M |
+|---|---|---|---|---|
+| 12 | 7 | 1 | 17 | 17 |
+| 18 | 11 | 2 | 13 | 12 |
+
+So roughly **85% of the bot's losses have no line that any search tried can
+find**, and a 45x deeper search converts about one board in eighteen. The fifth
+is overwhelmingly a fact about the shuffle, not a limit of the player model —
+which is exactly what "losable by default, honest shuffles" was chosen to mean.
+It is not a bug, and no amount of skill or money converts it.
+
+Two honest caveats on the counts. The deep configuration is not uniformly
+stronger — it missed one board at stage 18 that the bot itself cleared, so
+"solvable at 1M" is not a superset of "clearable". And `dealLevel` sizes its
+allowance with wall-clock solver budgets, so the exact boards dealt shift a
+little between runs: the same sweep gave 6 and then 7 losses at stage 12. Read
+these to the nearest board, not exactly.
+
+### Which makes legibility the thing that has to hold
+
+A dead board cannot be saved by a better move, only by an escape or a card the
+player did not own. So the guarantee that matters is whether the game can still
+name that card. Over every board the bot lost across stages 6, 12 and 18, at
+the setting that actually ships (`budgetMs: 900`, 3 spots):
+
+**`rescue.ts` named a winning card on 22 of 23 lost boards** — 15 of the 16
+genuinely dead ones — median 162 ms, worst case 936 ms. The legibility
+guarantee survives honest shuffles.
+
+Raising the search to 2500 ms and 4 spots was measured and **rejected**: it
+recovered nothing (21/22 either way on that sweep) while tripling the worst-case
+wait to 2.5 s. The single miss is recoverable — 6 s at 6 spots finds it — but
+not at a price every other loss should pay. The constant stays at 900 ms.
+
+Latency is not the risk regardless: the run-over screen renders first and the
+verdict arrives into it, and the search returns on first success, so the extra
+time would have been spent only on the boards where it does not help.

@@ -17,9 +17,12 @@
 
 /**
  * The ceiling. However many moves are handed over, about a fifth of boards are
- * lost anyway — a tableau played into a corner, or a line too narrow for
- * bounded lookahead to find. Moves do not fix those, which is why the estimate
- * cannot promise more than this.
+ * lost anyway. That was assumed to be bounded lookahead missing a narrow line;
+ * it is not. Handed the bot's failures at unlimited budget, the solver finds a
+ * line on only about one in six of them even when driven at 1,000,000 nodes,
+ * some 45x its shipping cap — while on the boards the bot clears it finds one
+ * almost every time. So these are dead shuffles rather than missed lines, and
+ * no allowance and no better play recovers them (`scripts/deadboards.ts`).
  */
 export const FINDABLE = 0.78;
 

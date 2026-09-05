@@ -10,7 +10,7 @@ export type Rarity = 'common' | 'rare' | 'epic';
  * Single-use escapes, bought and carried between levels.
  *
  * Deals are honest shuffles now, so a board can be genuinely lost — about one
- * in five has no line a player will find, whatever the allowance. That is only
+ * in five has no line at all, whatever the allowance and whatever the play. That is only
  * a roguelite rather than bad luck if the player can buy their way out of one,
  * so each of these answers a death mode that was actually measured:
  *

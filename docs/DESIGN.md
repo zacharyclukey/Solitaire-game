@@ -144,8 +144,9 @@ Two consequences worth stating plainly:
   used to be impossible by construction — every board was certified clearable
   inside `bank + stipend` and eased until it was — and that contract is
   **retired**. Deals are honest shuffles now, selected on estimated win chance
-  rather than proven winnable, and roughly a fifth of boards have no line a
-  player will find. Bankruptcy survives only as a floor: a board with
+  rather than proven winnable, and roughly a fifth of boards have no line at
+  all — measured, not assumed (`docs/ECONOMY.md`, "unwinnable, not unfound").
+  Bankruptcy survives only as a floor: a board with
   essentially no chance is not dealt at all.
 - **The Oracle and undo got more expensive without changing price.** They always
   cost moves; now those moves would otherwise have carried, so a reading on
@@ -753,7 +754,9 @@ and cleared them of a loss that was genuinely theirs.
 - **There is no clearability guarantee any more, on purpose.** It was retired
   when deals became honest shuffles. The number that replaced it is the
   estimated win chance in `src/game/odds.ts`, and about a fifth of boards are
-  lost whatever the allowance. Six-column boards remain the sharpest edge, at
+  lost whatever the allowance — those are dead shuffles rather than missed
+  lines, and `rescue.ts` still names a winning card on 22 of 23 of them.
+  Six-column boards remain the sharpest edge, at
   76% against 91% for seven.
 - **The win curve in `odds.ts` was re-measured after the pivot and held.** It
   was originally taken on a generator that eased boards until they fit, so it
