@@ -372,3 +372,15 @@ h1, h2, h3, p, ul {
 .toggle input:checked + .switch::after { transform: translateX(18px); background: var(--gold); }
 
 .hidden { display: none !important; }
+
+/* What a card is for: "Pays" banks moves, "Saves" turns a losing board. Both
+   are measured rather than flavour, and a card that does neither shows neither.
+   Small and quiet — it labels the trade without shouting over the card's text. */
+.chip.trade {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-weight: 700;
+  padding: 2px 8px;
+}
+.trade-row { margin-top: 6px; }

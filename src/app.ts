@@ -723,7 +723,7 @@ export class App {
           `You arrived with ${level.bank} banked. This board was lost on the ones before it.`,
         );
       } else {
-        lines.push('An Anchor, an Ember or a Twin most often turns a board like this one.');
+        lines.push('Boards like this one turn on an Anchor, an Ember or a Twin — insurance, and it is paid for on every board that was going fine.');
       }
     } else if (pm.movesAfterLoss !== null && pm.movesAfterLoss > 3) {
       lines.push('Loaded Dice would have let you take those moves back.');

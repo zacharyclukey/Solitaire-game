@@ -62,6 +62,30 @@ export const CONSUMABLE_LIST: ConsumableDef[] = Object.values(CONSUMABLES);
 /** Moves a Reprieve is worth. */
 export const REPRIEVE_MOVES = 8;
 
+/**
+ * What a card actually does for a run, measured on two independent axes so the
+ * shop can say which trade it is offering.
+ *
+ * `pays` — banks moves or gold on an ordinary board. From `scripts/worth.ts`
+ * (40 paired boards, stage 8, six copies): Resonance +9.0 expected moves over a
+ * bare deck, Beacon +5.1, Kickback and Featherweight +4.0. Gilded is here for
+ * gold rather than moves; it measures +0.0 moves and pays 2 gold a turn.
+ *
+ * `saves` — turns a board that was going to be lost, at least one in five.
+ * From `scripts/enchaudit.ts 40` (43 lost boards): Anchor 53%, Ember 51%,
+ * Twin 40%, Chameleon 30%, Kickback and Featherweight 28%, Bridge and Prism
+ * 26%, Torch 21%.
+ *
+ * The two axes are close to inverse, which is the interesting part: the cards
+ * that pay rescue nothing, and the cards that rescue cost about two moves a
+ * board to own. Kickback and Featherweight are the only ones doing both jobs,
+ * because making a move cheaper is income on a board going well and a rescue
+ * when the last move is unaffordable.
+ *
+ * Keystone (+0.3, 12%) and Conduit (+0.0, 0%) carry neither flag: they did not
+ * measure as doing either job. That is a balance question, not a labelling one,
+ * so nothing is claimed for them here.
+ */
 export interface EnchantDef {
   id: EnchantId;
   name: string;
@@ -69,6 +93,10 @@ export interface EnchantDef {
   text: string;
   rarity: Rarity;
   price: number;
+  /** Banks moves or gold on an ordinary board. */
+  pays?: boolean;
+  /** Rescues at least one lost board in five. */
+  saves?: boolean;
 }
 
 export const ENCHANTS: Record<EnchantId, EnchantDef> = {
@@ -79,6 +107,7 @@ export const ENCHANTS: Record<EnchantId, EnchantDef> = {
     text: 'When turned, also turns the deepest card of the most buried column.',
     rarity: 'common',
     price: 22,
+    saves: true,
   },
   spring: {
     id: 'spring',
@@ -87,6 +116,8 @@ export const ENCHANTS: Record<EnchantId, EnchantDef> = {
     text: 'Refunds 1 move whenever it is placed.',
     rarity: 'common',
     price: 20,
+    pays: true,
+    saves: true,
   },
   free: {
     id: 'free',
@@ -95,6 +126,8 @@ export const ENCHANTS: Record<EnchantId, EnchantDef> = {
     text: 'Moving this card (and anything riding on it) is free.',
     rarity: 'rare',
     price: 34,
+    pays: true,
+    saves: true,
   },
   bridge: {
     id: 'bridge',
@@ -103,6 +136,7 @@ export const ENCHANTS: Record<EnchantId, EnchantDef> = {
     text: 'May be placed one OR two ranks away instead of exactly one.',
     rarity: 'rare',
     price: 32,
+    saves: true,
   },
   wild: {
     id: 'wild',
@@ -111,6 +145,7 @@ export const ENCHANTS: Record<EnchantId, EnchantDef> = {
     text: 'Ignores colour and suit when being placed.',
     rarity: 'rare',
     price: 33,
+    saves: true,
   },
   key: {
     id: 'key',
@@ -127,6 +162,7 @@ export const ENCHANTS: Record<EnchantId, EnchantDef> = {
     text: 'Pays 2 gold when turned.',
     rarity: 'common',
     price: 16,
+    pays: true,
   },
   beacon: {
     id: 'beacon',
@@ -135,6 +171,7 @@ export const ENCHANTS: Record<EnchantId, EnchantDef> = {
     text: 'Grants 2 moves when turned, or 4 if another card turned it.',
     rarity: 'common',
     price: 26,
+    pays: true,
   },
   ember: {
     id: 'ember',
@@ -143,6 +180,7 @@ export const ENCHANTS: Record<EnchantId, EnchantDef> = {
     text: 'While on top of a column it may be burned away for 1 move.',
     rarity: 'rare',
     price: 30,
+    saves: true,
   },
   twin: {
     id: 'twin',
@@ -151,6 +189,7 @@ export const ENCHANTS: Record<EnchantId, EnchantDef> = {
     text: 'When turned, turns every face-down card of the same rank.',
     rarity: 'epic',
     price: 48,
+    saves: true,
   },
   prism: {
     id: 'prism',
@@ -159,6 +198,7 @@ export const ENCHANTS: Record<EnchantId, EnchantDef> = {
     text: 'Any colour or suit may be stacked on it (rank still matters).',
     rarity: 'rare',
     price: 30,
+    saves: true,
   },
   conduit: {
     id: 'conduit',
@@ -180,6 +220,7 @@ export const ENCHANTS: Record<EnchantId, EnchantDef> = {
     text: 'When turned, grants 1 move for every other enchanted card face-up.',
     rarity: 'epic',
     price: 40,
+    pays: true,
   },
   anchor: {
     id: 'anchor',
@@ -188,6 +229,7 @@ export const ENCHANTS: Record<EnchantId, EnchantDef> = {
     text: 'While it is on top of a column, any card at all may be placed on it.',
     rarity: 'epic',
     price: 52,
+    saves: true,
   },
 };
 

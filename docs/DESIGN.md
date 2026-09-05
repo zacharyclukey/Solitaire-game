@@ -457,16 +457,39 @@ to 12.5 on an opening board — and most of those moves are bad ones that spend 
 move and bury a card. When a board is otherwise dead that is exactly what saves
 it; the rest of the time it is a tax.
 
-So there are two classes. **Income**: Resonance, Beacon, Conduit — they grant or
-save moves, add no legal moves, and rescue nothing at all once a board has gone
-wrong. **Insurance**: Anchor, Ember, Chameleon, Prism — placement effects that
-cost moves in the ordinary case and save the board that would otherwise end the
-run. Insurance has a premium, about three moves a board.
+So there are two classes. **Income**: Resonance and Beacon — they grant or save
+moves, add no legal moves, and rescue nothing once a board has gone wrong.
+Re-measured at 40 paired boards: Resonance +9.0 expected moves over a bare deck,
+Beacon +5.1. Gilded belongs here too, paying in gold rather than moves.
+**Insurance**: Anchor, Ember, Twin, Chameleon, Bridge, Prism, Torch — placement
+effects that cost moves in the ordinary case and save the board that would
+otherwise end the run. Insurance has a premium, roughly two moves a board.
 
-**Kickback and Featherweight sit in both**, at +3.9 moves a board and 28% of
-lost boards saved (43-board re-run). They make a move cheaper, which is income when the board is
+**Kickback and Featherweight sit in both**, at +4.0 moves a board and 28% of
+lost boards saved. They make a move cheaper, which is income when the board is
 going well and a rescue when the last move is unaffordable. They are the best
 cards in the set and nothing else does both jobs.
+
+**Two cards measure as doing neither**, on the larger samples: Keystone (+0.3
+moves, rescues 12%) and Conduit (+0.0 moves, rescues 0%). Conduit had been
+described as one of the strongest cards to own, which the paired measurement
+does not support. That is a balance question rather than a labelling one and is
+left open here; nothing is claimed for either card in the UI.
+
+### The player can now see which is which
+
+Both facts are flags on the enchantment definitions and show as two small chips
+— **Pays** and **Saves** — on shop rows, reward cards, cards sold with an
+enchantment already on them, and in the codex. A card that measured as doing
+neither shows neither chip, rather than being given a label it did not earn.
+
+This was a communication problem, not a balance one. A player reading "any card
+at all may be placed on it" had no way to tell that Anchor is insurance bought
+at about two moves a board, and the run-over screen naming Anchor or Ember —
+correctly, for having rescued that board — pushed them toward the cards that
+make them poorer on every board that was going fine. That line now names the
+trade rather than just the card. The trade-off itself is untouched: it is the
+most interesting choice the shop offers.
 
 Checked against a control, because a card that triples the branching factor is
 exactly the shape of an artifact that has caught this project before. Anchor

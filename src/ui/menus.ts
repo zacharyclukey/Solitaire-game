@@ -12,7 +12,7 @@ import {
   type ShopItem,
 } from '../game/run.ts';
 import { QUESTIONS, type Answer, type QuestionId } from '../game/oracle.ts';
-import { RANK_LABEL, SUIT_GLYPH, type DeckCard } from '../game/types.ts';
+import { RANK_LABEL, SUIT_GLYPH, type DeckCard, type EnchantId } from '../game/types.ts';
 import { ACHIEVEMENTS, ACHIEVEMENT_COUNT } from '../game/achievements.ts';
 import { DEFAULT_SETTINGS, load, save, settings, stats, wipe, type RunRecord } from '../storage.ts';
 import { charmChip, menuSheet, miniCard, modChip, screen, sheetPanel, statRow } from './shell.ts';
@@ -297,6 +297,24 @@ export function rewardFace(r: Reward): { glyph: string; title: string; text: str
   }
 }
 
+/**
+ * The trade a card is offering, in the game's own terms.
+ *
+ * A player reading "any card at all may be placed on it" has no way to tell
+ * that Anchor is insurance bought at about two moves a board, or that Resonance
+ * pays well and will never save a losing board. Both facts are measured
+ * (`scripts/worth.ts`, `scripts/enchaudit.ts`) and recorded on the definitions;
+ * this just shows them. Cards that measured as doing neither job show nothing,
+ * rather than being given a label they did not earn.
+ */
+function tradeChips(id: EnchantId): HTMLElement[] {
+  const d = ENCHANTS[id];
+  const out: HTMLElement[] = [];
+  if (d.pays) out.push(el('span', { class: 'chip charm trade' }, ['Pays']));
+  if (d.saves) out.push(el('span', { class: 'chip boon trade' }, ['Saves']));
+  return out;
+}
+
 export function renderReward(ctx: MenuCtx, run: RunState, rewards: Reward[], summary: string[]): void {
   const s = screen('reward');
   const list = el('div', { class: 'reward-list' });
@@ -307,6 +325,7 @@ export function renderReward(ctx: MenuCtx, run: RunState, rewards: Reward[], sum
       el('span', { class: 'reward-body' }, [
         el('strong', {}, [f.title]),
         el('span', {}, [f.text]),
+        r.t === 'ench' ? el('span', { class: 'chip-row trade-row' }, tradeChips(r.ench)) : null,
       ]),
     ]);
     card.addEventListener('click', () => ctx.takeReward(r));
@@ -344,6 +363,8 @@ export function renderShop(ctx: MenuCtx, run: RunState): void {
       el('span', { class: 'shop-body' }, [
         el('strong', {}, [face.title, setAside ? el('em', { class: 'tag' }, ['set aside']) : null]),
         el('span', {}, [face.text]),
+        item.t === 'ench' ? el('span', { class: 'chip-row trade-row' }, tradeChips(item.ench)) : null,
+        item.t === 'add' && item.card.ench ? el('span', { class: 'chip-row trade-row' }, tradeChips(item.card.ench)) : null,
       ]),
       el('span', { class: 'shop-price' }, [item.sold ? 'sold' : `⛁ ${item.price}`]),
     ]);
@@ -597,13 +618,14 @@ export function openHelp(): void {
     el('h3', {}, ['The Oracle']),
     el('p', {}, ['Every board was solved before it was dealt to you, so the game knows things it can be asked: whether a line still exists from where you are standing, what the next move of it is, or which move threw it away and how far back to step. Readings are paid for in moves, out of the same spare you would otherwise spend on mistakes. That is the trade — certainty now, or room to be wrong later.']),
     el('h3', {}, ['Moves are the clock']),
-    el('p', {}, ['Every level gives you par plus a surplus. Par is what the board costs — the length of a line the solver actually found, so every deal you are given can be cleared. The surplus on top is the only part that is yours: it pays for mistakes, for exploring a line that turns out wrong, and for anything you ask the Oracle. The counter at the top tells you how much of it is left. Spend it all and the run ends.']),
+    el('p', {}, ['Every level hands you a number of moves, and unspent moves carry to the next one. That is the whole economy: the counter at the top is what you have left, and spending it all ends the run. It pays for mistakes, for a line that turns out wrong, and for anything you ask the Oracle.']),
+    el('p', {}, ['The deals are honest shuffles. Most can be cleared, some cannot, and no one is holding the deck to make sure you win — which is why escapes are sold, and why a lost board will tell you the card that would have turned it.']),
     el('h3', {}, ['The run']),
     el('ul', {}, [
       el('li', {}, ['Each level offers a choice of boards. Safer ones pay less; gauntlets bite harder and pay more.']),
       el('li', {}, ['Clearing a level lets you enchant, add or remove a card, or take a charm.']),
       el('li', {}, ['Your deck IS the board. Thin it and levels get short and brittle; grow it and you get more cards carrying more power.']),
-      el('li', {}, ['Par is the length of a line that exists. Beating it pays.']),
+      el('li', {}, ['Finishing a board under what it should have cost pays a bonus.']),
       el('li', {}, ['Every third level the market opens. Every fifth, a Warden.']),
     ]),
     el('h3', {}, ['Your score']),
@@ -625,7 +647,12 @@ export function openCodex(): void {
     ]);
 
   const body = el('div', {}, [
-    section('Enchantments', Object.values(ENCHANTS).map((e) => ({ glyph: e.glyph, name: e.name, text: e.text, tag: e.rarity }))),
+    section('Enchantments', Object.values(ENCHANTS).map((e) => ({
+      glyph: e.glyph,
+      name: e.name,
+      text: e.text,
+      tag: [e.rarity, e.pays ? 'pays' : null, e.saves ? 'saves' : null].filter(Boolean).join(' · '),
+    }))),
     section('Curses', Object.values(CURSES).map((c) => ({ glyph: c.glyph, name: c.name, text: c.text }))),
     section('Charms', Object.values(CHARMS).map((c) => ({ glyph: c.glyph, name: c.name, text: c.text, tag: c.rarity }))),
     section('Readings', QUESTIONS.map((q) => ({ glyph: String(q.cost), name: q.label, text: q.blurb }))),
