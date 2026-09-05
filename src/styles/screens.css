@@ -83,6 +83,8 @@ html.reduce-motion .lc { animation: none; }
 .rb-num { font-size: 19px; font-weight: 750; color: var(--ink); }
 .rb-lbl { font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-faint); }
 
+.node-pays { color: var(--good); font-variant-numeric: tabular-nums; }
+
 .chip.needs-build { color: var(--gold); border-color: var(--gold-soft); background: var(--gold-soft); }
 
 .runbar-bank { display: flex; align-items: baseline; gap: 5px; flex: none; }

@@ -1,6 +1,6 @@
 /** Every non-board screen: title, the fork, rewards, the shop and the epitaph. */
 import { CHARMS, CONSUMABLES, CURSES, ENCHANTS, MODIFIER_LIST } from '../game/content.ts';
-import { columnsFor, describeModifiers, threatOf, type LevelSpec, type NodeKind } from '../game/deal.ts';
+import { columnsFor, describeModifiers, stipendFor, threatOf, type LevelSpec, type NodeKind } from '../game/deal.ts';
 import { seedToCode } from '../game/rng.ts';
 import {
   computeScore,
@@ -159,6 +159,16 @@ function stageCard(
   const spec = q.spec;
   const mods = describeModifiers(spec.modifiers);
   const cols = columnsFor(run.deck.length, spec.modifiers, run.charms);
+  /**
+   * What this board will hand over, exactly, before it is dealt.
+   *
+   * The stipend used to be priced off the board's own solved line, so it could
+   * not be known until the deal had happened and the queue could only show
+   * flavour. Priced off the stage and the deck it is simple arithmetic, which
+   * makes the decision to walk past a board a real one: the player can see what
+   * they would be paid and weigh it against what they are holding.
+   */
+  const pays = stipendFor(run.deck.length, spec.stage, spec.modifiers, spec.kind);
   const chips = mods.length
     ? spec.modifiers.map((m) => modChip(m))
     : [el('span', { class: 'chip plain' }, ['Standard rules'])];
@@ -171,6 +181,7 @@ function stageCard(
         threatBar(threatOf(spec)),
       ]),
       el('div', { class: 'node-mods' }, chips),
+      el('div', { class: 'node-foot' }, [el('span', { class: 'node-pays' }, [`pays ${pays} moves`])]),
     ]);
   }
 
@@ -181,7 +192,9 @@ function stageCard(
     ? (() => {
         const b = el('button', { class: 'btn skip', type: 'button' }, [
           el('span', { class: 'skip-label' }, ['Walk past it']),
-          el('span', { class: 'skip-take' }, ['nothing now — the market pays out if you clear the next one']),
+          el('span', { class: 'skip-take' }, [
+            `it sinks and returns deeper for ${Math.round(pays * 0.92)} — the market pays out if you clear the next one`,
+          ]),
         ]);
         b.addEventListener('click', () => ctx.skipStage());
         return b;
@@ -202,6 +215,7 @@ function stageCard(
     el('div', { class: 'node-mods' }, chips),
     el('div', { class: 'node-foot' }, [
       el('span', { class: 'node-stats' }, [`${cols} columns · ${run.deck.length} cards`]),
+      el('span', { class: 'node-pays' }, [`pays ${pays} moves · ${run.bank} banked`]),
       el('span', { class: 'node-reward' }, [KIND_REWARD[spec.kind]]),
     ]),
     el('div', { class: 'stage-actions' }, [play, skip]),
