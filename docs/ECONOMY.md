@@ -133,14 +133,24 @@ roughly a fifth of them have no line at all — not merely none a player finds
 (measured below). What survives is a floor: a board with essentially no chance
 is not dealt.
 
-Two things carry the fairness that the invariant used to:
+Two things were meant to carry the fairness that the invariant used to. Only one
+of them does, and it is worth being exact about which:
 
-- **Escapes.** Pry, Dig and Reprieve are sold in the shop and spent mid-board,
-  so a dead board can be bought out of. The shop always stocks one.
 - **A legible near miss.** `src/game/rescue.ts` replays a lost board with one
   enchantment added and names the card that would have won it, on the run-over
-  screen. A loss you can see the answer to is a roguelite; one you cannot is
-  bad luck.
+  screen. This works: it names a card on 24 of 25 lost boards, including 16 of
+  the 17 with no line at all. A loss you can see the answer to is a roguelite;
+  one you cannot is bad luck.
+- **Escapes**, which do far less than this section used to claim. Pry, Dig and
+  Reprieve are sold in the shop, one always in stock, and spent mid-board — but
+  measured (`scripts/escapes.ts`, `docs/DESIGN.md` §6b) they convert 6-11% of
+  lost boards, and on a board with no line at all essentially nothing works.
+  **A dead board cannot in practice be bought out of.** They soften a board that
+  was winnable and going wrong; they are not a way out of the shuffle.
+
+So the fairness of a dead board rests almost entirely on being able to see what
+would have won it, not on being able to buy your way past it. That is a thinner
+promise than the retired invariant made, and it is the true one.
 
 ## Mechanics this opens up
 
@@ -231,12 +241,23 @@ player failed two boards in five with money no object. After the fix below,
 112 boards, it is 87% overall against 76%, and the deep-game collapse is gone —
 stages 16 and 18 went from 57% each to 79% and 100%.
 
-What remains is columns. Six-column boards clear at 76% against 91% for seven,
-so Narrow is still the sharpest edge in the game even repriced and unstacked.
-Whether that is acceptable difficulty or the next thing to fix wants a decision
-rather than another sweep. Column count barely
-matters (75% at six columns, 76% at seven), and neither does how far the deal
-had to be relaxed.
+**Both rows above were measured on the retired generator**, which eased boards
+until they fit the allowance, and that is why the deep stages read so well —
+100% at stage 18 is a statement about relaxation, not about the game as it now
+deals. Against honest shuffles the same fallible player with an unlimited bank
+clears 18 of 24 at stage 12 and 13 of 24 at stage 18 (`scripts/deadboards.ts`,
+2026-09-06), and most of what it fails are boards with no line at all rather
+than boards it played badly. Keep the table for the shape of the fix it
+records; do not quote its numbers.
+
+This section used to close by naming columns as the sharpest remaining edge,
+citing 76% at six columns against 91% at seven — and then contradicted itself
+two sentences later with "column count barely matters (75% against 76%)". Both
+figures are withdrawn. Neither survives a controlled test, because column count
+is set by Narrow and Wide, which carry threat that the stipend compensates, so
+the arms differ in more than width. Task #30 holds the controlled version. The
+trailing note about how far a deal had to be relaxed is dead with relaxation
+itself.
 
 **The per-modifier breakdown from that sweep is not trustworthy, and it says so
 itself.** Modifiers are drawn together and more of them means a deeper stage, so
@@ -393,20 +414,42 @@ first place. **There is no free difficulty anywhere in the current modifier
 set.** The cap change is kept for the variety it adds, not for difficulty, and
 it slightly lowered stage-18 clear rate (15/20 to 13/20) for nothing.
 
-### The lever the data actually points at
+### The lever the data pointed at, and why it was not one
 
-Prism Rules is the clue, and it was hiding in a result already dismissed as an
-artifact. It costs the bot 33pp at search width 6 and *nothing at all* at width
-14, because it nearly doubles the branching factor — 3.6 opening legal moves to
-6.3 — and a player that shortlists six candidates per ply simply sees less of
-it. That is not a board with fewer resources. It is a board with more to think
-about, which a better player handles and a worse one does not.
+**Superseded on 2026-09-06. This section proposed decision density — branching
+— as the way to make deep boards demanding rather than merely expensive. It was
+tested properly and it is wrong, in both halves.**
 
-That is exactly the property a deep board wants: harder to play *well*, not
-harder to *solve*. Resource scarcity makes boards unfair; decision density makes
-them demanding. New modifiers should be aimed at branching and interaction —
-more legal placements, more live cards, more ways a line can fork — rather than
-at taking anything away.
+What it argued: Prism Rules cost the bot 33pp at search width 6 and nothing at
+width 14, so it was a board with more to think about rather than fewer
+resources, and new modifiers should therefore be aimed at branching — "more
+legal placements, more live cards, more ways a line can fork."
+
+Two things are wrong with that.
+
+The evidence no longer exists. There is no Prism Rules modifier in the game;
+`prism` is an enchantment id. Whatever that measurement was taken on has since
+been cut, and the claim was never re-run against anything that ships.
+
+And the hypothesis fails when measured. `scripts/rulecost.ts` deals one board
+and flips a rule in place on a clone — same cards, same layout, budget removed
+so nothing measured is price — because dealing each arm separately lets the
+win-chance selector hand the harder rule an easier board and cancel the effect.
+Across widths 4, 14 and 30, **no rule is a thinking tax.** Suit Lock costs 25
+points at every width; Gridlock, Low Ceiling, Tithe and Stiff Deck cost nothing
+once the budget is removed. Nothing recovers with a wider search. Full table in
+`docs/DESIGN.md` §6a.
+
+The prescription is worse than merely unsupported: it is backwards. Adding
+legal placements is what Loose Weave does, and Loose Weave measures as a
+17-point penalty that no amount of search recovers — it had been priced as a
+*boon* on the strength of reasoning like this section's. Anchor behaves the same
+way and is documented as the best rescuer in the game and the worst card to own.
+Extra legal moves are mostly bad moves, and a bounded player drowns in them.
+
+**Loosening a constraint is not a kindness in a game where the player has to
+find the line.** That is the rule to carry forward, and it is the opposite of
+what this section recommended.
 
 ## The economy has stopped being the limiter, and cannot become the answer
 
