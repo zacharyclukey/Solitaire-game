@@ -437,6 +437,11 @@ at all.
 So the economy is finished as a lever. The remaining one is that fifth — and it
 turns out not to be a search failure at all. See the next section.
 
+Nor do escapes move it, which was the obvious next hope: measured in
+`docs/DESIGN.md` §6b, they convert 6-11% of lost boards and essentially nothing
+on a board with no line. Every lever proposed against this ceiling — allowance,
+rules, skill, escapes — has now been measured and none of them moves it.
+
 The solver banks perfectly. A human does not. Every number produced by solver play is
 a claim about a perfect player, and the entire question here is about imperfect ones —
 so the bounded-lookahead bot (task #11) is now a prerequisite, not a nice-to-have.

@@ -856,6 +856,67 @@ bounded player. It is worth treating as a rule of the design rather than a
 coincidence: **loosening a constraint is not a kindness in a game where the
 player has to find the line.**
 
+## 6b. What the escapes actually save
+
+Escapes were the last lever anyone had on the per-level ceiling. Rules turned
+out to be price rather than puzzle (§6a), the economy stopped being the limiter
+(`docs/ECONOMY.md`), skill does not move it (#27), so if a dead board could be
+bought out of, that was the remaining answer. Measured with
+`scripts/escapes.ts`, it is not.
+
+60 boards at stages 12 and 18 played at the allowance the level really grants:
+50 lost, of which **15 had no line at all** and 35 were winnable and lost
+anyway. Those two populations answer to different escapes, so they are kept
+apart. So are two moments — at the start, and at a standstill, which is when a
+player actually reaches for one. Pry and Dig both act on whichever column is
+most buried, and that column changes as the board is played.
+
+The first measurement, before any change:
+
+| escape | dead: at start | dead: stuck | winnable-but-lost: stuck |
+|---|---|---|---|
+| Pry | 4% | **0%** | 3% |
+| Dig | 2% | **0%** | 3% |
+| Reprieve | 10% | 8% | 14% |
+
+**Spending an escape at the moment of death was worse than spending it early**,
+which is the opposite of how they are sold. The reason is timing: a board goes
+dead at about the same moment the purse does, so Pry would open a line the
+player could no longer afford to walk.
+
+And the effects were doing almost none of the work. Spent at a standstill with
+a move grant attached, Pry, Dig and a grant of moves ALONE converge exactly:
+
+| grant | +0 | +4 | +8 | +12 |
+|---|---|---|---|---|
+| Pry | 0% | 6% | 8% | 12% |
+| Dig | 0% | 6% | 8% | 12% |
+| moves only | 0% | 4% | 8% | 12% |
+
+At +12 all three sit at 12%. Whatever Pry and Dig are worth, at these sample
+sizes it is not distinguishable from the moves.
+
+**One reading of that is instrument, not design, and it is important.** The
+player model sees every face-down card, so revealing one is worth exactly
+nothing to it — Dig's entire purpose is invisible here, and its 0% is partly an
+artifact. Pry's is not: destroying a card is fully visible to the bot, and it
+still measures at nothing beyond its moves.
+
+### What changed, and what did not
+
+Pry and Dig now grant 8 and 6 moves alongside their effect. That fixes the
+measured failure — an escape that arrives when the purse is empty — and it also
+fixes a pricing bug: at 42 and 34 gold against Reprieve's 26 they were strictly
+dominated, costing more to do less. After the change, spent at a standstill,
+Pry and Dig convert 6% of winnable-but-lost boards against 3% before, with
+Reprieve at 11%.
+
+What did NOT change is the conclusion. Escapes convert something like 6-11% of
+lost boards, and on a board with no line at all essentially nothing works.
+**Escapes are not a lever on the ceiling.** They are what keeps a lost board
+from being an insult, alongside the card `rescue.ts` names, and they should be
+priced and written as that rather than as a way out of the shuffle.
+
 ## 7. Known gaps
 
 - No leaderboards or cloud save — both need a backend, and the game is

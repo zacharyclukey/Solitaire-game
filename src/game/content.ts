@@ -38,14 +38,14 @@ export const CONSUMABLES: Record<ConsumableId, ConsumableDef> = {
     id: 'pry',
     name: 'Pry',
     glyph: '⚒',
-    text: 'Destroys the card sitting on top of the most buried column.',
+    text: 'Destroys the card on top of the most buried column, and grants 8 moves.',
     price: 42,
   },
   dig: {
     id: 'dig',
     name: 'Dig',
     glyph: '⇓',
-    text: 'Turns the deepest face-down card of the most buried column.',
+    text: 'Turns the deepest face-down card of the most buried column, and grants 6 moves.',
     price: 34,
   },
   reprieve: {
@@ -59,8 +59,26 @@ export const CONSUMABLES: Record<ConsumableId, ConsumableDef> = {
 
 export const CONSUMABLE_LIST: ConsumableDef[] = Object.values(CONSUMABLES);
 
-/** Moves a Reprieve is worth. */
+/**
+ * Every escape pays moves, because measurement said the moves are the part that
+ * works.
+ *
+ * Spent when a player actually reaches for one — at a standstill — Pry and Dig
+ * converted 0 of 50 lost boards, against 4% and 2% when spent at the start. The
+ * reason is timing: a board goes dead at about the same moment the purse does,
+ * so Pry would open a line the player could no longer afford to walk. Pairing
+ * each with a grant fixes exactly that.
+ *
+ * The effects themselves measured as worth little beyond the moves: at a +12
+ * grant, Pry, Dig and moves-alone all converted 12% of lost boards. Read that
+ * carefully for Dig, though — the player model sees every face-down card, so
+ * revealing one is worth precisely nothing to it, and Dig's real job cannot be
+ * measured by this instrument at all. It keeps a smaller grant on the strength
+ * of a purpose the bot cannot value, not on a number.
+ */
 export const REPRIEVE_MOVES = 8;
+export const PRY_MOVES = 8;
+export const DIG_MOVES = 6;
 
 /**
  * What a card actually does for a run, measured on two independent axes so the

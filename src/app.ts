@@ -3,7 +3,7 @@
  * screens, and mediates between the rules engine and the views.
  */
 import { sfx, unlock } from './audio.ts';
-import { CHARMS, CONSUMABLES, ENCHANTS, MODIFIERS, REPRIEVE_MOVES, type ConsumableId } from './game/content.ts';
+import { CHARMS, CONSUMABLES, DIG_MOVES, ENCHANTS, MODIFIERS, PRY_MOVES, REPRIEVE_MOVES, type ConsumableId } from './game/content.ts';
 import { dealLevelAsync, warmUp } from './game/dealAsync.ts';
 import type { Level, LevelSpec } from './game/deal.ts';
 import { Rng, randomSeed, seedFromString, seedToCode } from './game/rng.ts';
@@ -615,8 +615,18 @@ export class App {
       did = true;
     } else if (id === 'pry') {
       did = pry(sim, events);
+      // The grant is the half that measured as working: an escape spent at the
+      // moment a board dies is spent when the purse is empty too.
+      if (did) {
+        sim.movesLeft += PRY_MOVES;
+        events.push({ t: 'moves', n: PRY_MOVES });
+      }
     } else if (id === 'dig') {
       did = dig(sim, events);
+      if (did) {
+        sim.movesLeft += DIG_MOVES;
+        events.push({ t: 'moves', n: DIG_MOVES });
+      }
     }
 
     if (!did) {
