@@ -917,6 +917,48 @@ lost boards, and on a board with no line at all essentially nothing works.
 from being an insult, alongside the card `rescue.ts` names, and they should be
 priced and written as that rather than as a way out of the shuffle.
 
+## 6c. Column count is not a difficulty lever
+
+The claim that six-column boards were the sharpest edge in the game (76%
+against 91% for seven) was withdrawn in the 2026-09-05 review, along with the
+contradictory line two sentences later saying column count barely mattered.
+Neither was controlled: column count is normally set by the Narrow and Wide
+modifiers, which carry threat that the stipend compensates, so those arms
+differed in allowance and modifier mix as well as in width.
+
+The clean lever is the **Wide Stance** charm. It runs through `columnsFor` and
+touches nothing else in the game — no threat, no modifier, no rule — so with the
+stage, deck, seed and (empty) modifier list held fixed, toggling it varies
+column count and nothing besides. `scripts/columns.ts`, 60 boards a cell:
+
+| stage | columns | unlimited budget | at the level's own budget |
+|---|---|---|---|
+| 12 | 7 | 100% | 80% |
+| 12 | 8 | 100% | 72% |
+| 16 | 7 | 100% | 37% |
+| 16 | 8 | 100% | 30% |
+
+`plainPar` per card came out at 1.34-1.36 in every cell, so the board selector
+did not quietly compensate and the arms really are comparable.
+
+**An extra column is not an easier puzzle.** At unlimited budget every arm
+clears everything; width changes nothing about whether a line exists or can be
+found. At the level's own allowance the extra column is worth about -7 points at
+both stages — consistent in direction across two stages and two sample sizes,
+but inside the noise at these counts, so the honest statement is that it buys
+nothing measurable rather than that it hurts.
+
+Read the unlimited column with its scope in mind: these are modifier-free boards
+dealt from the run's starting deck, chosen so that column count is the only
+thing moving. They are much easier than a real deep board, which is why they
+clear 100% of the time. This does not contradict the fifth of real boards that
+have no line at all — different population, deliberately.
+
+Two things follow. Narrow is not the sharpest edge in the game by way of its
+geometry; whatever it does, it does through threat and allowance. And **Wide
+Stance is an epic charm at 90 gold that buys nothing the player can measure**,
+which puts it in the same bucket as Conduit and Keystone (see #31).
+
 ## 7. Known gaps
 
 - No leaderboards or cloud save — both need a backend, and the game is
