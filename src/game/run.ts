@@ -593,7 +593,10 @@ export function shopLabel(item: ShopItem): string {
     case 'moves':
       return `+${item.n} moves, permanently`;
     case 'cell':
-      return '+1 reserve cell';
+      // `bonusCells` is a legacy field name — it is persisted in saves, so it
+      // stays. What it actually buys is a card moved out of the tableau and
+      // into the draw pile, which is what the player must be told.
+      return '+1 card in the draw pile';
   }
 }
 

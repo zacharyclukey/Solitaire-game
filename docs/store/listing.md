@@ -20,12 +20,17 @@ Apple's name field is deliberately just the word — the subtitle carries the
 genre. Google indexes the name field far more heavily, so the genre goes in it
 there.
 
-## Promotional text (Apple, 170 — uses 148)
+## Promotional text (Apple, 170 — uses 154)
 
 ```
-No foundations, no stock, no luck to hide behind. Every board is solved before
-it's dealt, so if you lose you lost it fairly. See how deep you can get.
+No foundations. Nothing ever leaves the board — turn every card, and moves are the only currency you have. Some deals cannot be won. See how deep you get.
 ```
+
+The old version of this claimed "every board is solved before it's dealt, so if
+you lose you lost it fairly". That was true under the certification contract and
+has not been true since deals became honest shuffles — about a fifth of boards
+have no line at all. It also said "no stock", which was never right after the
+reserve became a draw pile.
 
 ## Description
 
@@ -41,15 +46,16 @@ and what to cut, then pick which set of broken rules to take on next: a safer
 board, a standard one, or a gauntlet that pays better and bites harder. Every
 fifth level a Warden is waiting. Your score is how deep you got.
 
-EVERY DEAL IS FAIR
-A solver plays every board before you see it. The move allowance you're given
-is derived from a line that genuinely exists, so no deal is ever impossible —
-and by the deepest levels it expects you to play as well as the machine does.
+NOT EVERY DEAL CAN BE WON
+The shuffles are honest. Most boards can be cleared, some cannot, and nobody is
+holding the deck to make sure you win. When a run ends, the game names the one
+card that would have turned the board — and the shop sells ways out of a board
+that has gone solid. Losing is part of the game; not knowing why never is.
 
-TWELVE ENCHANTMENTS, FIFTEEN CHARMS, TWENTY-TWO RULES
+FOURTEEN ENCHANTMENTS, FIFTEEN CHARMS, TWENTY-TWO RULES
 A Torch turns the deepest buried card in its column. A Twin turns every hidden
 card of its rank. An Anchor lets anything at all stack on it. Then the level
-fights back: suits locked, stacks inverted, the reserve narrowed, sequences
+fights back: suits locked, stacks inverted, a column taken away, sequences
 broken up. They combine differently every run.
 
 BUILT FOR A PHONE

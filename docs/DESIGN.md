@@ -91,27 +91,40 @@ solve it *efficiently*", which is a far better fit for short mobile sessions.
 
 ---
 
-## 2. Difficulty comes from the solver, not from a spreadsheet
+## 2. The solver measures the board; it does not gate it
+
+**This section described the certification contract until the 2026-09-06 review,
+and its opening had gone false in four separate ways while the rest of the
+section already said so. What follows is what the code does.**
 
 A hand-tuned move budget would be wrong on most deals, because deals vary
-enormously. Instead:
+enormously. What actually happens:
 
 1. Deal a candidate board.
-2. Run a weighted A\* search over the **same rules engine the player uses**.
-3. If it finds no line, throw the board away and deal another.
-4. Price the level from a second solve of the *same board with the player's
-   enchantments stripped off*, and pay that as a stipend into a bank the player
-   carries between levels.
+2. Run a weighted A\* search over the **same rules engine the player uses** — as
+   a *measurement*. A board that the search cannot solve is still dealt.
+3. Estimate the board's win chance from that measurement (`src/game/odds.ts`)
+   and select against a band for the stage. The only floor is that a board with
+   essentially no chance is not dealt.
+4. Pay a stipend into a bank the player carries between levels — priced from the
+   DECK and the stage, not from this board's own line.
 
-This gives three properties that would otherwise be very hard to get:
+What that buys, and what it costs:
 
-- **Every board is clearable.** Not "probably" — a concrete line exists and was
-  found before the cards were dealt.
-- **Difficulty scales with the actual board**, not with a designer's guess.
+- **No board is guaranteed clearable**, and about a fifth of them have no line
+  at all. That is the design, not a gap in it: the ratio of winnable to losable
+  is the difficulty curve.
+- **Difficulty scales with the deck and the depth** rather than with a
+  designer's guess — but deliberately NOT with the board in hand, so an unlucky
+  shuffle stays unlucky.
 - **The ceiling is well-defined.** The stipend ratio falls through 1.0 and keeps
   falling, so the deepest levels demand that you match a searcher move for move
-  and then better it. That *is* the top of the difficulty curve, and it is
-  reachable rather than arbitrary.
+  and then better it.
+
+Three claims that used to sit here and are now simply wrong, recorded so they
+are not reintroduced: "if it finds no line, throw the board away and deal
+another"; "every board is clearable — not probably"; and the stipend being a
+second solve of the same board.
 
 ### Moves are a bank, not an allowance
 
@@ -125,16 +138,19 @@ level clear:  bank = movesLeft
 level fail:   run over
 ```
 
-The stipend is `plainPar × ratio(stage)`, where **plainPar** is the solver's
-line on that same board with the player's enchantments taken off and their
-curses left on. Pricing off the plain board is the load-bearing decision. The
-previous model derived the budget from the player's *own* par, so a better build
-shortened par and shrank the budget with it — the build was absorbed rather than
-rewarded, and a player who improved got a tighter game for it. Priced blind, a
-move the build saves is a move the player keeps.
+The stipend is `deckSize × 1.36 × ratio(stage)`, plus a partial compensation for
+the threat the level's modifiers carry (`stipendFor` in `src/game/deal.ts`).
+Note what is absent: **the board's own cost**. An earlier model derived the
+budget from the player's own par, so a better build shortened par and shrank the
+budget with it — the build was absorbed rather than rewarded, and a player who
+improved got a tighter game for it. A later one priced off `plainPar`, the same
+board with the enchantments stripped off, which fixed that but still let a kind
+shuffle pay less and a cruel one pay more. Pricing off the deck instead is what
+keeps an unlucky deal unlucky, and 1.36 moves per card is the measured cost of a
+plain board.
 
-`ratio` starts at 1.30, crosses 1.0 around stage 9 and decays geometrically
-after 17. Below 1.0 a level no longer funds itself, and `(1 - ratio) × plainPar`
+`ratio` starts at 1.70, steps down through 1.55, 1.40 and 1.25, reaches 1.10 by
+stage 14 and decays geometrically after 17 with no floor. Below 1.0 a level no longer funds itself, and `(1 - ratio) × plainPar`
 is an exact statement of how much work the build has to do to cover the
 difference.
 
@@ -152,8 +168,11 @@ Two consequences worth stating plainly:
   cost moves; now those moves would otherwise have carried, so a reading on
   stage 3 is felt on stage 12.
 
-The HUD reads `12 carry · par 36` — what you would bank if you finished from
-here on the solver's line.
+The HUD reads one number: moves left. Par, carry and the deficit against a
+standard deck were all removed from it — while a board is being played the only
+number that changes what the player does is how many moves remain, and the rest
+invited them to play the arithmetic instead of the cards. Par returns after the
+level, as a score for beating it.
 
 Measured drain per level (20 seeds, fixed 28-card deck, solver play, bank 45),
 re-measured after the draw-pile floor moved to 0.38:

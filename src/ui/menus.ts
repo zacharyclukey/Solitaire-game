@@ -287,7 +287,7 @@ export function rewardFace(r: Reward): { glyph: string; title: string; text: str
         cls: 'add',
       };
     case 'cell':
-      return { glyph: '▣', title: '+1 reserve cell', text: 'One more place to park a card, for the rest of the run.', cls: 'cell' };
+      return { glyph: '▣', title: '+1 card in the draw pile', text: 'One more card starts in the draw pile instead of buried in the tableau, for the rest of the run.', cls: 'cell' };
     case 'remove':
       return { glyph: '✂', title: 'Remove a card', text: 'A thinner deck is a shorter board.', cls: 'remove' };
     case 'uncurse':
@@ -408,7 +408,7 @@ function shopFace(item: ShopItem): { glyph: string; title: string; text: string 
     case 'moves':
       return { glyph: '↑', title: shopLabel(item), text: 'Applies to every remaining level.' };
     case 'cell':
-      return { glyph: '▣', title: shopLabel(item), text: 'One more parking space, every level.' };
+      return { glyph: '▣', title: shopLabel(item), text: 'One less card buried in the tableau, every level.' };
   }
 }
 

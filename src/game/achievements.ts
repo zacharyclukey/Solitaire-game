@@ -7,7 +7,7 @@
  * finished — so the whole set is testable without a browser.
  */
 import type { Level } from './deal.ts';
-import type { RunState } from './run.ts';
+import { MAX_DECK, type RunState } from './run.ts';
 
 /** Counters for the level being played. Reset on every deal. */
 export interface LevelTally {
@@ -114,7 +114,15 @@ export const ACHIEVEMENTS: Achievement[] = [
     test: (c) => c.tally.maxFlips >= 4,
   },
   { id: 'thin', name: 'Scalpel', text: 'Cut your deck to eighteen cards.', test: (c) => deck(c).length > 0 && deck(c).length <= 18 },
-  { id: 'fat', name: 'Hoarder', text: 'Grow your deck to forty cards.', test: (c) => deck(c).length >= 40 },
+  // Bound to MAX_DECK rather than a literal. This asked for forty cards long
+  // after the deck was capped at 32 (a measured cliff, docs/ECONOMY.md), so it
+  // was unwinnable by construction; tying it to the cap stops that recurring.
+  {
+    id: 'fat',
+    name: 'Hoarder',
+    text: 'Grow your deck to its limit.',
+    test: (c) => deck(c).length >= MAX_DECK,
+  },
   {
     id: 'adorned',
     name: 'Well Appointed',
