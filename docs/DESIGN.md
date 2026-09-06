@@ -793,6 +793,69 @@ and cleared them of a loss that was genuinely theirs.
 
 ---
 
+## 6a. Level rules are price, not puzzle
+
+The long-running hope (task #23) was that deep boards could be made a harder
+PUZZLE rather than just a more expensive one, and the lever proposed was
+decision density: a rule that costs a narrow search a lot and a wide search
+little is demanding thought, while one that costs both equally is just removing
+resources. Measured, and the hope does not survive.
+
+Method matters here, because the obvious version of this measurement is wrong.
+Dealing each arm separately gave nonsense — Suit Lock came out EASIER than a
+plain board — because `dealLevel` selects boards against a win-chance band and
+simply hands a high-threat modifier an easier layout. The selector cancels the
+thing being measured. So: deal one board, then flip the rule in place on a
+clone. Same cards, same layout, and the selector never sees it. The budget is
+unlimited throughout, so nothing below is price; what is left is puzzle.
+
+24 identical boards at stage 14, the fallible player at three search widths:
+
+| rule | width 4 | width 14 | width 30 |
+|---|---|---|---|
+| (none) | 92% | 96% | 96% |
+| Suit Lock | 71% | 71% | 71% |
+| Loose Weave | 75% | 79% | 79% |
+| Gridlock | 88% | 92% | — |
+| Low Ceiling | 92% | 96% | — |
+| Tithe | 96% | 92% | — |
+| Stiff Deck | 96% | 96% | — |
+
+**No rule is a thinking tax.** Not one of them gets easier with a search three
+times wider; the two that bite cost the same at width 4 and width 30. Gridlock,
+Low Ceiling, Tithe and Stiff Deck cost essentially nothing once the budget is
+removed — they are pure price, which is exactly what #23 set out to move away
+from. The branching hypothesis is dead, and the honest reading is that this
+game's difficulty lives in the shuffle and the allowance rather than in its
+rules. Inversion is absent because it also moves `baseRank` and so reshapes the
+staircase the board was dealt to; retrofitting it measures the mismatch.
+
+### Loose Weave was priced backwards
+
+The measurement turned up a real bug rather than only a negative result. **Loose
+Weave — "colour is ignored, only rank matters" — sat at threat -4, a boon.** It
+measures as a 17-point penalty: 96% of these boards clear plain, 79% under it,
+at every width tried.
+
+Ignoring colour strictly ADDS legal placements, so a perfect solver finds the
+board easier or equal. A bounded player does not. Branching jumps, and most of
+the new moves are bad ones that spend a move and bury a card — the same
+mechanism already documented for Anchor, the best rescuer in the game and the
+worst card to own. Difficulty for a searcher and difficulty for a person run in
+opposite directions here, and `threat` was pricing the searcher.
+
+So the player was paying a boon's price — a SMALLER allowance, since threat
+feeds the stipend — for a board that is harder to play. Repriced to +5, which
+is Suit Lock's 8 scaled by what each costs (25 points against 17), and
+`minDepth` moved from 1 to 3 because a bane this size has no business opening
+on stage 1. The threat sign also drives the chip colour, the codex tag and
+`BOON_IDS`, so the presentation corrected itself.
+
+This is the second time a placement relaxation has measured as a penalty for a
+bounded player. It is worth treating as a rule of the design rather than a
+coincidence: **loosening a constraint is not a kindness in a game where the
+player has to find the line.**
+
 ## 7. Known gaps
 
 - No leaderboards or cloud save — both need a backend, and the game is

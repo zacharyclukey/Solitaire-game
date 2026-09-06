@@ -505,14 +505,31 @@ export const MODIFIERS: Record<ModifierId, ModifierDef> = {
     minDepth: 12,
     excludes: ['anyColor'],
   },
+  /**
+   * Priced as a bane despite reading like a gift, because it measures as one.
+   *
+   * Ignoring colour strictly ADDS legal placements, so a perfect solver finds
+   * this easier or equal. A bounded player does not: the branching factor
+   * jumps and most of the new moves are bad ones that spend a move and bury a
+   * card — the same mechanism that makes Anchor the best rescuer and the worst
+   * card to own. Measured on 24 identical boards with the rule flipped in place
+   * and the budget removed, the fallible player clears 96% of them plain and
+   * 79% under Loose Weave, and a search three times wider recovers none of it
+   * (75/79/79 at widths 4/14/30).
+   *
+   * It sat at threat -4 for a long time, which paid the player LESS allowance
+   * for a board that is harder to play. +5 is Suit Lock's 8 scaled by the
+   * penalty each one costs (25 points against 17). minDepth moved with it: a
+   * bane of this size has no business opening on stage 1.
+   */
   anyColor: {
     id: 'anyColor',
     tag: 'rule',
     name: 'Loose Weave',
     glyph: '◍',
     text: 'Colour is ignored — only rank matters.',
-    threat: -4,
-    minDepth: 1,
+    threat: 5,
+    minDepth: 3,
     excludes: ['sameSuit'],
   },
   ascend: {

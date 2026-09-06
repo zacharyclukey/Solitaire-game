@@ -326,23 +326,35 @@ describe('a full simulated run', () => {
     const run = newRun(20240601);
     for (let d = 1; d <= 10; d++) {
       const node = stageSpec(run, d);
-      const level = dealLevel({
-        deck: run.deck,
-        charms: run.charms,
-        spec: node,
-        bonusMoves: run.bonusMoves,
-        bonusCells: run.bonusCells,
-        bank: run.bank,
-      });
-      expect(level.solution).not.toBeNull();
-      expect(level.affordable).toBe(true);
-      for (const mv of level.solution!) applyMove(level.sim, mv, null);
-      expect(isWon(level.sim)).toBe(true);
-      expect(level.sim.movesLeft).toBeGreaterThanOrEqual(0);
+      // Deals are honest shuffles, so a dealt board may have no line at all —
+      // about one in five does. That is the design, not a failure, and this
+      // test used to assert the opposite: `solution` not null on every board
+      // was the retired certification contract encoded as a test. Re-deal past
+      // a dead board instead, so the ten-level walk still exercises the whole
+      // machinery without demanding a guarantee the game no longer makes.
+      let level = null as ReturnType<typeof dealLevel> | null;
+      for (let attempt = 0; attempt < 6 && level === null; attempt++) {
+        const candidate = dealLevel({
+          deck: run.deck,
+          charms: run.charms,
+          spec: { ...node, seed: (node.seed + attempt * 7919) >>> 0 },
+          bonusMoves: run.bonusMoves,
+          bonusCells: run.bonusCells,
+          bank: run.bank,
+        });
+        // A board with no line is a legitimate deal; it must still be coherent.
+        expect(candidate.sim.defs.length).toBeGreaterThan(0);
+        if (candidate.solution !== null) level = candidate;
+      }
+      expect(level, `stage ${d} produced no solvable board in 6 deals`).not.toBeNull();
+      expect(level!.affordable).toBe(true);
+      for (const mv of level!.solution!) applyMove(level!.sim, mv, null);
+      expect(isWon(level!.sim)).toBe(true);
+      expect(level!.sim.movesLeft).toBeGreaterThanOrEqual(0);
       // What the solver did not spend funds the next board.
-      run.bank = Math.max(0, level.sim.movesLeft);
+      run.bank = Math.max(0, level!.sim.movesLeft);
       bankStage(run);
-      run.gold += level.baseGold;
+      run.gold += level!.baseGold;
       const rewards = makeRewards(run, node.kind, rewardCount(run, node.kind));
       expect(rewards.length).toBeGreaterThan(0);
     }
