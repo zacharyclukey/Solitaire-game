@@ -616,7 +616,7 @@ export function openHelp(): void {
       el('li', {}, ['Tap the draw pile to turn its next card. Once it runs dry you can turn the waste back over, but only a couple of times.']),
     ]),
     el('h3', {}, ['The Oracle']),
-    el('p', {}, ['Every board was solved before it was dealt to you, so the game knows things it can be asked: whether a line still exists from where you are standing, what the next move of it is, or which move threw it away and how far back to step. Readings are paid for in moves, out of the same spare you would otherwise spend on mistakes. That is the trade — certainty now, or room to be wrong later.']),
+    el('p', {}, ['The game ships the same searcher it used to measure the board, so there are things it can be asked: whether a line still exists from where you are standing, what the next move of it is, or which move threw it away and how far back to step. It answers from a short search, so a "no" means it could not find one rather than that none exists. Readings are paid for in moves, out of the same spare you would otherwise spend on mistakes. That is the trade — certainty now, or room to be wrong later.']),
     el('h3', {}, ['Moves are the clock']),
     el('p', {}, ['Every level hands you a number of moves, and unspent moves carry to the next one. That is the whole economy: the counter at the top is what you have left, and spending it all ends the run. It pays for mistakes, for a line that turns out wrong, and for anything you ask the Oracle.']),
     el('p', {}, ['The deals are honest shuffles. Most can be cleared, some cannot, and no one is holding the deck to make sure you win — which is why escapes are sold, and why a lost board will tell you the card that would have turned it.']),

@@ -1033,6 +1033,44 @@ pending a person's judgement, and Wide Stance is priced down on the evidence.
 weak rather than empty, and it is already a common at 24 gold, which is roughly
 what weak should cost.
 
+## 6e. The copy sweep, and what it found
+
+Three pieces of retired-contract copy were found by accident in a single day —
+the How to play sheet promising every deal could be cleared, the Oracle claiming
+no line existed "at any cost" on the strength of a 420 ms search, and a store
+listing advertising the same guarantee to Apple and Google. Finding three by
+accident meant the rest had not been read since the pivot, so task #32 read all
+of it deliberately.
+
+Every single-line string a player can see was extracted from `src/ui/`,
+`oracle.ts`, `achievements.ts`, `tutorial.ts`, `app.ts`, `content.ts` and
+`run.ts` — 153 of them — and each was checked against what the game now does.
+
+**One violation, in the Oracle's own help text**: "Every board was solved before
+it was dealt to you." That is the certification contract, in the same help sheet
+whose other half had already been fixed two reviews earlier — a good argument
+for sweeping rather than patching what you trip over. Rewritten to say the game
+ships the searcher it measures with, and that a "no" from it means a line was
+not found rather than that none exists.
+
+Two things were checked and are correct, recorded so they are not re-litigated:
+
+- "There is still a line here — you have the moves for it" (`app.ts`) fires only
+  when the search actually returned a line whose cost fits the allowance, and
+  returns nothing rather than asserting deadness when it fails. It does not
+  overclaim.
+- "Better Than the Machine — clear a level in fewer moves than the solver
+  needed" is exactly what par is, and still true.
+
+### No dead content
+
+While the strings were open, a structural check: every charm id is referenced by
+game logic outside `content.ts`, and every one of the fourteen enchantment and
+four curse flags is read by `sim.ts`. Nothing is defined-but-inert. This is
+worth repeating occasionally — the "+1 reserve cell" shop item spent months
+describing a mechanic that had been replaced, and a defined-but-unread effect
+would fail the same way while being harder to notice.
+
 ## 7. Known gaps
 
 - No leaderboards or cloud save — both need a backend, and the game is
