@@ -978,6 +978,61 @@ geometry; whatever it does, it does through threat and allowance. And **Wide
 Stance is an epic charm at 90 gold that buys nothing the player can measure**,
 which puts it in the same bucket as Conduit and Keystone (see #31).
 
+## 6d. Three items that measure as doing nothing
+
+Conduit, Keystone and Wide Stance all sat at or near zero on every axis this
+project can measure. Task #31 asked what they are for.
+
+**Conduit** had one defence worth testing: its effect reaches for OTHER
+enchanted cards, so its value might be real but conditional on a dense build
+that the plain-deck measurement never constructs. If so, its edge must grow with
+density. It does not. One test card at a fixed slot, 40 paired boards, stage 8,
+expected moves banked against leaving that slot plain:
+
+| enchantment density | Conduit | Torch |
+|---|---|---|
+| 0 | +0.0 | -0.2 |
+| 4 | +0.5 | +0.6 |
+| 8 | +0.2 | +0.5 |
+
+Torch — a common at half the price — matches or beats it at every density, and
+all of these deltas are inside the noise at 40 boards. The conditional defence
+fails.
+
+The chain itself is real and implemented (`flipCard` recurses, so a Conduit into
+a Torch into a Twin does fire). The problem is what it reaches for, and the old
+comment admitted it without noticing: it takes the enchanted card *nearest the
+top of its column* — "the one the player would have reached soonest anyway".
+Revealing the card that needed the least help is worth nothing.
+
+**The obvious fix was tried and failed.** Retargeting it at the most buried
+enchanted card, which is what Torch, Dig and `mostBuried` all use, measured
+WORSE: +0.2 to -0.5 at density 8. That is consistent rather than surprising —
+it is the same reason Dig rescues 0% of dead boards. Turning a card that stays
+under a pile grants no legal move, so moving the target from a useless card to
+another useless card changes nothing. The change was reverted rather than
+shipped.
+
+### What was decided, and what was deliberately not
+
+Neither card was cut and neither mechanic was redesigned. Both were repriced to
+what can actually be measured:
+
+- **Conduit**: epic at 44 gold → rare at 28.
+- **Wide Stance**: epic at 90 gold → rare at 48. It was the most expensive item
+  in the shop for an effect measured at nothing (§6c).
+
+The asymmetry between them matters. Conduit has an upside this instrument
+cannot see: the player model knows every face-down card, so revealing one early
+is worth exactly zero to it, while a person plans with that information — the
+same blindness that makes Dig's 0% partly an artifact. Wide Stance has no such
+excuse; column count is fully visible to the bot. So Conduit is priced down
+pending a person's judgement, and Wide Stance is priced down on the evidence.
+
+**Keystone was left entirely alone.** At +0.3 moves and a 12% rescue rate it is
+weak rather than empty, and it is already a common at 24 gold, which is roughly
+what weak should cost.
+
 ## 7. Known gaps
 
 - No leaderboards or cloud save — both need a backend, and the game is

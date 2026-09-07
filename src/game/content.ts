@@ -224,10 +224,24 @@ export const ENCHANTS: Record<EnchantId, EnchantDef> = {
     glyph: '⇢',
     // The point of this card is that it reaches for other cards you chose.
     // Everything else in the set adds; a Conduit into a Torch into a Twin
-    // multiplies, and a Conduit into a Conduit runs the whole chain.
+    // multiplies, and a Conduit into a Conduit runs the whole chain. The chain
+    // is real and implemented — flipCard recurses — but nothing measurable
+    // comes out of it: +0.0 expected moves in a plain deck, +0.2 inside a dense
+    // one, 0 of 43 lost boards rescued, and a Torch at half the price matches
+    // it at every density tried.
+    //
+    // Retargeting it at the most BURIED enchanted card was tried and measured
+    // worse (+0.2 -> -0.5 at density 8), for the same reason Dig rescues
+    // nothing: turning a card that stays under a pile grants no legal move.
+    // So the mechanic is left alone and only the price moves.
+    //
+    // Not cut, because one part of its value is invisible here — the player
+    // model sees every face-down card, so early information is worth exactly
+    // nothing to it, exactly as with Dig. Priced as a rare rather than sold as
+    // an epic until a person can say whether knowing early is worth anything.
     text: 'When turned, also turns the nearest face-down enchanted card.',
-    rarity: 'epic',
-    price: 44,
+    rarity: 'rare',
+    price: 28,
   },
   resonance: {
     id: 'resonance',
@@ -368,9 +382,21 @@ export const CHARMS: Record<CharmId, CharmDef> = {
     id: 'stance',
     name: 'Wide Stance',
     glyph: '⊞',
+    // The most expensive item in the shop, for something measured at nothing.
+    // This charm is the only clean way to vary column count — it runs through
+    // columnsFor and touches nothing else — so it was used as the instrument in
+    // scripts/columns.ts, and the instrument answered about itself: over 60
+    // boards a cell, an extra column changes nothing at all at unlimited budget
+    // and is worth about -7 points at the level's own allowance. Inside the
+    // noise, so "buys nothing measurable" rather than "harmful".
+    //
+    // Unlike Conduit there is no hidden upside to argue for: column count is
+    // fully visible to the player model. Kept because a wider board is a real
+    // fantasy and a person may value the room, but no longer priced as the best
+    // thing in the shop.
     text: '+1 column on every level.',
-    rarity: 'epic',
-    price: 90,
+    rarity: 'rare',
+    price: 48,
   },
   locksmith: {
     id: 'locksmith',
