@@ -117,8 +117,15 @@ export function ask(id: QuestionId, ctx: AskContext): Answer {
   if (after === 0) {
     return { text: 'Nothing yet. The board was still winnable after every move you have made.', tone: 'good', rewind: 0 };
   }
+  // "Still open after move k" is safe: that probe SUCCEEDED, so a line was
+  // actually found from there. "It closed on the next one" was not — a probe
+  // that fails cannot tell a dead position from one whose line it merely missed
+  // inside its slice, and measured against a 16x longer search the boundary
+  // moved on 4 of 13 boards, every time later, twice by more than ten moves.
+  // So the reading now claims only the half the search can back, and the rewind
+  // it offers is unaffected: move k is verified winnable either way.
   return {
-    text: `The line was still open after move ${pm.lastWinnableAfter} of ${pm.movesPlayed}. It closed on the next one, and you have played ${plural(after - 1, 'move')} since.`,
+    text: `The line was still open after move ${pm.lastWinnableAfter} of ${pm.movesPlayed}, and you have played ${plural(after, 'move')} since. Past that point no line could be found.`,
     tone: 'bad',
     rewind: after,
   };

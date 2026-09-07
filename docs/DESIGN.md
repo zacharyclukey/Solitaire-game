@@ -1071,6 +1071,52 @@ worth repeating occasionally — the "+1 reserve cell" shop item spent months
 describing a mechanic that had been replaced, and a defined-but-unread effect
 would fail the same way while being harder to notice.
 
+## 6f. What the post-mortem can and cannot know
+
+"Where did I go wrong?" makes the strongest claim of the three readings — that a
+particular move lost the board — and it does it with a binary search whose
+probes are bounded. Winnability is monotone along a line of play, so the binary
+search is valid in principle. The problem is what a probe can report.
+
+**A probe that succeeds is trustworthy: it found a line.** A probe that fails
+cannot tell a dead position from one whose line it merely missed inside its
+time slice, and every such miss pushes the boundary EARLIER than the truth.
+
+Measured: 29 lost boards with a real play history, `analyse` at the shipping
+budget against `analyse` at sixteen times that. On the 13 where both reported a
+boundary they **disagreed on 4**, and every disagreement went the same way —
+the longer search found the line had stayed open longer, twice by more than ten
+moves. So roughly a third of the time the fast answer blamed a move that was
+still fine.
+
+The fix follows the asymmetry rather than the budget. `verdictFor` was already
+careful, saying "no line could be found past move k+1" rather than asserting the
+move killed the board. The Oracle's reading was not: it said "It closed on the
+next one." That half is now dropped, keeping the half a successful probe backs —
+the line was still open after move k — and noting only that no line was found
+past it.
+
+Nothing else needed to change. The rewind the reading offers goes to move k,
+which a successful probe verified as winnable, so it was never wrong; and a
+boundary that errs early sends the player further back than necessary, which is
+the safe direction to err in.
+
+The same section of `postmortem.ts` also carried the retired contract in its
+reasoning — "the deal was certified winnable before it was handed over, so index
+0 is taken as winnable". The search does verify index 0 before reporting
+anything that rests on it, so this was a stale comment rather than a live bug,
+but on honest shuffles the opening position may genuinely have no line and the
+comment now says so.
+
+### A dead field, renamed
+
+`Level.relaxed` — "how far the deal had to be eased before the solver could
+clear it" — outlived the easing. It only ever held 0, or a magic 5 set on the
+emergency path where board selection finds nothing and a plain shallow board is
+dealt instead. It is now `fallback: boolean`, which is what it actually meant.
+The QA log prints something worth reading as a result: `"fallback":false` on
+every level, where it used to print `"relaxed":0`.
+
 ## 7. Known gaps
 
 - No leaderboards or cloud save — both need a backend, and the game is

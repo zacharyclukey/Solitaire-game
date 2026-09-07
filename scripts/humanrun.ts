@@ -110,7 +110,7 @@ function boardSweep(perStage: number): void {
  * question is which generator knobs predict a board no person can finish.
  */
 function diagnose(perStage: number): void {
-  console.log('stage cols stock hidden deepest par relaxed won left mods');
+  console.log('stage cols stock hidden deepest par fallbk won left mods');
   for (const stage of [6, 8, 10, 12, 14, 16, 18, 20]) {
     for (let i = 0; i < perStage; i++) {
       // A fresh run seed per board, or every board at a stage draws the same
@@ -126,7 +126,7 @@ function diagnose(perStage: number): void {
       console.log(
         `${String(stage).padStart(5)} ${String(l.columns).padStart(4)} ${String(l.stockSize).padStart(5)} ` +
         `${String(hidden).padStart(6)} ${String(deepest).padStart(7)} ${String(l.par).padStart(3)} ` +
-        `${String(l.relaxed).padStart(7)} ${r.won ? '  1' : '  0'} ${String(r.remaining).padStart(4)} ${l.modifiers.join(',')}`,
+        `${String(l.fallback ? 'yes' : 'no').padStart(7)} ${r.won ? '  1' : '  0'} ${String(r.remaining).padStart(4)} ${l.modifiers.join(',')}`,
       );
     }
   }

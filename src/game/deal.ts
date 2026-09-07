@@ -30,9 +30,15 @@ export interface Level {
   columns: number;
   /** Cards that start in the draw pile. */
   stockSize: number;
-  /** How far the deal had to be eased before the solver could clear it. */
-  relaxed: number;
-  /** Modifiers actually in force (relaxation can drop the placement rules). */
+  /**
+   * True when board selection found nothing and the emergency fallback dealt a
+   * plain shallow board instead. This was `relaxed: number` — "how far the deal
+   * had to be eased" — back when the generator eased boards until the solver
+   * could clear them. Nothing is eased any more, and the field only ever held 0
+   * or a magic 5 meaning "fallback taken", so it now says that.
+   */
+  fallback: boolean;
+  /** Modifiers actually in force. */
   modifiers: ModifierId[];
   undosLeft: number;
   undoCostsMove: boolean;
@@ -426,7 +432,7 @@ export function dealLevel(opts: DealOptions): Level {
   let rules: RuleSet = DEFAULT_RULES;
   let stockSize = baseStock;
   let faceUp = baseFaceUp;
-  let relaxed = 0;
+  let fallback = false;
   // The board is chosen across several relaxation passes, but the rules and
   // shape that go with it are rebuilt every pass. Capture them with the
   // candidate or they drift apart the moment we keep relaxing past a hit.
@@ -434,7 +440,7 @@ export function dealLevel(opts: DealOptions): Level {
   let candMods: ModifierId[] = mods;
   let candStock = baseStock;
   let candFaceUp = baseFaceUp;
-  let candRelaxed = 0;
+  let candFallback = false;
 
 
   /**
@@ -504,7 +510,7 @@ export function dealLevel(opts: DealOptions): Level {
       candMods = mods;
       candStock = stockSize;
       candFaceUp = faceUp;
-      candRelaxed = 0;
+      candFallback = false;
       candPlainPar = thisPlainPar;
       candSolved = plainSol !== null;
     }
@@ -512,8 +518,8 @@ export function dealLevel(opts: DealOptions): Level {
   }
 
   if (!cand) {
-    // Nothing survived even the eased rules: hand out a shallow, standard board
-    // rather than crash the run.
+    // Nothing survived selection: hand out a shallow, standard board rather
+    // than crash the run.
     const defs = levelCards(deck, [], rng);
     activeMods = mods.filter((m) => MODIFIERS[m].tag === 'meta');
     rules = buildRules([], charms, defs.map((d) => d.rank));
@@ -530,13 +536,13 @@ export function dealLevel(opts: DealOptions): Level {
     candMods = activeMods;
     candStock = stockSize;
     candFaceUp = faceUp;
-    candRelaxed = 5;
+    candFallback = true;
   }
   rules = candRules;
   activeMods = candMods;
   stockSize = candStock;
   faceUp = candFaceUp;
-  relaxed = candRelaxed;
+  fallback = candFallback;
 
   /**
    * The solver stops being able to see past about thirty cards, and deck growth
@@ -622,7 +628,7 @@ export function dealLevel(opts: DealOptions): Level {
     sim,
     columns,
     stockSize,
-    relaxed,
+    fallback,
     modifiers: activeMods,
     undosLeft: undos,
     undoCostsMove: has(m, 'glass'),

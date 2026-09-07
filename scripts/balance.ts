@@ -38,7 +38,7 @@ interface Row {
   weak: number | null;
   dealMs: number;
   unsolved: boolean;
-  relaxed: number;
+  fallback: boolean;
   mods: string;
 }
 
@@ -106,7 +106,7 @@ for (let i = 0; i < RUNS; i++) {
       weak: weak ? weak.cost : null,
       dealMs,
       unsolved: level.solution === null,
-      relaxed: level.relaxed,
+      fallback: level.fallback,
       mods: level.modifiers.join(',') || '—',
     });
 
@@ -124,7 +124,7 @@ for (const r of rows) {
 const avg = (xs: number[]): number => xs.reduce((a, b) => a + b, 0) / (xs.length || 1);
 const pad = (s: string | number, n: number): string => String(s).padStart(n);
 
-console.log('stage  cards cols pile hidden   par budget spare  weakFail  dealMs   relaxed');
+console.log('stage  cards cols pile hidden   par budget spare  weakFail  dealMs  fallback');
 for (const d of [...byDepth.keys()].sort((a, b) => a - b)) {
   const rs = byDepth.get(d)!;
   const weakFail = rs.filter((r) => r.weak === null || r.weak > r.budget).length / rs.length;
@@ -140,7 +140,7 @@ for (const d of [...byDepth.keys()].sort((a, b) => a - b)) {
       pad(avg(rs.map((r) => r.surplus)).toFixed(1), 6),
       pad((weakFail * 100).toFixed(0) + '%', 10),
       pad(avg(rs.map((r) => r.dealMs)).toFixed(0), 8),
-      pad(rs.filter((r) => r.relaxed > 0).length + '/' + rs.length, 10),
+      pad(rs.filter((r) => r.fallback).length + '/' + rs.length, 10),
     ].join(''),
   );
 }
@@ -151,7 +151,7 @@ for (const r of rows) {
     if (!m || m === '—') continue;
     const e = trouble.get(m) ?? { n: 0, bad: 0 };
     e.n++;
-    if (r.relaxed > 0) e.bad++;
+    if (r.fallback) e.bad++;
     trouble.set(m, e);
   }
 }

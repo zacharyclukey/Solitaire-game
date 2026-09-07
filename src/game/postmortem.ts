@@ -144,8 +144,18 @@ function lastWinnable(states: Sim[], deadline: number): Boundary {
     return winnableInBudget(states[i], Math.min(slice, left));
   };
 
-  // The deal was certified winnable before it was handed over, so index 0 is
-  // taken as winnable until the search actually depends on it (below).
+  // Index 0 is ASSUMED winnable to start the search, and verified below before
+  // anything is reported that rests on it — deals are honest shuffles now, so
+  // the opening position may well have no line at all.
+  //
+  // Note the asymmetry in what a probe can tell you. A probe returning true
+  // found a line, so it is trustworthy. A probe returning false may simply have
+  // missed one inside its slice, and that pushes the boundary EARLIER than the
+  // truth: against a 16x longer search the boundary moved on 4 of 13 lost
+  // boards, always later, twice by more than ten moves. Copy built on this must
+  // therefore claim only that move k was winnable, never that move k+1 killed
+  // it — which is what `verdictFor` already says ("no line could be found") and
+  // what the Oracle's reading was corrected to say.
   let lo = 0;
   let hi = n;
   while (lo < hi) {

@@ -85,7 +85,7 @@ export function buildTutorialLevel(): Level {
     sim,
     columns: LAYOUT.length,
     stockSize: STOCK.length,
-    relaxed: 0,
+    fallback: false,
     modifiers: [],
     undosLeft: 99,
     undoCostsMove: false,

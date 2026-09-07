@@ -52,7 +52,7 @@ for (let i = 1; i <= levels; i++) {
   await page.waitForTimeout(3200);
   const info = await page.evaluate(() => {
     const a = window.facedown;
-    return { moves: a.level?.budget, cards: a.level?.sim.defs.length, cells: a.level?.cells, relaxed: a.level?.relaxed, mods: a.level?.modifiers };
+    return { moves: a.level?.budget, cards: a.level?.sim.defs.length, cells: a.level?.cells, fallback: a.level?.fallback, mods: a.level?.modifiers };
   });
   await page.evaluate(() => window.facedown.qaSolve());
   await page.waitForTimeout(1200 + info.cards * 20);
