@@ -236,7 +236,40 @@ export function ratioFor(stage: number): number {
 export const PLAIN_PAR_PER_CARD = 1.36;
 
 /** Measured: each point of modifier threat costs a plain board about this much. */
-const MOVES_PER_THREAT = 0.48;
+/**
+ * What a point of modifier threat actually costs, by depth.
+ *
+ * This was a flat 0.48 and that is wrong in both directions. Measured over 24
+ * boards a stage, as (plainPar - deckSize x PLAIN_PAR_PER_CARD) / threat:
+ *
+ *   stage      5     9    13    15    17    19
+ *   moves   0.17  0.10  0.38  0.58  0.69  0.76
+ *
+ * The same modifier costs four to seven times more at stage 19 than at stage 9,
+ * because deep boards carry two or three rules at once (`maxRulesFor`) and they
+ * interact — which is also why the old isolate sweep measured most modifiers at
+ * about 0pp: it measured them one at a time, shallow.
+ *
+ * A flat 0.48 therefore overpaid shallow boards and underpaid deep ones, on top
+ * of the squeeze `ratioFor` applies deliberately. That is the allowance being
+ * throttled at depth by a mispriced constant rather than by design, and the
+ * standing brief is explicit that runs must end because boards outgrow the
+ * player, not because the allowance was quietly throttled. Piecewise from the
+ * measurement, in the same style as `ratioFor`.
+ */
+function movesPerThreat(stage: number): number {
+  // Shallow stages keep the old 0.48 deliberately. The measurement implies
+  // 0.10-0.17 there, but that is a ratio of two small numbers — the extra cost
+  // over base is only about 2 moves against 13-17 points of threat — so it is
+  // noise wearing a decimal point. Pricing on it was tried and cut about three
+  // moves from a stage-5 board, which cost 20 points of clear rate and put a
+  // dip in the curve at stage 5 that stages 7, 9 and 11 then climbed back out
+  // of. The curve has to fall smoothly, so only the deep end moves.
+  if (stage <= 12) return 0.48;
+  if (stage <= 15) return 0.58;
+  if (stage <= 17) return 0.69;
+  return 0.76;
+}
 
 /**
  * How much of that the stipend hands back. Below 1.0 on purpose — modifiers
@@ -267,7 +300,7 @@ export function stipendFor(deckSize: number, stage: number, mods: ModifierId[], 
   // shuffle unlucky: the whole point of decoupling the stipend was that a hard
   // deal should be hard.
   const threat = mods.reduce((t, id) => t + MODIFIERS[id].threat, 0);
-  let s = deckSize * PLAIN_PAR_PER_CARD * ratioFor(stage) + threat * MOVES_PER_THREAT * THREAT_COMPENSATION;
+  let s = deckSize * PLAIN_PAR_PER_CARD * ratioFor(stage) + threat * movesPerThreat(stage) * THREAT_COMPENSATION;
   if (has(mods, 'austere')) s *= 0.85;
   if (kind === 'gauntlet' || kind === 'boss') s *= 0.9;
   if (kind === 'cache') s *= 1.15;

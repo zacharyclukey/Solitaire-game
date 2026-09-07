@@ -573,3 +573,64 @@ not at a price every other loss should pay. The constant stays at 900 ms.
 Latency is not the risk regardless: the run-over screen renders first and the
 verdict arrives into it, and the search returns on first success, so the extra
 time would have been spent only on the boards where it does not help.
+
+## The difficulty curve, finally measured as one
+
+The owner's definition: "the game should be loseable by default and the player's
+skill and choices make it winnable. **The ratio of winnable to loseable is the
+difficulty curve.**" Since nothing else moves the per-level ceiling — not the
+allowance, not the rules, not skill, not escapes — that ratio IS the curve, and
+it had never been measured. `scripts/curve.ts`, 24 boards a stage, bare starting
+deck and no build, which is the no-build lower bound rather than a real run:
+
+| stage | 1 | 3 | 5 | 7 | 9 | 11 | 13 | 15 | 17 | 19 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| winnable at all | 100% | 96% | 100% | 100% | 92% | 96% | 100% | 71% | 63% | 79% |
+| player clears | 83% | 75% | 58% | 50% | 58% | 46% | 38% | 17% | 21% | 4% |
+| gap | 17% | 21% | 42% | 50% | 33% | 50% | 63% | 54% | 42% | 75% |
+
+**The curve is real and it falls.** A bare deck clears five boards in six at the
+start and one in twenty-five by stage 19, which matches the target shape in this
+document (a bare deck dying around stage 8-10 once you account for a run needing
+to survive every stage, not just one).
+
+**The gap stays wide, and that is the result that matters.** The room between
+"a line exists" and "this player found it" runs 17% at stage 1 and 42-75%
+through the deep game. Skill keeps mattering all the way down. The failure mode
+worth fearing was the opposite — a game where deep boards are lost to the
+shuffle rather than to play is not getting harder, it is getting arbitrary — and
+that is not what happens.
+
+Winnability holds near 100% to stage 13 and then drops to 63-79%. Two controls
+before believing it: driving the solver at five times the node cap changed
+almost nothing (63/63, 58 to 63, 88/88), and the emergency fallback path fired
+on 0 of 24 boards at every stage, so neither solver blindness nor a quiet
+easy-board escape hatch explains it.
+
+### A mispriced constant found on the way
+
+`plainPar` per card is not flat with depth: 1.43 at stage 1, 1.80 by stage 15.
+The stipend prices threat at a flat rate, and measured as
+`(plainPar - deckSize x 1.36) / threat` that rate is anything but flat:
+
+| stage | 5 | 9 | 13 | 15 | 17 | 19 |
+|---|---|---|---|---|---|---|
+| implied moves per threat | 0.17 | 0.10 | 0.38 | 0.58 | 0.69 | 0.76 |
+
+The same modifier costs several times more at stage 19 than at stage 9, because
+deep boards carry two or three rules at once and they interact — which also
+explains why the old isolate sweep measured most modifiers at about 0pp: it
+measured them one at a time, shallow. A flat 0.48 therefore underpaid deep
+boards on top of the squeeze `ratioFor` applies deliberately, which is the
+allowance being throttled by a wrong constant rather than by design.
+
+`movesPerThreat(stage)` now follows the measurement from stage 13 down.
+
+**The shallow half of that measurement was deliberately NOT acted on**, and the
+reason is worth keeping. It implies 0.10-0.17 early, but the extra cost over
+base is only about 2 moves against 13-17 points of threat — a ratio of two small
+numbers, which is noise wearing a decimal point. Pricing on it was tried: it cut
+about three moves from a stage-5 board, cost 20 points of clear rate, and put a
+dip at stage 5 that stages 7, 9 and 11 climbed back out of. A curve has to fall
+smoothly, so only the deep end moves.
+
