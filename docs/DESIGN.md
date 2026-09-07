@@ -1117,6 +1117,32 @@ dealt instead. It is now `fallback: boolean`, which is what it actually meant.
 The QA log prints something worth reading as a result: `"fallback":false` on
 every level, where it used to print `"relaxed":0`.
 
+## 6g. Two checks that came back clean
+
+Recorded because a negative result nobody wrote down gets re-run forever.
+
+**The daily deal is safe.** It is one seed shared by everyone who plays that
+day, so a dead opening board is not "a run that ended" — it is the same ruined
+board for every player at once, which is a different and worse kind of bad. It
+had never been checked since deals stopped being certified. Walking a year of
+real date keys (365 seeds, from 2026-09-08): **0 opening boards with no line at
+all**, and 43 of 365 (12%) lost by the fallible player, which sits right against
+the 83% stage-1 clear rate in the curve. Nothing to fix.
+
+That the daily is safe is close to structural rather than lucky: its first board
+is an ordinary stage-1 board, and stage 1 measured 100% winnable in the curve
+sweep. It is worth re-checking only if stage 1 itself gets harder.
+
+**Every measurement script still runs.** There are sixteen of them now, several
+written against signatures that have since changed, and a script that throws is
+a measurement nobody can reproduce. All sixteen execute against current code and
+produce output: `balance`, `columns`, `compound`, `cost`, `curve`, `deadboards`,
+`economy`, `enchaudit`, `escapes`, `humanrun`, `odds`, `passes`, `probe`,
+`rulecost`, `solverlab`, `worth`. Note `probe.ts` takes `(stockSize, faceUp,
+columns)` rather than a sample size, so passing it a small number silently
+measures a degenerate board rather than failing — the one script whose arguments
+do not follow the others.
+
 ## 7. Known gaps
 
 - No leaderboards or cloud save — both need a backend, and the game is
