@@ -368,7 +368,7 @@ tests asserting a crossing at 1.0 had to be rewritten to assert the real one.
 
 With the new curve, no run in 48 went bankrupt — every one ended having run out
 of moves mid-board, never stuck with moves in hand. The economy is no longer
-what kills runs. But median depth is still 2, and the reason is a fat right
+what kills runs. But median depth is only 3, and the reason is a fat right
 tail: the median board costs 110-130% and banks well, while the occasional board
 costs this player 170-300% and it loses anyway.
 
@@ -453,22 +453,27 @@ what this section recommended.
 
 ## The economy has stopped being the limiter, and cannot become the answer
 
-48 full runs with the fallible player under the current build:
+Full runs with the fallible player, **re-measured on 2026-09-08 after a harness
+artifact was found and fixed** (see the correction note below), 30 runs a build:
 
 ```
-build            median depth   peak bank   bankrupt   out of moves   stuck
-none                        2          32          0             16       0
-every 4 levels              2          32          0             16       0
-every 2 levels              2          31          0             16       0
+build            median depth   mean   peak bank   bankrupt   out of moves   stuck
+none                        3    3.2          38          1             26       3
+every 4 levels              3    3.1          38          0             26       4
+every 2 levels              4    3.2          38          0             29       1
 ```
 
-**No run in 48 ended on the economy.** Bankruptcy is zero, nothing ever ends
-stuck with moves in hand, and players bank around 32 moves. The buffer exists
-and works, which was the whole of what the economy was asked to do.
+**Runs still do not end on the economy.** One bankruptcy in 90 runs, a handful
+end stuck with moves in hand, and players bank around 38 moves. The buffer
+exists and works, which was the whole of what the economy was asked to do.
+
+The superseded version of this table read median depth 2 with 32 banked and zero
+bankruptcies in every arm. It was measured on decks grown with uniform ranks
+1-13, which the game never generates.
 
 Runs are short anyway, and the reason is arithmetic rather than balance. At
 stage 1 the stipend pays 1.70x plainPar, which the measured curve puts at about
-74% per level, and 0.74^5 is 22% — a median depth of 2.3, exactly what is
+74% per level, and 0.74^5 is 22% — a mean depth of about 3, which is what is
 observed. To reach a median depth of 8 a player needs about 92% per level.
 
 **The curve tops out at 78%.** Roughly a fifth of boards are not cleared at any
@@ -643,7 +648,7 @@ good build should reach 15-20. Neither half survives measurement.
 `humanrun.ts` already has a build knob, and it reports an identical depth
 distribution for every setting — median 2, mean 2.3, whether the player takes an
 enchantment never, every four levels, or every two. That looks like "builds do
-nothing" and it is not: **the median run ends at depth 2, so a build arriving
+nothing" and it is not: **the median run ends at depth 3, so a build arriving
 every two levels barely fires and one arriving every four never does.** The
 instrument cannot answer the question, which is worth stating because the
 identical rows look like a result.
@@ -653,24 +658,25 @@ from build accumulation. 30 runs an arm:
 
 | kit | cards | median | mean depth | reached 5 |
 |---|---|---|---|---|
-| bare | 0 | 2 | 2.3 | 0/30 |
-| insurance | 4 | 2 | 1.6 | 0/30 |
-| insurance | 8 | 1 | **1.0** | 0/30 |
-| income | 4 | 2 | 2.3 | 1/30 |
-| income | 8 | 2 | 2.4 | 0/30 |
-| mixed | 4 | 2 | 2.5 | 2/30 |
-| mixed | 8 | 2 | 1.9 | 0/30 |
+| bare | 0 | 3 | 3.3 | 5/30 |
+| insurance | 4 | 2 | 1.8 | 0/30 |
+| insurance | 8 | 1 | **1.4** | 1/30 |
+| income | 4 | 3 | 3.2 | 5/30 |
+| income | 8 | 3 | 3.1 | 5/30 |
+| mixed | 4 | 2 | 3.0 | 6/30 |
+| mixed | 8 | 2 | 2.8 | 5/30 |
 
-**Insurance cards actively shorten runs.** Eight of them more than halves mean
-depth, from 2.3 to 1.0, and that is the largest effect in the table. It is not a
+**Insurance cards actively shorten runs.** Eight of them cut mean depth from 3.3
+to 1.4, and that is the largest effect in the table. It is not a
 surprise by now: the same cards measure at -1.7 (Anchor) and -2.6 (Ember)
 expected moves banked, and they are placement effects that add legal moves a
 bounded player then drowns in.
 
-**Income cards are neutral.** 2.3 and 2.4 against a bare 2.3 — indistinguishable
+**Income cards are neutral.** 3.2 and 3.1 against a bare 3.3 — indistinguishable
 at this sample. They do not hurt, and they do not help either.
 
-**Nothing reaches depth 10.** The best arm put 2 runs of 30 past stage 5.
+**No build beats owning nothing.** The bare deck reaches as far as the best kit,
+and five of its thirty runs pass stage 5.
 
 So the honest answer to "does a build move the curve" is no. The best available
 build is neutral and the worst halves your run. That is not a pricing problem —
@@ -691,4 +697,42 @@ not carry a run on their own, not that a skilled player cannot build.
 It does mean the shop cannot currently be shown to earn its place, and that is a
 design question rather than a number to tune. Left open deliberately rather than
 answered with a lever.
+
+## A correction: two harnesses grew decks the game could not deal
+
+Both whole-run harnesses — `humanrun.ts`, and the `build.ts` written for the
+question above — grew the deck with `rng.range(1, 13)`. Uniform ranks are not
+what the game generates, and growing decks that way is one of the four harness
+artifacts CLAUDE.md warns about; it had never actually been removed from
+`humanrun.ts`, which is where every median-depth figure in this document came
+from. Neither harness capped at `MAX_DECK` either, so both were measuring decks
+a player is not allowed to own.
+
+The real generator extends the rank ladder 65% of the time, because high ranks
+are the scarce resource — only they can base a column. Corrected, **a bare run's
+mean depth goes from 2.4 to 3.3**: the artifact shortened every run by about a
+quarter, in one direction, so the figures this document carried were pessimistic
+rather than merely noisy. Every depth number above has been re-run.
+
+What did NOT change is the conclusion of either measurement. Builds still do not
+move depth, insurance still roughly halves it, and runs still do not end on the
+economy. The artifact moved the level, not the shape — which is the good case,
+and not one to count on next time.
+
+### The reward that does move depth is the one the game gives away
+
+Measured while chasing the above, and worth its own line: **capping deck growth
+raises mean depth from 3.3 to 4.6**, takes runs reaching stage 5 from 5 in 30 to
+13, and runs reaching stage 10 from 1 to 4. Compare the strongest allowance ever
+tested — twenty free moves every level, far beyond anything purchasable — which
+manages 3.8.
+
+So the card handed over after every cleared level costs more depth than any
+reward in the shop can buy back. That is not automatically a bug: a bigger deck
+is a bigger board, and DESIGN.md sells growth as "more cards carrying more
+power". But the power is not measurable and the cost is, and the shop already
+sells card removal, which suggests thinning is the correct play and the game
+does not say so anywhere.
+
+Left as evidence for the open shop question rather than acted on.
 
