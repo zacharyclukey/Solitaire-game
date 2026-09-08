@@ -323,7 +323,15 @@ export function stageSpec(run: RunState, stage: number): LevelSpec {
   // board still read like an ordinary one, so the floor is what makes it
   // distinct. Ordinary boards get a floor too, one lower, because a bare board
   // at stage 4 is a board with nothing to say.
-  const floor = Math.min(cap, hot ? 3 : 2);
+  //
+  // Held back at the very start. Measured, a flat floor did its work in exactly
+  // the wrong place: stages 5 to 13 came out identical with and without it,
+  // while stage 3 fell from 63% to 42% and stage 1 from 83% to 75%. Deep boards
+  // already carry enough threat to reach the floor on their own, so all a flat
+  // number bought was a wall in the first three levels — and the opening is
+  // where a loss feels least like a near miss.
+  const early = stage <= 3;
+  const floor = Math.min(cap, hot ? (early ? 2 : 3) : early ? 1 : 2);
   return {
     stage,
     kind: hot ? 'gauntlet' : 'trial',

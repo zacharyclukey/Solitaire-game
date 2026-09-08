@@ -451,8 +451,21 @@ describe('the modifier floor', () => {
 
   it('makes a gauntlet look like one before it is played', () => {
     for (const seed of [20240601, 777, 31337]) {
-      for (const s of specs(seed).filter((x) => x.kind === 'gauntlet')) {
+      // Stage 3 is held to a lower floor with the rest of the opening, so the
+      // gauntlet floor proper starts at the second one.
+      for (const s of specs(seed).filter((x) => x.kind === 'gauntlet' && x.stage > 3)) {
         expect(s.modifiers.length).toBeGreaterThan(2);
+      }
+    }
+  });
+
+  it('keeps the opening readable rather than walling it', () => {
+    // A flat floor cost stage 3 twenty-one points of clear rate (63% -> 42%)
+    // and did nothing at all from stage 5 down, so it bought a wall in the
+    // first three levels and no texture where the run actually needs it.
+    for (const seed of [20240601, 777, 31337, 4242]) {
+      for (const s of specs(seed, 3)) {
+        expect(s.modifiers.length, `stage ${s.stage} of seed ${seed}`).toBeLessThan(3);
       }
     }
   });

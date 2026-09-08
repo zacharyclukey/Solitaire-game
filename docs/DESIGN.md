@@ -1284,6 +1284,57 @@ brief warns against. It was the right lever for the reported problem — the
 allowance was the runaway — but the next difficulty pass should come from the
 board side, not this one.
 
+## 6g-bis. The modifier floor, and where a floor does its damage
+
+Boards rolled modifiers until the threat budget was met and then stopped, so a
+level's whole character came down to the two or three heavy modifiers the budget
+bought. Most levels looked like most other levels, and a gauntlet was a gauntlet
+in the numbers rather than on the screen. `pickModifiers` now takes a `minCount`
+and tops a board up with the cheapest thing still legal once threat is met —
+texture at roughly fixed price, since what the fill adds is mostly compensated
+back in `stipendFor`.
+
+Measured on the same 24-boards-a-stage sweep, and the result is the useful part:
+
+| stage | before the floor | flat floor (2 / 3 on gauntlets) | floor held back to stage 4 |
+|-------|------------------|----------------------------------|-----------------------------|
+| 1     | 83%              | 75%                              | 75%                         |
+| 3     | 63%              | **42%**                          | 58%                         |
+| 5     | 50%              | 50%                              | 54%                         |
+| 7     | 50%              | 50%                              | -                           |
+| 9     | 29%              | 29%                              | -                           |
+| 11    | 21%              | 21%                              | -                           |
+| 13    | 21%              | 21%                              | -                           |
+
+**Stages 5 through 13 are identical with and without it.** Deep boards already
+carry enough threat to reach the floor on their own, so every point the flat
+floor cost was spent in the first three levels — twenty-one of them at stage 3
+alone. A floor is worth having for how a board reads, but a flat one buys a wall
+in the opening and no texture anywhere the run actually needs it, so it is held
+back until stage 4. The opening is where a loss feels least like a near miss.
+
+(Stage 1's 83% to 75% is two boards in twenty-four and survives the change, so
+it is the documented run-to-run drift from wall-clock solver budgets, not the
+floor.)
+
+### Where the session landed
+
+Bare starting deck, no build, no bank — the floor a player without a build
+faces, and the worst case rather than the typical one:
+
+| | stage 1 | 3 | 5 | 7 | 9 | 11 | 13 | mean |
+|---|---|---|---|---|---|---|---|---|
+| before any of this | 83% | 75% | 58% | 50% | 58% | 46% | 38% | 58% |
+| after the tightening | 83% | 67% | 38% | 46% | 54% | 17% | 21% | 47% |
+| after the variations | 83% | 63% | 50% | 50% | 29% | 21% | 21% | 45% |
+| after the floor | 75% | 58% | 54% | 50% | 29% | 21% | 21% | 44% |
+
+The variations barely moved the clear rate but pulled `winnable` down at depth
+(stage 11 from 88% to 79%, stage 13 from 96% to 79%), which is the shape the
+standing brief asks for: boards outgrowing the player rather than the purse
+being throttled. Read the means, not the cells — at 24 boards a cell carries
+about +/-14 points.
+
 ## 6h. Tribute levels: making growth mandatory
 
 Capping deck growth raised the reference player's mean run depth from **3.3 to
