@@ -634,3 +634,61 @@ about three moves from a stage-5 board, cost 20 points of clear rate, and put a
 dip at stage 5 that stages 7, 9 and 11 climbed back out of. A curve has to fall
 smoothly, so only the deep end moves.
 
+## Does a build move the curve? No, and the wrong build makes it worse
+
+The curve above was measured on a bare deck, which is the no-build lower bound.
+The standing target shape says a bare deck should die around stage 8-10 and a
+good build should reach 15-20. Neither half survives measurement.
+
+`humanrun.ts` already has a build knob, and it reports an identical depth
+distribution for every setting — median 2, mean 2.3, whether the player takes an
+enchantment never, every four levels, or every two. That looks like "builds do
+nothing" and it is not: **the median run ends at depth 2, so a build arriving
+every two levels barely fires and one arriving every four never does.** The
+instrument cannot answer the question, which is worth stating because the
+identical rows look like a result.
+
+So `scripts/build.ts` hands the build over at stage 1, separating build strength
+from build accumulation. 30 runs an arm:
+
+| kit | cards | median | mean depth | reached 5 |
+|---|---|---|---|---|
+| bare | 0 | 2 | 2.3 | 0/30 |
+| insurance | 4 | 2 | 1.6 | 0/30 |
+| insurance | 8 | 1 | **1.0** | 0/30 |
+| income | 4 | 2 | 2.3 | 1/30 |
+| income | 8 | 2 | 2.4 | 0/30 |
+| mixed | 4 | 2 | 2.5 | 2/30 |
+| mixed | 8 | 2 | 1.9 | 0/30 |
+
+**Insurance cards actively shorten runs.** Eight of them more than halves mean
+depth, from 2.3 to 1.0, and that is the largest effect in the table. It is not a
+surprise by now: the same cards measure at -1.7 (Anchor) and -2.6 (Ember)
+expected moves banked, and they are placement effects that add legal moves a
+bounded player then drowns in.
+
+**Income cards are neutral.** 2.3 and 2.4 against a bare 2.3 — indistinguishable
+at this sample. They do not hurt, and they do not help either.
+
+**Nothing reaches depth 10.** The best arm put 2 runs of 30 past stage 5.
+
+So the honest answer to "does a build move the curve" is no. The best available
+build is neutral and the worst halves your run. That is not a pricing problem —
+#31 already repriced the cards that measure at nothing — it is structural:
+**depth is set by per-level survival, and no card measurably improves per-level
+survival.** Insurance converts some lost boards into wins (24-53% of them) while
+costing moves on every board that was going fine, and those two effects cancel
+or worse.
+
+### What this does not say
+
+The player here is the bounded bot, which is a lower bound on skill, and the
+build model is crude: no charms, no gold, no shop choices, just enchanted cards
+handed over. A person picks cards for the board in front of them and plays the
+extra options better than a width-6 search does. This measures that the CARDS do
+not carry a run on their own, not that a skilled player cannot build.
+
+It does mean the shop cannot currently be shown to earn its place, and that is a
+design question rather than a number to tune. Left open deliberately rather than
+answered with a lever.
+
