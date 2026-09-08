@@ -1354,6 +1354,52 @@ cap is a measured cliff, not a soft ceiling — a bounded-lookahead player clear
 8 of 12 boards at 31 cards and 2 of 12 at 34 — and the tribute exists to stop
 thinning being free, not to push a deck past the size the game works at.
 
+## 6h-bis. The deck grew into cards it already held
+
+Reported from a playtest: a tribute offered a 7 to a deck that already had 7s.
+
+`newCard` picked a rank — `hi + 1` at 65%, otherwise anywhere from 1 to `hi` —
+and then rolled a suit freely. The fill-in branch could therefore only ever land
+on a rank the deck already held, and with the suit unconstrained it produced
+**exact duplicates**: a second 7 of spades in the same deck. The starting deck
+is ranks 1-7 in all four suits, so at the beginning of a run every fill-in was
+one. Measured over 300 runs: **34% of every add option offered**, and a tribute
+screen averaging **1.4 duplicates among its four**, sometimes all four.
+
+Growth is now keyed on the `(rank, suit)` pairs the deck holds. It stays
+ladder-first — higher ranks are the scarce resource, being the only legal column
+bases — but the fill-in branch thickens a rank with room instead of restating
+one without. Taking the 8 of spades opens three more places at rank 8; removing
+a card reopens the place it left.
+
+### The fix had a second half
+
+Forbidding duplicates alone made things worse in a way the first fix hid.
+Extending on nearly every add produced decks shaped:
+
+```
+A-7 x4,  8 x1,  9 x1,  10 x1,  J x1
+```
+
+A thin spike of singleton high ranks — exactly what `MAX_DECK` exists to
+prevent ("a deck spread thinly over more ranks stops offering the alternating
+card one rank down that a descending run needs"). Duplicates had been quietly
+padding the bottom of the ladder, and removing them exposed that the growth
+policy had no reason to ever build width.
+
+So the ladder needs a footing: the top rung must hold at least two suits before
+the next one opens. The same four cards of growth now buy
+
+```
+A-7 x4,  8 x3,  9 x1
+```
+
+— two usable ranks instead of four unusable ones. Tributes run through the same
+`growthRank` as ordinary adds rather than always opening a fresh rung, which
+they did at first and which cancelled the footing rule on the three levels a
+tribute fires. A tribute therefore offers between two and four suits rather than
+always four; two is still a choice, and it beats offering a card you own.
+
 ## 6i. Two checks that came back clean
 
 Recorded because a negative result nobody wrote down gets re-run forever.

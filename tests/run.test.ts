@@ -8,6 +8,7 @@ import {
 } from '../src/game/deal.ts';
 import { MODIFIERS, type ModifierId } from '../src/game/content.ts';
 import {
+  addCard,
   addCharm,
   bankStage,
   computeScore,
@@ -379,6 +380,8 @@ describe('tribute levels', () => {
   };
 
   it('offers one card in each of the four suits, and nothing else', () => {
+    // A starter deck holds ranks 1-7 in every suit, so the first tribute always
+    // opens a fresh rung and can offer all four.
     const rewards = makeRewards(run(), 'trial', 3);
     expect(rewards).toHaveLength(4);
     expect(rewards.every((r) => r.t === 'add')).toBe(true);
@@ -399,7 +402,7 @@ describe('tribute levels', () => {
   it('gives every option its own uid, so the deck cannot collide with itself', () => {
     const rewards = makeRewards(run(), 'trial', 3);
     const uids = rewards.map((r) => (r.t === 'add' ? r.card.uid : -1));
-    expect(new Set(uids).size).toBe(4);
+    expect(new Set(uids).size).toBe(rewards.length);
   });
 
   it('does not fire on levels between tributes', () => {
@@ -496,6 +499,87 @@ describe('the modifier floor', () => {
         const board = s.modifiers.filter((id) => MODIFIERS[id].tag === 'board').length;
         expect(rules, `stage ${s.stage} of seed ${seed}`).toBeLessThan(4);
         expect(board, `stage ${s.stage} of seed ${seed}`).toBeLessThan(4);
+      }
+    }
+  });
+});
+
+/**
+ * The deck may grow. It may not grow into cards it already holds.
+ *
+ * The old generator picked a rank (`hi + 1` at 65%, otherwise anywhere from 1
+ * to `hi`) and then a free-rolled suit, so the fill-in branch could only land
+ * on a rank already held and handed out exact duplicates — a second 7 of spades
+ * in the same deck. The starting deck is ranks 1-7 in all four suits, so at the
+ * beginning of a run every fill-in was one. Measured over 300 runs: 34% of all
+ * add options, and a tribute averaging 1.4 duplicates among its four.
+ */
+describe('deck growth', () => {
+  const walk = (seed: number, levels = 12) => {
+    const run = newRun(seed);
+    const offered: { rank: number; suit: number }[] = [];
+    for (let d = 1; d <= levels; d++) {
+      run.depth = d;
+      run.stage = d;
+      for (const r of makeRewards(run, 'trial', 3)) {
+        if (r.t !== 'add') continue;
+        offered.push({ rank: r.card.rank, suit: r.card.suit });
+        // Only the first is taken; the rest are options the player passed over.
+      }
+      const take = makeRewards(run, 'trial', 3).find((r) => r.t === 'add');
+      if (take?.t === 'add') addCard(run, take.card);
+    }
+    return { run, offered };
+  };
+
+  it('never offers a card the deck already holds', () => {
+    for (const seed of [99, 4242, 20240601, 31337]) {
+      const run = newRun(seed);
+      for (let d = 1; d <= 14; d++) {
+        run.depth = d;
+        run.stage = d;
+        const rewards = makeRewards(run, 'trial', 3);
+        for (const r of rewards) {
+          if (r.t !== 'add') continue;
+          const dup = run.deck.some((c) => c.rank === r.card.rank && c.suit === r.card.suit);
+          expect(dup, `seed ${seed} stage ${d} offered a ${r.card.rank}/${r.card.suit} it already holds`).toBe(false);
+        }
+        const take = rewards.find((r) => r.t === 'add');
+        if (take?.t === 'add') addCard(run, take.card);
+      }
+    }
+  });
+
+  it('builds up before it builds out, rather than spiking into singleton ranks', () => {
+    // Extending on every roll gave `A-7 x4, 8 x1, 9 x1, 10 x1, J x1`, which is
+    // what MAX_DECK exists to prevent: a deck spread thinly over more ranks
+    // stops offering the alternating card one rank down that a run needs.
+    for (const seed of [99, 4242, 20240601, 31337]) {
+      const { run } = walk(seed);
+      const byRank = new Map<number, number>();
+      for (const c of run.deck) byRank.set(c.rank, (byRank.get(c.rank) ?? 0) + 1);
+      const grown = [...byRank.entries()].filter(([r]) => r > 7);
+      const singletons = grown.filter(([, n]) => n === 1).length;
+      expect(singletons, `seed ${seed} grew ${JSON.stringify(grown)}`).toBeLessThan(3);
+    }
+  });
+
+  it('always leaves a tribute at least two suits to choose between', () => {
+    for (const seed of [99, 4242, 20240601, 31337, 777]) {
+      const run = newRun(seed);
+      for (let d = 1; d <= 18; d++) {
+        run.depth = d;
+        run.stage = d;
+        const rewards = makeRewards(run, 'trial', 3);
+        if (tributeDue(run)) {
+          expect(rewards.length, `seed ${seed} stage ${d}`).toBeGreaterThan(1);
+          expect(rewards.every((r) => r.t === 'add')).toBe(true);
+          // One rank, so the only thing being chosen is the suit.
+          const ranks = new Set(rewards.map((r) => (r.t === 'add' ? r.card.rank : -1)));
+          expect(ranks.size).toBe(1);
+        }
+        const take = rewards.find((r) => r.t === 'add');
+        if (take?.t === 'add') addCard(run, take.card);
       }
     }
   });
