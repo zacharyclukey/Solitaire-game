@@ -38,7 +38,7 @@ import { analyse, type PostMortem } from './game/postmortem.ts';
 import { findRescue } from './game/rescue.ts';
 import { ask, questionById, type Answer } from './game/oracle.ts';
 import { resolveUndo } from './game/resources.ts';
-import { applyMove, cloneSim, dig, isWon, legalMoves, pry, sameMove, settle, waste, type Sim, type SimEvent } from './game/sim.ts';
+import { applyMove, cloneSim, dig, isWon, legalMoves, pry, sameMove, settle, stock, waste, type Sim, type SimEvent } from './game/sim.ts';
 import { findSolution } from './game/solver.ts';
 import {
   emptyStreak,
@@ -151,9 +151,11 @@ export class App {
 
     this.board = new BoardView(this.hud.boardHost, {
       onMove: (m) => void this.doMove(m),
-      onIllegal: () => {
+      onIllegal: (reason) => {
         sfx.deny();
         haptic('warning');
+        // A refusal the player cannot account for reads as a broken game.
+        if (reason) toast(reason, 'bad');
       },
       onLift: () => {
         sfx.lift();
@@ -741,6 +743,7 @@ export class App {
               ? 'The moves are gone, and every position you could step back to has only the one move that spent them.'
               : 'Nothing can be played, and every position you could step back to has only the move that led here.',
           ]),
+          ...(this.strandedWaste(level.sim) ? [el('p', {}, [this.strandedWaste(level.sim)!])] : []),
           el('p', {}, ['Undoing cannot open a different line, so the moves it would cost buy nothing.']),
         ]),
         dismissable: false,
@@ -754,9 +757,11 @@ export class App {
       const margin = this.marginFromHere(level.sim);
       const choice = await modal({
         title: outOfMoves ? 'Out of moves' : 'No legal moves',
-        body: margin ?? (outOfMoves
+        body: [margin ?? (outOfMoves
           ? 'Step back and try a different line, or let the run end here.'
-          : 'Nothing can be played from this position.'),
+          : 'Nothing can be played from this position.'), this.strandedWaste(level.sim)]
+          .filter(Boolean)
+          .join(' '),
         dismissable: false,
         actions: [
           { label: this.undoPrice() === 0 ? 'Undo (free)' : `Undo (−${this.undoPrice()} moves)`, kind: 'primary', value: 'undo' },
@@ -769,6 +774,24 @@ export class App {
       }
     }
     await this.onLose(outOfMoves ? 'Out of moves' : 'Stuck');
+  }
+
+  /**
+   * The cards the draw pile will never hand back, when that is what ended it.
+   *
+   * Only the top of the waste is ever playable, so once the pile is spent the
+   * cards under it are reachable only by unwinding the waste in reverse. A
+   * player who hits that reads "nothing can be played" as the game being
+   * broken rather than as a rule they were shown — the same complaint that put
+   * a mark on the spent pile during play.
+   */
+  private strandedWaste(sim: Sim): string | null {
+    if (stock(sim).length > 0 || sim.passesLeft > 0) return null;
+    const left = waste(sim).length;
+    if (left < 2) return null;
+    return sim.rules.passes === 0
+      ? `One Pass: the draw pile is never turned back over, and ${left} cards are behind the top of the waste.`
+      : `The draw pile is spent, with ${left} cards behind the top of the waste.`;
   }
 
   /**

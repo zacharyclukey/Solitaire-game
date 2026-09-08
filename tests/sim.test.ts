@@ -8,6 +8,7 @@ import {
   isWon,
   legalMoves,
   pry,
+  cloneSim,
   runStart,
   settle,
   simKey,
@@ -17,6 +18,9 @@ import {
   waste,
   wasteIdx,
 } from '../src/game/sim.ts';
+import { dealLevel } from '../src/game/deal.ts';
+import { starterDeck } from '../src/game/run.ts';
+import type { ModifierId } from '../src/game/content.ts';
 import { DEFAULT_RULES, makeCardDef, type DeckCard, type EnchantId, type CurseId, type Suit } from '../src/game/types.ts';
 
 function card(rank: number, suit: Suit, ench: EnchantId | null = null, curse: CurseId | null = null): DeckCard {
@@ -452,5 +456,66 @@ describe('Beacon pays for chains', () => {
     const before2 = chained.movesLeft;
     applyMove(chained, legalMoves(chained).find((m) => m.kind === 'm' && m.from === 1)!);
     expect(chained.movesLeft).toBe(before2 - 1 + 4);
+  });
+});
+
+/**
+ * The draw pile stops, and the player has to be able to see why.
+ *
+ * Reported from a playtest as "every so often it will not let me reset the draw
+ * pile". It is two rules, not a bug — the standing two turns, and One Pass,
+ * which allows none — but both were invisible until the moment they bit, and a
+ * refusal a player cannot account for reads as a broken game. The board now
+ * marks a spent pile distinctly from an empty one and names the rule that
+ * closed it.
+ */
+describe('turning the draw pile back over', () => {
+  const deal = (mods: ModifierId[]) =>
+    dealLevel({
+      deck: starterDeck(),
+      charms: [],
+      spec: { stage: 8, kind: 'trial', modifiers: mods, seed: 0x51a2c },
+      bonusMoves: 0,
+      bonusCells: 0,
+      bank: 9999,
+    }).sim;
+
+  it('allows two turns by default', () => {
+    expect(deal([]).passesLeft).toBe(2);
+  });
+
+  it('allows none under One Pass', () => {
+    expect(deal(['onepass']).passesLeft).toBe(0);
+  });
+
+  it('never offers the turn once the passes are gone', () => {
+    const s = deal(['onepass']);
+    // Empty the pile the way a player would.
+    let guard = 0;
+    while (stock(s).length > 0 && guard++ < 200) {
+      const draw = legalMoves(s, true).find((m) => m.kind === 'd');
+      if (!draw) break;
+      applyMove(s, draw);
+    }
+    expect(stock(s).length).toBe(0);
+    expect(waste(s).length).toBeGreaterThan(0);
+    expect(legalMoves(s, true).some((m) => m.kind === 'r')).toBe(false);
+  });
+
+  it('survives an undo without losing a pass, since the count rides on the sim', () => {
+    const s = deal([]);
+    let guard = 0;
+    while (stock(s).length > 0 && guard++ < 200) {
+      const draw = legalMoves(s, true).find((m) => m.kind === 'd');
+      if (!draw) break;
+      applyMove(s, draw);
+    }
+    const snapshot = cloneSim(s);
+    const turn = legalMoves(s, true).find((m) => m.kind === 'r');
+    expect(turn).toBeTruthy();
+    applyMove(s, turn!);
+    expect(s.passesLeft).toBe(1);
+    // Undo is a restored snapshot, so the spent pass has to come back with it.
+    expect(snapshot.passesLeft).toBe(2);
   });
 });

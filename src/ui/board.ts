@@ -18,7 +18,7 @@ import type { VictoryCard } from './victory.ts';
 
 export interface BoardCallbacks {
   onMove(move: Move): void;
-  onIllegal(): void;
+  onIllegal(reason?: string | null): void;
   onLift(): void;
   onInspect(def: CardDef, anchor: DOMRect): void;
 }
@@ -254,11 +254,33 @@ export class BoardView {
 
     const left = stock(this.sim).length;
     const canTurn = left === 0 && waste(this.sim).length > 0 && this.sim.passesLeft > 0;
-    this.stockBadge.textContent = canTurn ? `↻ ${this.sim.passesLeft}` : String(left);
-    this.stockBadge.classList.toggle('empty', left === 0 && !canTurn);
+    // Spent is not the same as empty, and the badge used to show plain "0" for
+    // both. A pile with cards still sitting in the waste that will never come
+    // back is the state a player reads as the game refusing them for no reason,
+    // so it gets its own mark.
+    const spent = left === 0 && waste(this.sim).length > 0 && this.sim.passesLeft === 0;
+    this.stockBadge.textContent = canTurn ? `↻ ${this.sim.passesLeft}` : spent ? '⊘' : String(left);
+    this.stockBadge.classList.toggle('empty', left === 0 && !canTurn && !spent);
+    this.stockBadge.classList.toggle('spent', spent);
     this.stockBadge.classList.toggle('recycle', canTurn);
     this.slots[stockIdx(this.sim)].classList.toggle('recyclable', canTurn);
     this.stockBadge.style.transform = `translate3d(${this.zoneX(stockIdx(this.sim))}px, 0, 0)`;
+  }
+
+  /**
+   * Why the draw pile just refused, in the player's terms.
+   *
+   * A deny sound and a buzz say "no" without saying why, and being told no by
+   * a rule you cannot see is the illegible kind of loss. Both rules that end
+   * the pile are invisible until the moment they bite: the standing two turns,
+   * and One Pass, which allows none.
+   */
+  private stockRefusal(): string | null {
+    if (stock(this.sim).length > 0 || waste(this.sim).length === 0) return null;
+    if (this.sim.passesLeft > 0) return null;
+    return this.sim.rules.passes === 0
+      ? 'One Pass: the draw pile is never turned back over'
+      : 'The draw pile is spent — no turns left';
   }
 
   /* --------------------------------------------------------------- lookup */
@@ -371,7 +393,7 @@ export class BoardView {
       this.clearSelection();
       const act = legalMoves(this.sim, true).find((m) => m.kind === 'd' || m.kind === 'r');
       if (act) this.cb.onMove(act);
-      else this.cb.onIllegal();
+      else this.cb.onIllegal(this.stockRefusal());
       return;
     }
 
