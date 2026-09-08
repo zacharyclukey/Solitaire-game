@@ -425,16 +425,30 @@ export const MAX_MARKET_CREDIT = 3;
  * market owes you — and the market only honours it once you have cleared a
  * board. Skipping is a wager on your own survival, not a payout.
  */
+/**
+ * Where the board in front of you would resurface if you skipped it.
+ *
+ * Exported because the queue screen promises the player a specific stage
+ * number, and a promise computed separately from the move that fulfils it is a
+ * promise that drifts. Both callers use this.
+ *
+ * A berth is never a Warden's stage and never on top of another sunken board.
+ */
+export function sinkTarget(run: RunState): number {
+  let at = run.stage + 1 + SINK_DEPTH;
+  while (at % BOSS_EVERY === 0 || run.sunken.some((b) => b.at === at)) at += 1;
+  return at;
+}
+
+/** True when a skip taken now would actually earn a market item. */
+export function skipWouldPay(run: RunState): boolean {
+  return run.marketCredit + run.skipsPending < MAX_MARKET_CREDIT;
+}
+
 export function takeSkip(run: RunState): void {
   const stage = run.stage + 1;
   const spec = stageSpec(run, stage);
-
-  // Find it a berth: never on a Warden's stage, never on top of another
-  // sunken board, and never before the one already queued ahead of it.
-  let at = stage + SINK_DEPTH;
-  while (at % BOSS_EVERY === 0 || run.sunken.some((b) => b.at === at)) at += 1;
-  run.sunken.push({ spec, at });
-
+  run.sunken.push({ spec, at: sinkTarget(run) });
   run.stage = stage;
   run.skipsPending += 1;
 }

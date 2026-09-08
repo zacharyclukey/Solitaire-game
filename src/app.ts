@@ -30,6 +30,9 @@ import {
   type Reward,
   type RunState,
   type ShopItem,
+  MAX_MARKET_CREDIT,
+  sinkTarget,
+  skipWouldPay,
 } from './game/run.ts';
 import { analyse, type PostMortem } from './game/postmortem.ts';
 import { findRescue } from './game/rescue.ts';
@@ -310,15 +313,27 @@ export class App {
   private async skipStage(): Promise<void> {
     const run = this.run!;
     const spec = stageSpec(run, run.stage + 1);
+    // Three facts, in the order the player needs them: where the board goes,
+    // what skipping costs, what it buys and on what condition. The previous
+    // version ran all three together in one paragraph and called the same
+    // mechanic "walking past", "sinking" and "surfacing" in a single sentence.
+    const back = sinkTarget(run);
     const go = await modal({
-      title: 'Walk past it?',
-      body:
-        `Stage ${spec.stage} does not go away — it sinks, and surfaces again a few stages down with less room to afford it. ` +
-        'You bank nothing now, and it will not count towards your score when it comes back around either. ' +
-        'Clear a board in the meantime and the market will set something aside for you; fall first and it will not.',
+      title: `Skip stage ${spec.stage}?`,
+      // Real paragraphs, not "\n\n" in a string: `.sheet-body` does not preserve
+      // newlines, so a multi-line string renders as one run-on line.
+      body: el('div', { class: 'prose' }, [
+        el('p', {}, [`It does not go away. It comes back at stage ${back} with a smaller allowance, and it cannot be skipped a second time.`]),
+        el('p', {}, ['You get nothing from it today: no moves banked, and it does not count towards your score.']),
+        el('p', {}, [
+          skipWouldPay(run)
+            ? 'In return the market owes you one extra item — but only once you clear a board. Fall before then and the skip bought you nothing.'
+            : `The market already owes you ${MAX_MARKET_CREDIT}, which is the most it will hold, so this skip buys you nothing.`,
+        ]),
+      ]),
       actions: [
-        { label: 'Stay and play it', kind: 'ghost', value: false },
-        { label: 'Walk past it', kind: 'danger', value: true },
+        { label: 'Play it', kind: 'ghost', value: false },
+        { label: 'Skip it', kind: 'danger', value: true },
       ],
     });
     if (!go) return;
@@ -659,10 +674,62 @@ export class App {
     if (sim.movesLeft <= 0 || legalMoves(sim, true).length === 0) await this.onStuck();
   }
 
+  /**
+   * Can the undos in hand actually change anything?
+   *
+   * Having an undo is not the same as having a way out. Stepping back only
+   * helps if it reaches a position with a move OTHER than the one that led
+   * here; if every position within reach has exactly one legal move, undoing
+   * walks the same line back down to the same dead end, and the player spends
+   * their undos one at a time finding that out.
+   *
+   * Deliberately conservative: it reports "no way back" only when every
+   * reachable position is forced, so the game never tells a player they are
+   * lost while a real alternative exists. A position with a choice still gets
+   * the undo offered, even though that choice may also lose — that one is the
+   * player's to make.
+   *
+   * Restored positions carry their own `movesLeft`, so this covers running out
+   * of moves as well: undoing hands the moves back, but if the only move
+   * available then is the one that emptied the purse, it changes nothing.
+   */
+  private undoCanOpenAnything(): boolean {
+    const level = this.level;
+    if (!level) return false;
+    const reach = Math.min(level.undosLeft, this.history.length);
+    for (let i = 0; i < reach; i++) {
+      const past = this.history[this.history.length - 1 - i];
+      if (legalMoves(past.sim, true).length > 1) return true;
+    }
+    return false;
+  }
+
   private async onStuck(): Promise<void> {
     const level = this.level!;
-    const canUndo = level.undosLeft > 0 && this.history.length > 0;
+    const hasUndos = level.undosLeft > 0 && this.history.length > 0;
+    const canUndo = hasUndos && this.undoCanOpenAnything();
     const outOfMoves = level.sim.movesLeft <= 0;
+
+    // Undos in hand that cannot reach a different line. Say so plainly rather
+    // than offering a button that walks back into the same wall.
+    if (hasUndos && !canUndo) {
+      await modal({
+        title: outOfMoves ? 'Out of moves' : 'No way back',
+        body: el('div', { class: 'prose' }, [
+          el('p', {}, [
+            outOfMoves
+              ? 'The moves are gone, and every position you could step back to has only the one move that spent them.'
+              : 'Nothing can be played, and every position you could step back to has only the move that led here.',
+          ]),
+          el('p', {}, [`Undoing cannot open a different line, so the ${level.undosLeft === 1 ? 'undo' : 'undos'} you have left would not change this.`]),
+        ]),
+        dismissable: false,
+        actions: [{ label: 'End the run', kind: 'danger', value: 'end' }],
+      });
+      await this.onLose(outOfMoves ? 'Out of moves' : 'Stuck');
+      return;
+    }
+
     if (canUndo) {
       const margin = this.marginFromHere(level.sim);
       const choice = await modal({

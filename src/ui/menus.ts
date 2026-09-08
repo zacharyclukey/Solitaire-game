@@ -10,6 +10,9 @@ import {
   type Reward,
   type RunState,
   type ShopItem,
+  MAX_MARKET_CREDIT,
+  sinkTarget,
+  skipWouldPay,
 } from '../game/run.ts';
 import { QUESTIONS, type Answer, type QuestionId } from '../game/oracle.ts';
 import { RANK_LABEL, SUIT_GLYPH, type DeckCard, type EnchantId } from '../game/types.ts';
@@ -48,7 +51,7 @@ const KIND_BLURB: Record<NodeKind, string> = {
   gauntlet: 'Harsher rules, richer spoils.',
   cache: 'A gentle board and a quiet reward.',
   boss: 'The floor’s keeper. Everything at once.',
-  sunken: 'The board you walked past. It came back with less room.',
+  sunken: 'The board you skipped, back with a smaller allowance.',
   shop: '',
   respite: '',
   tutorial: 'A short board with a guide.',
@@ -188,12 +191,18 @@ function stageCard(
   const play = el('button', { class: 'btn primary', type: 'button' }, ['Play it']);
   play.addEventListener('click', () => ctx.playStage());
 
+  // Both halves of the trade, in the same words the modal and the banners use.
+  // This used to read "it sinks and returns deeper for 80 — the market pays out
+  // if you clear the next one": a bare number with no unit, a vague "deeper",
+  // and a payout that never said what it paid.
   const skip = q.canSkip
     ? (() => {
         const b = el('button', { class: 'btn skip', type: 'button' }, [
-          el('span', { class: 'skip-label' }, ['Walk past it']),
+          el('span', { class: 'skip-label' }, ['Skip it']),
           el('span', { class: 'skip-take' }, [
-            `it sinks and returns deeper for ${Math.round(pays * 0.92)} — the market pays out if you clear the next one`,
+            skipWouldPay(run)
+              ? `+1 market item if you clear a board · comes back at stage ${sinkTarget(run)}`
+              : `the market already owes you ${MAX_MARKET_CREDIT} · comes back at stage ${sinkTarget(run)}`,
           ]),
         ]);
         b.addEventListener('click', () => ctx.skipStage());
@@ -201,7 +210,7 @@ function stageCard(
       })()
     : el('p', { class: 'stage-locked' }, [
         spec.kind === 'sunken'
-          ? 'It came back for you. There is no walking past it twice.'
+          ? 'You skipped this one already. It cannot be skipped twice.'
           : 'The Warden has to be faced.',
       ]);
 
@@ -239,15 +248,15 @@ export function renderQueue(ctx: MenuCtx, run: RunState, queue: QueuedStage[], w
       run.skipsPending || run.marketCredit
         ? el('div', { class: 'owed' }, [
             run.marketCredit
-              ? `The market owes you ${run.marketCredit} ${run.marketCredit === 1 ? 'item' : 'items'}.`
-              : `${run.skipsPending} skipped. Clear a board and the market makes it good.`,
+              ? `The market owes you ${run.marketCredit} extra ${run.marketCredit === 1 ? 'item' : 'items'} — they appear at the next market.`
+              : `You skipped ${run.skipsPending}. Clear any board and the market will owe you ${run.skipsPending} extra ${run.skipsPending === 1 ? 'item' : 'items'}. Fall first and it owes you nothing.`,
           ])
         : null,
       run.sunken.length
         ? el('div', { class: 'sunk' }, [
             run.sunken.length === 1
-              ? `A board you walked past resurfaces at stage ${run.sunken[0].at}.`
-              : `${run.sunken.length} boards you walked past resurface at stages ${run.sunken.map((b) => b.at).sort((a, b) => a - b).join(', ')}.`,
+              ? `The board you skipped comes back at stage ${run.sunken[0].at}, and cannot be skipped again.`
+              : `${run.sunken.length} boards you skipped come back at stages ${run.sunken.map((b) => b.at).sort((a, b) => a - b).join(', ')}. They cannot be skipped again.`,
           ])
         : null,
       showWarden
