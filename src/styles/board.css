@@ -456,3 +456,24 @@ html.left-handed .actions { flex-direction: row-reverse; }
   background: rgba(227, 178, 98, 0.07);
 }
 .stock-count.recycle { color: var(--gold); }
+
+/* A face-up card that cannot travel with the ones above it.
+   Being able to SEE a card and being able to MOVE it are different states, and
+   they looked identical: a card sitting under a broken sequence reads as
+   available right up until you try it. This is deliberately quiet — a slight
+   desaturation and a dimmed face, not a colour — so a column still reads as a
+   column and the free run stays the thing your eye lands on. */
+.card.buried .face.front {
+  filter: saturate(0.55) brightness(0.82);
+}
+.card.buried .face.front::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: rgba(9, 11, 18, 0.22);
+  pointer-events: none;
+}
+html.high-contrast .card.buried .face.front {
+  filter: saturate(0.7) brightness(0.9);
+}

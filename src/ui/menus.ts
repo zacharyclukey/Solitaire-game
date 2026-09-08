@@ -13,9 +13,10 @@ import {
   MAX_MARKET_CREDIT,
   sinkTarget,
   skipWouldPay,
+  tributeDue,
 } from '../game/run.ts';
 import { QUESTIONS, type Answer, type QuestionId } from '../game/oracle.ts';
-import { RANK_LABEL, SUIT_GLYPH, type DeckCard, type EnchantId } from '../game/types.ts';
+import { RANK_LABEL, SUIT_GLYPH, SUIT_NAME, type DeckCard, type EnchantId } from '../game/types.ts';
 import { ACHIEVEMENTS, ACHIEVEMENT_COUNT } from '../game/achievements.ts';
 import { DEFAULT_SETTINGS, load, save, settings, stats, wipe, type RunRecord } from '../storage.ts';
 import { charmChip, menuSheet, miniCard, modChip, screen, sheetPanel, statRow } from './shell.ts';
@@ -291,7 +292,9 @@ export function rewardFace(r: Reward): { glyph: string; title: string; text: str
     case 'add':
       return {
         glyph: `${RANK_LABEL[r.card.rank]}${SUIT_GLYPH[r.card.suit]}`,
-        title: 'Add a card',
+        // Named by suit, because on a tribute screen the four options differ by
+        // nothing else and four rows reading "Add a card" is not a choice.
+        title: `${RANK_LABEL[r.card.rank]} of ${SUIT_NAME[r.card.suit]}`,
         text: r.card.ench ? `Arrives with ${ENCHANTS[r.card.ench].name}.` : 'A plain card for your deck.',
         cls: 'add',
       };
@@ -326,6 +329,9 @@ function tradeChips(id: EnchantId): HTMLElement[] {
 
 export function renderReward(ctx: MenuCtx, run: RunState, rewards: Reward[], summary: string[]): void {
   const s = screen('reward');
+  // Asked of the run, not sniffed off the shape of `rewards`, so the screen and
+  // the generator can never disagree about whether this level is a tribute.
+  const tribute = tributeDue(run);
   const list = el('div', { class: 'reward-list' });
   for (const r of rewards) {
     const f = rewardFace(r);
@@ -349,7 +355,14 @@ export function renderReward(ctx: MenuCtx, run: RunState, rewards: Reward[], sum
         ]),
       ]),
       el('div', { class: 'clear-summary' }, summary.map((t) => el('span', { class: 'tally' }, [t]))),
-      el('p', { class: 'section-label' }, ['Choose one']),
+      tribute
+        ? el('div', { class: 'tribute-note' }, [
+            el('p', { class: 'section-label' }, ['Tribute — the deck grows']),
+            el('p', {}, [
+              'No thinning this time. Every third level the deck takes a card, and the choice is which suit carries it.',
+            ]),
+          ])
+        : el('p', { class: 'section-label' }, ['Choose one']),
       list,
     ]),
   );

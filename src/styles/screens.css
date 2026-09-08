@@ -157,6 +157,19 @@ html.reduce-motion .lc { animation: none; }
 
 .reward-list { display: grid; gap: 10px; }
 
+/*
+ * A tribute screen has no "remove" on it, and a player who has learned that
+ * thinning is the strong play will read four adds as a bug unless the screen
+ * says otherwise. Marked rather than merely worded.
+ */
+.tribute-note {
+  border-left: 2px solid var(--gold);
+  padding-left: 12px;
+  margin: 20px 0 10px;
+}
+.tribute-note .section-label { margin: 0 0 4px; color: var(--gold); }
+.tribute-note p { margin: 0; font-size: 13px; line-height: 1.45; color: var(--ink-dim); }
+
 .reward {
   display: flex;
   align-items: center;

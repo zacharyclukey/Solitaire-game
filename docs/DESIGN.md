@@ -134,9 +134,25 @@ spent carries forward.
 
 ```
 level start:  movesLeft = bank + stipend
-level clear:  bank = movesLeft
+level clear:  bank = min(movesLeft, stipend)   // one level's allowance, no more
 level fail:   run over
 ```
+
+The cap on that middle line is load-bearing and was added late. Without it the
+bank is an unbounded ratchet: a player who clears a level under its allowance
+banks `stipend - used` **permanently**, every level, and it compounds. A
+playtest reached the low twenties holding **600+ banked moves**, at which point
+no board the generator can build costs enough to matter and the difficulty
+curve is decorative. Capping the carry at one level's own stipend keeps what
+the bank is for — walking into a hard board carrying a spare level for the one
+that goes wrong — and takes away the war chest. Surplus past the cap is shown
+on the clear screen as lost rather than silently dropped.
+
+The same playtest exposed a second ratchet next to it. Beating standard par
+granted `+1 bonusMove`, which rides on top of *every future stipend*: a
+permanent allowance raise, earned on most levels by anyone playing well. Skill
+was buying its way out of the difficulty curve. Under-par now pays
+`stats.finesse`, which scores and does nothing at the table.
 
 The stipend is `deckSize × 1.36 × ratio(stage)`, plus a partial compensation for
 the threat the level's modifiers carry (`stipendFor` in `src/game/deal.ts`).
@@ -1152,7 +1168,66 @@ dealt instead. It is now `fallback: boolean`, which is what it actually meant.
 The QA log prints something worth reading as a result: `"fallback":false` on
 every level, where it used to print `"relaxed":0`.
 
-## 6g. Two checks that came back clean
+## 6g. The difficulty tightening, measured
+
+Playtest feedback was that the game was too easy and paid too much gold. Three
+things changed together, and the curve was measured before and after with
+`scripts/curve.ts 24 1,3,5,7,9,11,13` — 24 boards a stage, bare starting deck,
+no build, so this is the floor a player without a build faces.
+
+| stage | cleared, before | cleared, after | winnable (after) |
+|-------|-----------------|----------------|------------------|
+| 1     | 83%             | 83%            | 100%             |
+| 3     | 75%             | 67%            | 96%              |
+| 5     | 58%             | 38%            | 96%              |
+| 7     | 50%             | 46%            | 100%             |
+| 9     | 58%             | 54%            | 92%              |
+| 11    | 46%             | 17%            | 88%              |
+| 13    | 38%             | 21%            | 96%              |
+
+Across all 168 boards the clear rate went from **58% to 47%**. Read the
+aggregate, not the rows: at 24 boards a cell carries about +/-14 points, so the
+stage-5 dip below stage 7 and 9 is inside the noise and is **not** something to
+tune against — chasing exactly that dip once before cost 20 points of stage-5
+clear rate and dug a deeper one.
+
+What changed:
+
+- **`ratioFor` down 0.15 at every step** (1.55/1.40/1.25/1.10/0.95, tail
+  `0.95 x 0.97^(stage-17)`).
+- **Gold cut.** `baseGold` from `12 + stage x 3` to `8 + stage x 2`, and the
+  under-par bonus from 3 gold a move to 1. The under-par line is the one gold
+  source that scales with *skill* — the reference bot never beats par, so every
+  harness in this project was blind to it while a competent player farmed it
+  every level.
+- **Both allowance ratchets capped** (see "Moves are a bank, not an allowance").
+
+One caveat worth keeping visible: `winnable` barely moved, so this pass made
+boards *less affordable* rather than *harder*, which is the thing the standing
+brief warns against. It was the right lever for the reported problem — the
+allowance was the runaway — but the next difficulty pass should come from the
+board side, not this one.
+
+## 6h. Tribute levels: making growth mandatory
+
+Capping deck growth raised the reference player's mean run depth from **3.3 to
+4.6** — the largest effect measured anywhere in this project. The player can
+read that off the game as easily as the harness can, which made "remove a card"
+the correct answer on every reward screen that offered it. A choice with a known
+right answer is not a choice.
+
+Every third cleared level is now a **tribute**: the only options are one card in
+each of the four suits, same rank, same enchantment. The deck has to grow; the
+decision is which suit carries it, which is a real question about what the
+tableau can absorb and where you want that effect to sit. The card always
+arrives enchanted, so a tribute is a trade rather than a tax.
+
+Decks already at `MAX_DECK` are exempt and get the ordinary reward roll. That
+cap is a measured cliff, not a soft ceiling — a bounded-lookahead player clears
+8 of 12 boards at 31 cards and 2 of 12 at 34 — and the tribute exists to stop
+thinning being free, not to push a deck past the size the game works at.
+
+## 6i. Two checks that came back clean
 
 Recorded because a negative result nobody wrote down gets re-run forever.
 

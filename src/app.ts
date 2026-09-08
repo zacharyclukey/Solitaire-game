@@ -5,7 +5,7 @@
 import { sfx, unlock } from './audio.ts';
 import { CHARMS, CONSUMABLES, DIG_MOVES, ENCHANTS, MODIFIERS, PRY_MOVES, REPRIEVE_MOVES, type ConsumableId } from './game/content.ts';
 import { dealLevelAsync, warmUp } from './game/dealAsync.ts';
-import type { Level, LevelSpec } from './game/deal.ts';
+import { UNDER_PAR_GOLD, bankCap, type Level, type LevelSpec } from './game/deal.ts';
 import { Rng, randomSeed, seedFromString, seedToCode } from './game/rng.ts';
 import {
   addCard,
@@ -839,7 +839,11 @@ export class App {
     bankStage(run);
     clearSunken(run, level.spec.stage);
     // Everything left on the table carries. This is the whole economy.
-    run.bank = Math.max(0, level.sim.movesLeft);
+    // Capped: the bank is a buffer, not a war chest. See bankCap.
+    const leftover = Math.max(0, level.sim.movesLeft);
+    const cap = bankCap(level);
+    run.bank = Math.min(leftover, cap);
+    const spilled = leftover - run.bank;
     run.stats.levelsCleared += 1;
     run.stats.cardsTurned += level.sim.revealed;
     this.tally.spare = Math.max(0, level.sim.movesLeft);
@@ -856,14 +860,22 @@ export class App {
     // Beating the solver's own line is the real skill test, so it pays.
     const underPar = level.plainPar - level.sim.movesUsed;
     if (underPar > 0) {
-      run.bonusMoves += 1;
-      toast('+1 move on every level from here', 'good');
+      // Pays score, not allowance. See RunStats.finesse: granting a permanent
+      // +1 stipend here handed a competent player a raise on most levels and
+      // let skill compound its way out of the difficulty curve entirely.
+      run.stats.finesse += underPar;
+      toast(`${underPar} under par`, 'good');
     }
     // Gold stays priced off the enchanted line. Scoring moved to standard par
     // and paying on it too would have quietly inflated every purse in the game
     // by the size of the player's build, which is a balance change nobody
     // measured.
-    let gold = level.baseGold + level.sim.gold + Math.max(0, level.par - level.sim.movesUsed) * 3;
+    // The under-par bonus was 3 gold a move, and it is the one gold source that
+    // scales with SKILL — the bot earns nothing from it (it never beats par), so
+    // every harness in this project was blind to it while a good player farmed
+    // it every level. Cut to 1, which keeps beating par worth something without
+    // making competence print money.
+    let gold = level.baseGold + level.sim.gold + Math.max(0, level.par - level.sim.movesUsed) * UNDER_PAR_GOLD;
     if (run.charms.includes('thrift')) gold += spare * 2;
     const gained = gainGold(run, gold);
     run.score = computeScore(run);
@@ -909,7 +921,9 @@ export class App {
         : underPar === 0
           ? 'exactly standard par'
           : `${-underPar} over standard par`,
-      `${spare} ${spare === 1 ? 'move' : 'moves'} carried`,
+      spilled > 0
+        ? `${run.bank} moves carried (${spilled} over the cap, lost)`
+        : `${run.bank} ${run.bank === 1 ? 'move' : 'moves'} carried`,
       ...(built.length ? [`Your cards: ${built.join(' · ')}`] : []),
     ]);
     show('reward');

@@ -20,12 +20,14 @@ import {
   stageSpec,
   makeRewards,
   makeShop,
+  MAX_DECK,
   MIN_DECK,
   newRun,
   removeCard,
   rewardCount,
   starterDeck,
   subSeed,
+  tributeDue,
 } from '../src/game/run.ts';
 import { applyMove, isWon, legalMoves, simKey, status } from '../src/game/sim.ts';
 
@@ -360,4 +362,71 @@ describe('a full simulated run', () => {
     }
     expect(run.depth).toBe(10);
   }, 60000);
+});
+
+/**
+ * Thinning measured as strictly the best play — capping deck growth raised mean
+ * run depth from 3.3 to 4.6, the largest effect measured in this project — so
+ * "remove a card" was the answer to every reward screen. Tribute levels take
+ * that answer away without taking the choice away.
+ */
+describe('tribute levels', () => {
+  const run = () => {
+    const r = newRun(0x51ee7);
+    r.stage = 3;
+    r.depth = 3;
+    return r;
+  };
+
+  it('offers one card in each of the four suits, and nothing else', () => {
+    const rewards = makeRewards(run(), 'trial', 3);
+    expect(rewards).toHaveLength(4);
+    expect(rewards.every((r) => r.t === 'add')).toBe(true);
+    const suits = rewards.map((r) => (r.t === 'add' ? r.card.suit : -1)).sort();
+    expect(suits).toEqual([0, 1, 2, 3]);
+  });
+
+  it('varies only the suit, so the choice is about colour and nothing else', () => {
+    const rewards = makeRewards(run(), 'trial', 3);
+    const cards = rewards.map((r) => (r.t === 'add' ? r.card : null));
+    expect(new Set(cards.map((c) => c?.rank)).size).toBe(1);
+    expect(new Set(cards.map((c) => c?.ench)).size).toBe(1);
+    // Always enchanted: a forced add that is a pure tax is a punishment, not a
+    // decision.
+    expect(cards[0]?.ench).toBeTruthy();
+  });
+
+  it('gives every option its own uid, so the deck cannot collide with itself', () => {
+    const rewards = makeRewards(run(), 'trial', 3);
+    const uids = rewards.map((r) => (r.t === 'add' ? r.card.uid : -1));
+    expect(new Set(uids).size).toBe(4);
+  });
+
+  it('does not fire on levels between tributes', () => {
+    const r = newRun(0x51ee7);
+    r.stage = 4;
+    r.depth = 4;
+    expect(tributeDue(r)).toBe(false);
+    expect(makeRewards(r, 'trial', 3).every((x) => x.t === 'add')).toBe(false);
+  });
+
+  it('stands down at MAX_DECK, which is a measured cliff and not a soft cap', () => {
+    const r = run();
+    while (r.deck.length < MAX_DECK) {
+      r.deck.push({ uid: r.nextUid++, rank: 7, suit: 0, ench: null, curse: null });
+    }
+    expect(tributeDue(r)).toBe(false);
+    // And the ordinary roll comes back rather than the screen going empty.
+    expect(makeRewards(r, 'trial', 3).length).toBeGreaterThan(0);
+  });
+
+  it('never offers a remove on a tribute level, which is the whole point', () => {
+    for (let d = 3; d <= 24; d += 3) {
+      const r = newRun(0x1234 + d);
+      r.stage = d;
+      r.depth = d;
+      if (!tributeDue(r)) continue;
+      expect(makeRewards(r, 'trial', 3).some((x) => x.t === 'remove')).toBe(false);
+    }
+  });
 });

@@ -220,15 +220,21 @@ export function columnsFor(deckSize: number, mods: ModifierId[], charms: CharmId
  * end.
  */
 export function ratioFor(stage: number): number {
-  if (stage <= 3) return 1.7;
-  if (stage <= 6) return 1.55;
-  if (stage <= 9) return 1.4;
-  if (stage <= 13) return 1.25;
-  if (stage <= 17) return 1.1;
+  // Tightened 2026-09-08 on playtest feedback that the game was too easy. Every
+  // step is 0.15 lower than it was (1.70/1.55/1.40/1.25/1.10). The reference bot
+  // is a weak player and was already dying at median depth 3, so this looks
+  // brutal against its curve — but the bot is a lower bound, docs/ECONOMY.md is
+  // explicit that calibrating to it over-funds the game, and the owner plays
+  // well above it. Trust the human over the instrument here.
+  if (stage <= 3) return 1.55;
+  if (stage <= 6) return 1.4;
+  if (stage <= 9) return 1.25;
+  if (stage <= 13) return 1.1;
+  if (stage <= 17) return 0.95;
   // Geometric, so it always falls and never reaches zero. A floor here would
   // be a ceiling on difficulty, and a good enough deck would sit above it
   // forever.
-  return 1.1 * Math.pow(0.97, stage - 17);
+  return 0.95 * Math.pow(0.97, stage - 17);
 }
 
 /**
@@ -236,6 +242,9 @@ export function ratioFor(stage: number): number {
  * 37-39 moves for a 28-card deck across every stage sampled.
  */
 export const PLAIN_PAR_PER_CARD = 1.36;
+
+/** Gold paid per move finished under par. See the note at its use in app.ts. */
+export const UNDER_PAR_GOLD = 1;
 
 /** Measured: each point of modifier threat costs a plain board about this much. */
 /**
@@ -292,6 +301,27 @@ const THREAT_COMPENSATION = 0.7;
  * It stays blind to the player's build for the same reason as before: a move
  * an enchantment saves has to be a move the player keeps.
  */
+/**
+ * The most moves a cleared level may carry into the next one.
+ *
+ * The bank was an unbounded ratchet and it is the single biggest reason the
+ * game stopped biting. `budget = bank + stipend` and the whole leftover
+ * carried, so every level a player finished under its allowance added
+ * `stipend - used` to the bank permanently. That compounds: a playtest reached
+ * stage twenty-odd holding 600+ moves, at which point no board in the game can
+ * cost enough to matter and difficulty is decorative.
+ *
+ * The bank still does its job — the standing brief is that a run is the
+ * carried allowance, not any single board — but as a buffer rather than a war
+ * chest. One level's own allowance is the cap: enough to walk into the next
+ * board carrying a whole spare level for the one that goes wrong, never enough
+ * to stop reading the board. Surplus past that is not banked, and the reward
+ * screen says so rather than quietly dropping it.
+ */
+export function bankCap(level: Level): number {
+  return Math.max(4, level.budget - level.bank);
+}
+
 export function stipendFor(deckSize: number, stage: number, mods: ModifierId[], kind: NodeKind): number {
   // Modifiers make a board cost more, so paying the same for a board carrying
   // four of them is not the same difficulty at all — measured, a deep deal's
@@ -655,7 +685,7 @@ export function dealLevel(opts: DealOptions): Level {
   let undoCost: number | null = has(m, 'glass') ? 2 : 1;
   if (has(m, 'steady')) undoCost = null;
 
-  let baseGold = 12 + spec.stage * 3;
+  let baseGold = 8 + spec.stage * 2;
   if (spec.kind === 'gauntlet') baseGold = Math.round(baseGold * 1.6);
   if (spec.kind === 'boss') baseGold = Math.round(baseGold * 2.2);
   if (spec.kind === 'cache') baseGold = Math.round(baseGold * 0.7);

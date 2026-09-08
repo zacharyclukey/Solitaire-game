@@ -47,6 +47,16 @@ export interface RunStats {
   cardsTurned: number;
   levelsCleared: number;
   goldEarned: number;
+  /**
+   * Moves saved against par, totalled over the run.
+   *
+   * Beating par used to grant +1 to `bonusMoves`, which rides on top of every
+   * future stipend — a permanent allowance raise, awarded on most levels to
+   * anyone playing well, compounding for the rest of the run. Skill was buying
+   * immunity from the difficulty curve instead of a score. It pays here now,
+   * where it is worth something on the scoreboard and nothing at the table.
+   */
+  finesse: number;
 }
 
 export type Phase = 'queue' | 'level' | 'reward' | 'shop' | 'over';
@@ -145,7 +155,7 @@ export function newRun(seed: number, daily = false): RunState {
     levelMoves: [],
     rewards: [],
     shop: [],
-    stats: { movesSpent: 0, cardsTurned: 0, levelsCleared: 0, goldEarned: 0 },
+    stats: { movesSpent: 0, cardsTurned: 0, levelsCleared: 0, goldEarned: 0, finesse: 0 },
     score: 0,
   };
   return run;
@@ -380,6 +390,30 @@ export function makeRewards(run: RunState, kind: NodeKind, count: number): Rewar
     out.push(r);
   };
 
+  // Mandatory growth. Thinning measured as strictly the best play — capping
+  // deck growth raised mean run depth from 3.3 to 4.6, the largest effect
+  // measured anywhere in this project — so "remove a card" was the answer to
+  // every reward screen and there was no decision left in it. Every third
+  // level the deck HAS to grow, and the only question is where the card lands.
+  //
+  // It is not a pure tax. The card always arrives enchanted, and the four
+  // options are the same rank and the same enchantment in the four suits, so
+  // the choice is a real one about which colour and suit the deck can absorb —
+  // and about which suit you want that particular effect riding on.
+  //
+  // Written straight into `out` because `push` dedupes on reward type and
+  // would collapse the four suits into one option.
+  if (tributeDue(run)) {
+    const base = newCard(run, rng, true);
+    for (let suit = 0; suit < 4; suit++) {
+      out.push({
+        t: 'add',
+        card: { ...base, uid: suit === 0 ? base.uid : run.nextUid++, suit: suit as Suit },
+      });
+    }
+    return out;
+  }
+
   if (kind === 'boss') push({ t: 'charm', id: randomCharm(run, rng) ?? 'sleeve' });
 
   let guard = 0;
@@ -416,6 +450,25 @@ export function makeRewards(run: RunState, kind: NodeKind, count: number): Rewar
 
 /** Most skips a single market will honour, so a shop cannot become a catalogue. */
 export const MAX_MARKET_CREDIT = 3;
+
+/** Levels between forced deck growth. See the note in `makeRewards`. */
+export const TRIBUTE_EVERY = 3;
+
+/**
+ * Whether this level's rewards are the forced-growth kind.
+ *
+ * Exported so the reward screen's copy asks the same question `makeRewards`
+ * did, rather than sniffing the shape of the list it produced.
+ *
+ * A deck already at `MAX_DECK` is exempt. That cap is a measured cliff, not a
+ * soft ceiling — a bounded-lookahead player clears 8 of 12 boards at 31 cards
+ * and 2 of 12 at 34 — so growth stops there and the ordinary reward roll comes
+ * back. The tribute exists to stop thinning being free, not to push a deck
+ * past the size the game works at.
+ */
+export function tributeDue(run: RunState): boolean {
+  return run.depth > 0 && run.depth % TRIBUTE_EVERY === 0 && run.deck.length < MAX_DECK;
+}
 
 /**
  * Walking past a stage.
@@ -623,6 +676,7 @@ export function computeScore(run: RunState): number {
     run.stats.cardsTurned * 3 +
     run.gold +
     run.charms.length * 25 +
+    run.stats.finesse * 12 +
     run.bonusCells * 40 +
     deckPower
   );

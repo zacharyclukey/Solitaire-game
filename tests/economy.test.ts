@@ -3,7 +3,7 @@
  * a stipend that is deliberately blind to the player's build.
  */
 import { describe, expect, it } from 'vitest';
-import { dealLevel, ratioFor, stipendFor } from '../src/game/deal.ts';
+import { bankCap, dealLevel, ratioFor, stipendFor } from '../src/game/deal.ts';
 import { CAREFUL, playBot } from '../src/game/bot.ts';
 import { applyMove, cloneSim } from '../src/game/sim.ts';
 import { starterDeck } from '../src/game/run.ts';
@@ -223,5 +223,43 @@ describe('the solution a level hands back', () => {
         }).not.toThrow();
       }
     }
+  });
+});
+
+/**
+ * The bank was an unbounded ratchet: `budget = bank + stipend` with the whole
+ * leftover carrying meant a player finishing under allowance banked the
+ * difference permanently, every level, compounding. A playtest reached 600+
+ * banked moves, past which no board can cost enough to matter.
+ */
+describe('the bank cannot become a war chest', () => {
+  it("caps the carry at one level's own allowance", () => {
+    const lv = level(deck(4), 6, 0x2f1a4c, 40);
+    const stipend = lv.budget - lv.bank;
+    expect(bankCap(lv)).toBe(stipend);
+    // The most a player could physically hold at the end is the whole budget;
+    // only one level's worth of it may cross into the next board.
+    expect(bankCap(lv)).toBeLessThan(lv.budget);
+  });
+
+  it('does not let the cap grow with the bank it is capping', () => {
+    const lean = level(deck(4), 6, 0x2f1a4c, 0);
+    const fat = level(deck(4), 6, 0x2f1a4c, 500);
+    // Read off `budget` rather than the stipend, a fat bank would raise its own
+    // ceiling and the ratchet would survive the fix.
+    expect(bankCap(fat)).toBe(bankCap(lean));
+  });
+
+  it('holds the bank to a bounded fixed point across a long run', () => {
+    // A player who clears every level spending half its stipend. Under the old
+    // rule this diverges without limit; under the cap it settles.
+    let bank = 0;
+    for (let stage = 1; stage <= 25; stage++) {
+      const lv = level(deck(4), stage, 0x9ac1 + stage, bank);
+      const stipend = lv.budget - lv.bank;
+      const leftover = Math.max(0, lv.budget - Math.round(stipend * 0.5));
+      bank = Math.min(leftover, bankCap(lv));
+    }
+    expect(bank).toBeLessThan(120);
   });
 });

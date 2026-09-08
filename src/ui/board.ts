@@ -10,7 +10,7 @@
  * highlight code too; only their on-screen placement differs.
  */
 import type { Level } from '../game/deal.ts';
-import { legalMoves, stock, stockIdx, waste, wasteIdx, type Sim } from '../game/sim.ts';
+import { legalMoves, runStart, stock, stockIdx, waste, wasteIdx, type Sim } from '../game/sim.ts';
 import type { CardDef, Move } from '../game/types.ts';
 import { makeCardEl } from './cardview.ts';
 import { el } from './dom.ts';
@@ -232,6 +232,11 @@ export class BoardView {
         const shown = tableauCol || isWaste ? this.sim.up[id] === 1 : false;
         e.classList.toggle('up', shown);
         e.classList.toggle('down', !shown);
+        // A face-up card is not the same as an available one. Everything from
+        // `runStart` up travels as a single move; a face-up card BELOW that is
+        // visible but pinned, and looked identical to a free one. Dimming it
+        // makes "I can see it" and "I can move it" different states.
+        e.classList.toggle('buried', shown && tableauCol && i < runStart(this.sim, c));
         e.classList.toggle('tail', i === col.length - 1);
         e.classList.toggle('in-pile', !tableauCol);
         if (!animate) {
