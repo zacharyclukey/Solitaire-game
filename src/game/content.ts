@@ -490,7 +490,10 @@ export type ModifierId =
   | 'rich'
   | 'thindraw'
   | 'deepdraw'
-  | 'heavydraw';
+  | 'heavydraw'
+  | 'draw3'
+  | 'royalGates'
+  | 'onepass';
 
 export interface ModifierDef {
   id: ModifierId;
@@ -740,6 +743,76 @@ export const MODIFIERS: Record<ModifierId, ModifierDef> = {
     threat: 3,
     minDepth: 4,
     excludes: ['steady'],
+  },
+
+  /*
+   * The solitaire variations.
+   *
+   * `drawCount`, `empty`, `groups` and `passes` are RuleSet fields the sim has
+   * always honoured — `applyMove`, `canPlaceEmpty` and `runStart` read every
+   * one of them — and not one had ever been wired to a modifier, so every board
+   * in the game played standard Klondike on all four axes. Two items were
+   * collateral damage: Keystone's whole effect is bypassing empty-column
+   * restrictions ("under standard rules there are none to bypass — measured, it
+   * saved 0 of 19 lost boards") and Locksmith, a 60-gold rare, set `empty` to
+   * the value it already had. Both now have something to bypass.
+   *
+   * Threats are measured, not guessed. `scripts/rulecost.ts` flips each rule in
+   * place on a clone of the same board — dealing the arms separately lets the
+   * win-chance selector cancel the effect — at three search widths, stage 14,
+   * 24 boards, against a 92% control:
+   *
+   *   Three at a Time   75/79/79%   -13 to -17pp
+   *   Royal Gates @4    79/83/83%    -9 to -13pp
+   *   One Pass @0       83/83/83%    -9pp
+   *
+   * Three more were written and cut on the measurement rather than shipped:
+   *
+   *   Sealed Vaults      0/0/0%     -92pp   nothing may enter an empty column
+   *   Rust               4/8/8%     -84pp   no group moves
+   *   One Pass @1       92/92/92%     0pp   one recycle instead of two
+   *
+   * Empty columns are the only true sink in this game and carrying a run as a
+   * group is how the sink gets used, so the first two do not add difficulty,
+   * they remove the game; `tests/economy.test.ts` guards against either coming
+   * back. The third is the opposite failure — a modifier that reads as a
+   * restriction and costs exactly nothing — which is why One Pass ships at
+   * `passes: 0` rather than the 1 it was written with.
+   */
+  draw3: {
+    id: 'draw3',
+    tag: 'rule',
+    name: 'Three at a Time',
+    glyph: '⋮',
+    text: 'The draw turns three cards at once, and only the top one can be played.',
+    threat: 7,
+    minDepth: 3,
+    excludes: ['heavydraw'],
+  },
+  royalGates: {
+    id: 'royalGates',
+    tag: 'rule',
+    name: 'Royal Gates',
+    glyph: '⛩',
+    text: 'Only the five highest ranks may start an empty column.',
+    threat: 6,
+    minDepth: 8,
+    // Alone this is a -12pp rule, which is what it is priced at. Stacked on a
+    // board that is already paying for its draws it is not: measured at stage
+    // 10 on 16 boards with unlimited budget, rush+heavydraw+dense clears 11/16,
+    // and adding Royal Gates takes that to 5/16 while Royal Gates by itself
+    // costs 14/16. Restricting the empty-column sink and doubling the price of
+    // looking for something to put in one are the same tax twice.
+    excludes: ['heavydraw'],
+  },
+  onepass: {
+    id: 'onepass',
+    tag: 'rule',
+    name: 'One Pass',
+    glyph: '⟳',
+    text: 'The draw pile may be turned over once and never recycled.',
+    threat: 5,
+    minDepth: 6,
   },
 };
 

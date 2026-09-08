@@ -3,8 +3,9 @@
  * a stipend that is deliberately blind to the player's build.
  */
 import { describe, expect, it } from 'vitest';
-import { bankCap, dealLevel, ratioFor, stipendFor } from '../src/game/deal.ts';
+import { bankCap, buildRules, dealLevel, ratioFor, stipendFor } from '../src/game/deal.ts';
 import { CAREFUL, playBot } from '../src/game/bot.ts';
+import { MODIFIER_LIST, type ModifierId } from '../src/game/content.ts';
 import { applyMove, cloneSim } from '../src/game/sim.ts';
 import { starterDeck } from '../src/game/run.ts';
 import type { LevelSpec } from '../src/game/deal.ts';
@@ -261,5 +262,45 @@ describe('the bank cannot become a war chest', () => {
       bank = Math.min(leftover, bankCap(lv));
     }
     expect(bank).toBeLessThan(120);
+  });
+});
+
+/**
+ * A modifier may make a board hard. It may not make boards impossible.
+ *
+ * Sealed Vaults (nothing may enter an empty column) and Rust (no group moves)
+ * were both written, wired and very nearly shipped before `scripts/rulecost.ts`
+ * measured them at 0% and 4-8% against a 92% control. Empty columns are the
+ * only true sink in this game and carrying a run as a group is how the sink
+ * gets used, so removing either does not add difficulty — it removes the game.
+ *
+ * This is a collapse guard, not a rate: the sample is deliberately small and
+ * the threshold is far below any real modifier's cost (the heaviest, Suit Lock,
+ * measures -17pp). It only catches a rule that kills boards outright.
+ */
+describe('no rule modifier may be a board-killer', () => {
+  const RULE_MODS: ModifierId[] = MODIFIER_LIST.filter(
+    (m) => m.tag === 'rule' && m.threat > 0,
+  ).map((m) => m.id);
+
+  it('leaves every rule modifier with boards a player can still clear', () => {
+    const boards = [];
+    for (let i = 0; i < 8; i++) {
+      boards.push(level(deck(4), 10, (7717 + i * 2311) >>> 0, 9999).sim);
+    }
+    const control = boards.filter((b) => playBot(cloneSim(b), CAREFUL).won).length;
+    expect(control).toBeGreaterThan(4);
+
+    for (const id of RULE_MODS) {
+      let won = 0;
+      for (const b of boards) {
+        const s = cloneSim(b);
+        // Flipped in place on the same board, so the deal's win-chance selector
+        // cannot quietly compensate and hide the effect.
+        s.rules = buildRules([id], [], s.defs.map((d) => d.rank));
+        if (playBot(cloneSim(s), CAREFUL).won) won++;
+      }
+      expect(won, `${id} cleared ${won}/8 — that is a board-killer, not a modifier`).toBeGreaterThan(1);
+    }
   });
 });

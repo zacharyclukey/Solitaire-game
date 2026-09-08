@@ -98,6 +98,17 @@ export interface RuleSet {
   baseRank: number;
   /** Reveals required before Frozen cards thaw. */
   thawAt: number;
+  /**
+   * How far from `baseRank` a card may be and still open an empty column under
+   * `empty: 'top'`.
+   *
+   * A dial rather than a constant, because it was measured across its range
+   * (`scripts/rulecost.ts`, stage 14, rule flipped in place on 24 identical
+   * boards, 92% control): at 2 it costs -42pp, two and a half times the
+   * heaviest modifier in the game; at 4 it costs -9 to -13pp, which sits with
+   * Suit Lock and Three at a Time; at 6 it costs nothing at all. Shipped at 4.
+   */
+  gateWidth: number;
 }
 
 export const DEFAULT_RULES: RuleSet = {
@@ -112,6 +123,7 @@ export const DEFAULT_RULES: RuleSet = {
   maxGroup: 0,
   maxHeight: 0,
   baseRank: 13,
+  gateWidth: 4,
   thawAt: 6,
 };
 

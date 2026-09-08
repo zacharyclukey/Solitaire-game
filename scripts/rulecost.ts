@@ -20,7 +20,9 @@ import type { RuleSet } from '../src/game/types.ts';
  * rather than the rule.
  */
 const STAGE = 14, N = 24;
-const RULES: [string, (r: RuleSet) => void][] = [
+// `passes` is copied into `s.passesLeft` when the sim is built, so a rule that
+// touches it has to reach the sim too or it measures nothing at all.
+const RULES: [string, (r: RuleSet, s: Sim) => void][] = [
   ['(none)', () => {}],
   ['sameSuit', (r) => { r.match = 'suit'; }],
   ['gridlock', (r) => { r.maxGroup = 3; }],
@@ -28,6 +30,18 @@ const RULES: [string, (r: RuleSet) => void][] = [
   ['tithe', (r) => { r.emptyCost = 2; }],
   ['heavydraw', (r) => { r.drawCost = 2; }],
   ['anyColor', (r) => { r.match = 'any'; }],
+  // Round two. Sealed Vaults (empty: 'none') measured 0% and Rust
+  // (groups: false) 4-8% against a 92% control: those are not modifiers, they
+  // are board-killers, and both are cut. One Pass measured exactly 0pp, so the
+  // question there is whether NO recycle does anything either. Royal Gates
+  // measured -42pp, far outside the band any current modifier occupies
+  // (Suit Lock, the heaviest at threat 8, is -17pp), so the softer widths are
+  // under test to find a shippable version.
+  ['draw3', (r) => { r.drawCount = 3; }],
+  ['gates3 (|d|<=2)', (r) => { r.empty = 'top'; }],
+  ['gates5 (|d|<=4)', (r) => { r.empty = 'top'; r.gateWidth = 4; }],
+  ['gates7 (|d|<=6)', (r) => { r.empty = 'top'; r.gateWidth = 6; }],
+  ['nopass', (r, s) => { r.passes = 0; s.passesLeft = 0; }],
 ];
 const WIDTHS = [4, 14, 30];
 
@@ -48,7 +62,7 @@ for (const [name, apply] of RULES) {
     for (const b of boards) {
       const s = cloneSim(b);
       s.rules = { ...s.rules };
-      apply(s.rules);
+      apply(s.rules, s);
       if (playBot(cloneSim(s), { ...CAREFUL, width: w }).won) won++;
     }
     out.push(`${((won / N) * 100).toFixed(0)}%`.padStart(6));

@@ -1168,6 +1168,82 @@ dealt instead. It is now `fallback: boolean`, which is what it actually meant.
 The QA log prints something worth reading as a result: `"fallback":false` on
 every level, where it used to print `"relaxed":0`.
 
+## 6f-bis. Four rules the sim had and the game never used
+
+`RuleSet` carries `drawCount`, `empty`, `groups` and `passes`. `applyMove`,
+`canPlaceEmpty` and `runStart` have always honoured all four. Not one of them
+had ever been wired to a modifier, so every board ever dealt played standard
+Klondike on those axes, and `canPlaceEmpty` contained a branch for a rule
+("Royal Gates") that nothing could switch on.
+
+Two items were collateral damage. **Locksmith** — a 60-gold rare reading
+"Empty-column restrictions never apply to you" — set `empty` to `'any'`, which
+is what it already was: a rare that did nothing whatsoever. **Keystone**'s note
+already recorded the symptom without finding the cause: "under standard rules
+there are none to bypass — measured, it saved 0 of 19 lost boards."
+
+Everything was priced with `scripts/rulecost.ts`, which flips the rule in place
+on a clone of the same board — dealing the arms separately lets the win-chance
+selector cancel the effect — at three search widths, stage 14, 24 boards,
+against a 92% control.
+
+**Shipped:**
+
+| modifier | w4 | w14 | w30 | cost |
+|---|---|---|---|---|
+| Three at a Time (`drawCount: 3`) | 75% | 79% | 79% | -13 to -17pp |
+| Royal Gates (`empty: 'top'`, width 4) | 79% | 83% | 83% | -9 to -13pp |
+| One Pass (`passes: 0`) | 83% | 83% | 83% | -9pp |
+
+**Cut on the measurement:**
+
+| candidate | w4 | w14 | w30 | cost |
+|---|---|---|---|---|
+| Sealed Vaults (`empty: 'none'`) | 0% | 0% | 0% | -92pp |
+| Rust (`groups: false`) | 4% | 8% | 8% | -84pp |
+| One Pass as written (`passes: 1`) | 92% | 92% | 92% | 0pp |
+
+Empty columns are the only true sink in this game, and carrying a run as a group
+is how the sink gets used. Removing either does not make boards harder, it makes
+them impossible — so both were cut, and `tests/economy.test.ts` now guards every
+rule modifier against coming back as a board-killer. That guard was checked
+against the thing it guards: control 7/8, Rust 1/8, Sealed Vaults 0/8.
+
+One Pass is the opposite failure and the more instructive one. Written as
+`passes: 1` it reads like a real restriction, sounds punishing in the chip, and
+costs **exactly nothing** — the player model never needed the second recycle.
+It ships at `passes: 0` on the strength of the re-measurement, not the name.
+
+Royal Gates needed a dial rather than a yes/no. `canPlaceEmpty` admitted ranks
+within 2 of the base; measured across the range that is -42pp, two and a half
+times the heaviest modifier in the game. Within 6 is 0pp. Within 4 is -9 to
+-13pp, so `gateWidth` ships at 4.
+
+### The stacking hazard, which the isolate sweep cannot see
+
+Royal Gates alone is a -12pp rule. On a board already paying for its draws it is
+not. Measured at stage 10, 16 boards, unlimited budget, so only structure is
+under test:
+
+| board | cleared |
+|---|---|
+| no modifiers | 16/16 |
+| rush + heavydraw + dense | 11/16 |
+| **the same, plus Royal Gates** | **5/16** |
+| Royal Gates alone | 14/16 |
+
+Restricting the empty-column sink and doubling the price of hunting for
+something to put in one are the same tax charged twice, so Royal Gates excludes
+Heavy Draw. This is worth remembering as a general warning: a paired isolate
+sweep prices a rule against a *plain* board and is blind to superlinear
+stacking. `maxRulesFor` and `maxBoard` exist for the same reason, and the caps
+were not enough on their own here — it took an explicit exclusion.
+
+**Not re-measured, and therefore not claimed:** Keystone and Locksmith now have
+something to bypass, but their rescue and worth numbers were taken when there
+was nothing in the game for them to do. Neither has been re-audited, so neither
+has earned a `saves` or `pays` chip on this change alone.
+
 ## 6g. The difficulty tightening, measured
 
 Playtest feedback was that the game was too easy and paid too much gold. Three

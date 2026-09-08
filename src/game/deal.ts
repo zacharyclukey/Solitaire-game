@@ -115,6 +115,12 @@ export function buildRules(mods: ModifierId[], charms: CharmId[], ranks: number[
   if (has(mods, 'heavydraw')) r.drawCost = 2;
   if (has(mods, 'gridlock')) r.maxGroup = 3;
   if (has(mods, 'ceiling')) r.maxHeight = 9;
+  if (has(mods, 'draw3')) r.drawCount = 3;
+  if (has(mods, 'royalGates')) r.empty = 'top';
+  if (has(mods, 'onepass')) r.passes = 0;
+  // Last, so it beats the two rules above rather than being beaten by them.
+  // This is the charm's entire effect and until Royal Gates and Sealed Vaults
+  // existed it set `empty` to the value it already had.
   if (charms.includes('locksmith')) r.empty = 'any';
   if (charms.includes('sorter')) r.maxGroup = 0;
   return r;

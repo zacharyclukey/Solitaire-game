@@ -157,7 +157,7 @@ export function canPlaceEmpty(d: CardDef, R: RuleSet): boolean {
   if (d.stuck) return false;
   if (R.empty === 'none') return false;
   // "Royal Gates" admits the three ranks nearest the natural base of a stack.
-  if (R.empty === 'top') return Math.abs(d.rank - R.baseRank) <= 2;
+  if (R.empty === 'top') return Math.abs(d.rank - R.baseRank) <= R.gateWidth;
   return true;
 }
 
