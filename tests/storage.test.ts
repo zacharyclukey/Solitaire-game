@@ -11,7 +11,9 @@
  * so a field added in future is covered without anyone remembering to.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { newRun, type RunState } from '../src/game/run.ts';
+import { newRun, starterDeck, type RunState } from '../src/game/run.ts';
+import { dealLevel, type LevelSpec } from '../src/game/deal.ts';
+import { simKey } from '../src/game/sim.ts';
 
 /** The test environment is node; storage.ts wants the browser's localStorage. */
 function stubStorage(): void {
@@ -71,5 +73,50 @@ describe('loading a save written by an older build', () => {
     localStorage.setItem(KEY, '{not json');
     const store = await freshStorage();
     expect(store.getRun()).toBeNull();
+  });
+});
+
+/**
+ * A resumed level re-deals from the saved spec and replays the saved moves into
+ * the result. That is only sound while the same spec deals the same board — and
+ * it does not. `dealLevel` picks its layout by win chance against the
+ * allowance, so the allowance is part of the board's identity, and every
+ * balance pass moves the allowance. `applyMove` checks nothing, so the old
+ * moves were applied to the new layout regardless.
+ */
+describe('resuming a level saved by an older build', () => {
+  beforeEach(() => stubStorage());
+
+  const spec: LevelSpec = { stage: 6, kind: 'trial', modifiers: ['narrow'], seed: 0x1234 };
+  const deal = (bonusMoves: number) =>
+    dealLevel({ deck: starterDeck(), charms: [], spec, bonusMoves, bonusCells: 0, bank: 0 });
+
+  it('deals a different board for the same spec once the allowance moves', () => {
+    // The whole reason the fingerprint has to exist: the spec does not
+    // determine the board, because the layout is chosen by win chance against
+    // the allowance. If this ever stops being true the guard becomes redundant
+    // rather than wrong.
+    expect(simKey(deal(0).sim)).not.toBe(simKey(deal(5).sim));
+  });
+
+  it('gives a save written before the field a fingerprint that cannot match', async () => {
+    const run = newRun(999);
+    run.depth = 3;
+    const old: Record<string, unknown> = { ...run };
+    delete old.levelKey;
+    localStorage.setItem(KEY, JSON.stringify({ version: 1, run: old }));
+    const loaded = (await freshStorage()).getRun();
+    // null rather than undefined, and null is never equal to a dealt board's
+    // key, so every pre-existing mid-level save replays nothing.
+    expect(loaded?.levelKey).toBeNull();
+    expect(loaded?.levelKey === simKey(deal(0).sim)).toBe(false);
+  });
+
+  it('carries a fingerprint the save does have through a round trip', async () => {
+    const run = newRun(999);
+    run.levelKey = simKey(deal(0).sim);
+    localStorage.setItem(KEY, JSON.stringify({ version: 1, run }));
+    const loaded = (await freshStorage()).getRun();
+    expect(loaded?.levelKey).toBe(run.levelKey);
   });
 });

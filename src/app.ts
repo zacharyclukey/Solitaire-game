@@ -38,7 +38,7 @@ import { analyse, type PostMortem } from './game/postmortem.ts';
 import { findRescue } from './game/rescue.ts';
 import { ask, questionById, type Answer } from './game/oracle.ts';
 import { resolveUndo } from './game/resources.ts';
-import { applyMove, cloneSim, dig, isWon, legalMoves, pry, sameMove, settle, stock, waste, type Sim, type SimEvent } from './game/sim.ts';
+import { applyMove, cloneSim, dig, isWon, legalMoves, pry, sameMove, settle, simKey, stock, waste, type Sim, type SimEvent } from './game/sim.ts';
 import { findSolution } from './game/solver.ts';
 import {
   emptyStreak,
@@ -399,10 +399,40 @@ export class App {
     this.board.mount(level);
     this.hud.setDealing(false);
 
-    if (replay?.length) {
+    // The board a resume re-deals is not guaranteed to be the board those moves
+    // were played on: dealLevel picks its layout by win chance against the
+    // allowance, so the same spec and seed deal differently once the allowance
+    // moves, and every balance pass moves it. Replaying regardless applied old
+    // moves to a new layout — applyMove does not check legality — moving cards
+    // that were not there and splicing past the end of columns.
+    //
+    // Checked on a clone before anything touches the live sim, because the
+    // board view holds `level.sim` by reference and cannot be handed a
+    // replacement after mounting.
+    const dealtKey = simKey(level.sim);
+    let replayable = (replay?.length ?? 0) > 0 && run.levelKey === dealtKey;
+    if (replayable) {
+      const probe = cloneSim(level.sim);
+      for (const m of replay!) {
+        const mv = m as Move;
+        if (!legalMoves(probe, false).some((x) => sameMove(x, mv))) {
+          replayable = false;
+          break;
+        }
+        applyMove(probe, mv, null);
+      }
+    }
+    if (replay?.length && !replayable) {
+      run.levelMoves = [];
+      toast('This board changed since you saved it. Starting it fresh.', 'info');
+    }
+    run.levelKey = dealtKey;
+    this.persist();
+
+    if (replayable) {
       // Rebuild the undo stack as we replay, so a resumed level plays exactly
       // like one that was never interrupted.
-      for (const m of replay) {
+      for (const m of replay!) {
         this.history.push({ sim: cloneSim(level.sim), offBook: this.offBookSpend });
         applyMove(level.sim, m as Move, null);
       }

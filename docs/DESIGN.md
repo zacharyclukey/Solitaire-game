@@ -1400,6 +1400,42 @@ they did at first and which cancelled the footing rule on the three levels a
 tribute fires. A tribute therefore offers between two and four suits rather than
 always four; two is still a choice, and it beats offering a card you own.
 
+## 6h-ter. The saved board was not the board
+
+A resumed level does not store its board. It stores the `LevelSpec` and the
+moves played, re-deals from the spec, and replays the moves into the result.
+That is only sound while the same spec deals the same board.
+
+It does not. `dealLevel` chooses its layout by estimated win chance against the
+**allowance** — `winChance(stipendBase, thisPlainPar, ...)` — so the allowance is
+part of the board's identity. Dealing one spec at two allowances gives two
+different boards, and **every balance pass moves the allowance**. This session
+alone moved it three times: `ratioFor`, the bank cap, and under-par no longer
+granting `bonusMoves`.
+
+Measured: holding the spec and seed fixed and changing only the allowance by
+the size of this session's tightening, the layout differs on **68 of 240
+boards (28%)**.
+
+`applyMove` checks nothing. So a player who quit mid-level under an older build
+and came back under a newer one had their old moves applied to a new layout —
+moving cards that were not in those columns, splicing at indices past the end.
+Silent, and it looks like a corrupted board rather than an upgrade.
+
+The run now carries `levelKey`, a fingerprint of the board the moves were played
+on, and a resume replays only when it matches. The check runs on a clone first,
+because `BoardView` holds `level.sim` by reference from `mount` and cannot be
+handed a replacement afterwards. A save written before the field has `levelKey`
+null — which is the right answer for those saves too, since they cannot be
+trusted either — and the board is simply dealt fresh with a line of copy saying
+so.
+
+This is the same shape as the `completeRun` fix and deserves the same note: the
+bug is not that a particular field was missed, it is that **a save is only as
+valid as the assumption that the generator is a pure function of what was
+saved**. It is not, and it never will be while boards are selected on
+affordability. The fingerprint fixes the class.
+
 ## 6i. Two checks that came back clean
 
 Recorded because a negative result nobody wrote down gets re-run forever.

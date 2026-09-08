@@ -100,6 +100,22 @@ export interface RunState {
   current: LevelSpec | null;
   /** Moves played in the current level, for save/resume by replay. */
   levelMoves: { kind: string; from: number; fromIdx: number; to: number; cost: number }[];
+  /**
+   * Fingerprint of the board those moves were played on.
+   *
+   * A resume re-deals from the spec and replays `levelMoves` into the result,
+   * but the dealt board is not a pure function of the spec: `dealLevel` picks
+   * its layout by win chance against the allowance, so the SAME spec and seed
+   * deal a different board when the allowance changes. Every balance pass moves
+   * the allowance, which means every balance pass silently invalidates the
+   * mid-level saves already on players' devices — and `applyMove` does not
+   * check legality, so the old moves were smeared onto the new layout, moving
+   * cards that were not there and splicing at indices past the end.
+   *
+   * Null on a save written before this field existed, which is the correct
+   * answer for those saves too: they cannot be trusted either.
+   */
+  levelKey: string | null;
   rewards: Reward[];
   shop: ShopItem[];
   stats: RunStats;
@@ -154,6 +170,7 @@ export function newRun(seed: number, daily = false): RunState {
     phase: 'queue',
     current: null,
     levelMoves: [],
+    levelKey: null,
     rewards: [],
     shop: [],
     stats: { movesSpent: 0, cardsTurned: 0, levelsCleared: 0, goldEarned: 0, finesse: 0 },
