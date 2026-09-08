@@ -40,8 +40,10 @@ export interface Level {
   fallback: boolean;
   /** Modifiers actually in force. */
   modifiers: ModifierId[];
-  undosLeft: number;
-  undoCostsMove: boolean;
+  /** Undos that cost nothing this level, from charms. */
+  freeUndos: number;
+  /** Moves each further undo costs; null when undo is barred outright. */
+  undoCost: number | null;
   timeLimit: number; // seconds; 0 = untimed
   peeksLeft: number;
   solution: Move[] | null;
@@ -645,9 +647,13 @@ export function dealLevel(opts: DealOptions): Level {
     }
   }
 
-  let undos = 3;
-  if (charms.includes('dice')) undos += 2;
-  if (has(m, 'steady')) undos = 0;
+  // Undo is unlimited and priced in moves rather than rationed by a counter: a
+  // player who wants to explore a line can always back out of it, and the
+  // economy is what stops them doing it forever. Charms buy free ones.
+  let freeUndos = 0;
+  if (charms.includes('dice')) freeUndos += 3;
+  let undoCost: number | null = has(m, 'glass') ? 2 : 1;
+  if (has(m, 'steady')) undoCost = null;
 
   let baseGold = 12 + spec.stage * 3;
   if (spec.kind === 'gauntlet') baseGold = Math.round(baseGold * 1.6);
@@ -663,8 +669,8 @@ export function dealLevel(opts: DealOptions): Level {
     stockSize,
     fallback,
     modifiers: activeMods,
-    undosLeft: undos,
-    undoCostsMove: has(m, 'glass'),
+    freeUndos,
+    undoCost,
     timeLimit: has(m, 'rush') ? 120 : 0,
     peeksLeft: charms.includes('xray') ? 1 : 0,
     solution: bestSolution,

@@ -147,7 +147,7 @@ export class Hud {
     this.timer.classList.toggle('hidden', level.timeLimit === 0);
   }
 
-  update(level: Level, sim: Sim, opts: { canUndo: boolean }): void {
+  update(level: Level, sim: Sim, opts: { undoPrice: number | null }): void {
     this.moves.textContent = String(Math.max(0, sim.movesLeft));
     // Deliberately no par, no carry, no deficit against a standard deck. While
     // a board is being played the only number that changes anything the player
@@ -162,9 +162,13 @@ export class Hud {
     (this.bar.firstElementChild as HTMLElement).style.width = `${((total - left) / total) * 100}%`;
     this.movesBox.classList.toggle('low', sim.movesLeft <= 5);
     this.movesBox.classList.toggle('critical', sim.movesLeft <= 2);
+    // Undo is unlimited and priced, so the button shows what the next one
+    // costs rather than how many are left: "free" while a charm is covering
+    // them, otherwise the moves it will take. Disabled means barred by a rule
+    // or simply unaffordable.
     this.undoBtn.querySelector('.act-count')!.textContent =
-      level.undosLeft > 20 ? '∞' : String(level.undosLeft);
-    this.undoBtn.disabled = !opts.canUndo || level.undosLeft <= 0;
+      opts.undoPrice === null ? '—' : opts.undoPrice === 0 ? 'free' : `−${opts.undoPrice}`;
+    this.undoBtn.disabled = opts.undoPrice === null;
     // Cheapest reading is 1 move; below that the Oracle has nothing to sell.
     this.hintBtn.querySelector('.act-count')!.textContent = '−1';
     this.hintBtn.disabled = sim.movesLeft < 1;

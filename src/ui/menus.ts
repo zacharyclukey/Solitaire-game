@@ -568,7 +568,8 @@ export function openOracle(opts: {
   insight: () => number;
   ask: (id: QuestionId) => Promise<Answer>;
   rewind: (moves: number) => void;
-  undosLeft: () => number;
+  /** Moves it would cost to step back this far, or null if it cannot be done. */
+  rewindCost: (moves: number) => number | null;
 }): void {
   const tally = el('p', { class: 'oracle-insight' });
   const answer = el('div', { class: 'oracle-answer' });
@@ -593,10 +594,15 @@ export function openOracle(opts: {
             const parts: (Node | null)[] = [el('p', { class: `oracle-said ${a.tone}` }, [a.text])];
             if (a.rewind && a.rewind > 0) {
               const need = a.rewind;
+              // Undos are unlimited and priced, so this is gated on what the
+              // purse can afford rather than on a counter, and it says so.
+              const cost = opts.rewindCost(need);
               const rb = el('button', { class: 'btn ghost', type: 'button' }, [
-                `Step back ${need} ${need === 1 ? 'move' : 'moves'} (${need} ${need === 1 ? 'undo' : 'undos'})`,
+                cost === null
+                  ? `Not enough moves to step back ${need}`
+                  : `Step back ${need} ${need === 1 ? 'move' : 'moves'}${cost === 0 ? ' (free)' : ` (−${cost} moves)`}`,
               ]) as HTMLButtonElement;
-              rb.disabled = opts.undosLeft() < need;
+              rb.disabled = cost === null;
               rb.addEventListener('click', () => opts.rewind(need));
               parts.push(rb);
             }

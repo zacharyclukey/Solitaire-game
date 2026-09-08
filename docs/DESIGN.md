@@ -164,6 +164,13 @@ Two consequences worth stating plainly:
   all — measured, not assumed (`docs/ECONOMY.md`, "unwinnable, not unfound").
   Bankruptcy survives only as a floor: a board with
   essentially no chance is not dealt at all.
+- **Undo is unlimited and priced in moves, not rationed by a counter.** It used
+  to be three a level, which made exploring a line a thing you could run out of
+  rather than a thing you paid for. Each undo now costs a move (two under
+  Glasswork, barred outright by Steady Hand), charms buy free ones, and the
+  economy is what stops a player rewinding forever. The price is charged
+  off-the-books so that restoring the snapshot cannot hand back the very move
+  being spent — otherwise undo funds itself and is free however often it is used.
 - **The Oracle and undo got more expensive without changing price.** They always
   cost moves; now those moves would otherwise have carried, so a reading on
   stage 3 is felt on stage 12.
@@ -363,8 +370,8 @@ optimal.
 cards have turned), *Rooted* (never enters an empty column) and *Shrouded* (does
 not turn by itself; you pay a move for it).
 
-**15 charms**, run-wide passives: more moves, more undos, more reserve, gold
-multipliers, and a few that switch a rule off (`Locksmith` ignores empty-column
+**15 charms**, run-wide passives: more moves, free undos, a shallower tableau,
+gold multipliers, and a few that switch a rule off (`Locksmith` ignores empty-column
 restrictions; `Sorting Tray` ignores Rust).
 
 **22 level modifiers**, each tagged:
@@ -806,10 +813,10 @@ Beacon, a Kickback or a Spare Sleeve; a line thrown away well before the end
 reads as Loaded Dice. The whole analysis runs in about 350ms, after the screen
 is already up.
 
-One subtlety that had to be fixed to make it honest: hints, and undos under
-Glasswork, spend moves without appearing in the replayed move list. Left
-uncorrected the analysis would have started from a budget the player never had
-and cleared them of a loss that was genuinely theirs.
+One subtlety that had to be fixed to make it honest: hints and undos spend moves
+without appearing in the replayed move list. Left uncorrected the analysis would
+have started from a budget the player never had and cleared them of a loss that
+was genuinely theirs.
 
 ## 6. Technical shape
 

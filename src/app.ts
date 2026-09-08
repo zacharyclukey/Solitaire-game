@@ -425,7 +425,7 @@ export class App {
 
   private refresh(): void {
     const level = this.level!;
-    this.hud.update(level, level.sim, { canUndo: this.history.length > 0 });
+    this.hud.update(level, level.sim, { undoPrice: this.undoPrice() });
   }
 
   private async doMove(mv: Move): Promise<void> {
@@ -521,23 +521,36 @@ export class App {
     if (stuck) await this.onStuck();
   }
 
+  /**
+   * What the next undo would cost: 0 while free ones remain, null when undo is
+   * barred or unaffordable. Undos are unlimited, so affordability is the only
+   * thing standing between the player and another one.
+   */
+  private undoPrice(): number | null {
+    const level = this.level;
+    if (!level || !this.history.length || level.undoCost === null) return null;
+    if (level.freeUndos > 0) return 0;
+    return level.sim.movesLeft >= level.undoCost ? level.undoCost : null;
+  }
+
   private undo(): void {
     const level = this.level;
-    if (!level || !this.history.length || level.undosLeft <= 0) return;
+    if (!level || this.undoPrice() === null) return;
     const snap = this.history.pop()!;
     this.tally.undos += 1;
     restoreSim(level.sim, snap.sim);
-    // Glasswork's surcharge goes on the books before the sums are done, so it
-    // is charged like any other off-the-books spend and cannot be undone away.
-    if (level.undoCostsMove) this.offBookSpend += 1;
     const after = resolveUndo({
       restoredMovesLeft: level.sim.movesLeft,
       offBookAtSnapshot: snap.offBook,
-      offBookNow: this.offBookSpend,
-      undosLeft: level.undosLeft,
+      offBookBefore: this.offBookSpend,
+      freeUndos: level.freeUndos,
+      undoCost: level.undoCost ?? 0,
     });
+    // The price goes on the books, so restoring the snapshot cannot hand back
+    // the very move being spent on the undo.
+    this.offBookSpend += after.charged;
     level.sim.movesLeft = after.movesLeft;
-    level.undosLeft = after.undosLeft;
+    level.freeUndos = after.freeUndos;
     this.run?.levelMoves.pop();
     this.board.clearSelection();
     this.board.clearHint();
@@ -560,7 +573,11 @@ export class App {
     if (!level || this.board.busy) return;
     openOracle({
       insight: () => Math.max(0, level.sim.movesLeft),
-      undosLeft: () => level.undosLeft,
+      rewindCost: (n: number) => {
+        if (level.undoCost === null || this.history.length < n) return null;
+        const cost = Math.max(0, n - level.freeUndos) * level.undoCost;
+        return cost <= level.sim.movesLeft ? cost : null;
+      },
       ask: async (id) => {
         const q = questionById(id);
         // Paid out of the same allowance the board is played with, and logged
@@ -696,7 +713,10 @@ export class App {
   private undoCanOpenAnything(): boolean {
     const level = this.level;
     if (!level) return false;
-    const reach = Math.min(level.undosLeft, this.history.length);
+    const affordable = level.undoCost === null
+      ? 0
+      : level.freeUndos + Math.floor(level.sim.movesLeft / Math.max(1, level.undoCost));
+    const reach = Math.min(affordable, this.history.length);
     for (let i = 0; i < reach; i++) {
       const past = this.history[this.history.length - 1 - i];
       if (legalMoves(past.sim, true).length > 1) return true;
@@ -706,7 +726,7 @@ export class App {
 
   private async onStuck(): Promise<void> {
     const level = this.level!;
-    const hasUndos = level.undosLeft > 0 && this.history.length > 0;
+    const hasUndos = this.undoPrice() !== null;
     const canUndo = hasUndos && this.undoCanOpenAnything();
     const outOfMoves = level.sim.movesLeft <= 0;
 
@@ -721,7 +741,7 @@ export class App {
               ? 'The moves are gone, and every position you could step back to has only the one move that spent them.'
               : 'Nothing can be played, and every position you could step back to has only the move that led here.',
           ]),
-          el('p', {}, [`Undoing cannot open a different line, so the ${level.undosLeft === 1 ? 'undo' : 'undos'} you have left would not change this.`]),
+          el('p', {}, ['Undoing cannot open a different line, so the moves it would cost buy nothing.']),
         ]),
         dismissable: false,
         actions: [{ label: 'End the run', kind: 'danger', value: 'end' }],
@@ -739,7 +759,7 @@ export class App {
           : 'Nothing can be played from this position.'),
         dismissable: false,
         actions: [
-          { label: `Undo (${level.undosLeft})`, kind: 'primary', value: 'undo' },
+          { label: this.undoPrice() === 0 ? 'Undo (free)' : `Undo (−${this.undoPrice()} moves)`, kind: 'primary', value: 'undo' },
           { label: 'End the run', kind: 'danger', value: 'end' },
         ],
       });

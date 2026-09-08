@@ -66,6 +66,7 @@ describe('the guided first level', () => {
   it('never runs the player out of moves', () => {
     const level = buildTutorialLevel();
     expect(level.budget).toBeGreaterThan(level.par);
-    expect(level.undosLeft).toBeGreaterThan(10);
+    // Undos are priced in moves elsewhere; a lesson must never charge for one.
+    expect(level.freeUndos).toBeGreaterThan(10);
   });
 });

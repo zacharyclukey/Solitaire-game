@@ -87,8 +87,8 @@ export function buildTutorialLevel(): Level {
     stockSize: STOCK.length,
     fallback: false,
     modifiers: [],
-    undosLeft: 99,
-    undoCostsMove: false,
+    freeUndos: 99, // nothing in a lesson should cost the learner moves
+    undoCost: 1,
     timeLimit: 0,
     peeksLeft: 0,
 
