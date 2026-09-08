@@ -1,6 +1,6 @@
 import { dealLevel } from '../src/game/deal.ts';
 import { CAREFUL, playBot } from '../src/game/bot.ts';
-import { newRun, stageSpec } from '../src/game/run.ts';
+import { MAX_DECK, newRun, stageSpec } from '../src/game/run.ts';
 import { Rng } from '../src/game/rng.ts';
 import type { DeckCard, EnchantId, Suit } from '../src/game/types.ts';
 
@@ -45,7 +45,18 @@ function run(seed: number, enchants: number, KIT: EnchantId[]): number {
     const res = playBot(level.sim, CAREFUL);
     if (!res.won) return stage - 1;
     bank = res.movesLeft;
-    deck.push({ uid: uid++, rank: rng.range(1, 13), suit: rng.int(4) as Suit, ench: null, curse: null });
+    // Mirrors run.ts's newCard, which is not exported. Uniform ranks 1-13 are
+    // NOT what the game generates, and growing decks that way is one of this
+    // project's four documented harness artifacts: the real generator extends
+    // the rank ladder 65% of the time, because high ranks are the scarce
+    // resource (only they can base a column). Measured, the uniform version
+    // shortens runs by about a quarter. The MAX_DECK cap matters for the same
+    // reason — the game refuses to add past it.
+    if (deck.length < MAX_DECK) {
+      const hi = Math.max(...deck.map((c) => c.rank));
+      const rank = hi < 13 && rng.next() < 0.65 ? hi + 1 : rng.range(1, hi);
+      deck.push({ uid: uid++, rank, suit: rng.int(4) as Suit, ench: null, curse: null });
+    }
   }
   return MAX_STAGE;
 }
