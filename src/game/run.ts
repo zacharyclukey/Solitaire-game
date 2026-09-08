@@ -13,6 +13,7 @@ import {
   ENCHANTS,
   ENCHANT_LIST,
   MODIFIERS,
+  MODIFIER_LIST,
   type CharmId,
   type ConsumableId,
   type ModifierId,
@@ -177,6 +178,7 @@ function pickModifiers(
   allowBoon: boolean,
   maxRules = 1,
   maxBoard = 2,
+  minCount = 0,
 ): ModifierId[] {
   const chosen: ModifierId[] = [];
   let threat = 0;
@@ -216,6 +218,43 @@ function pickModifiers(
     if (MODIFIERS[pick].tag === 'rule') rules++;
     if (MODIFIERS[pick].tag === 'board') board++;
     threat += MODIFIERS[pick].threat;
+  }
+
+  /*
+   * Texture, once the threat budget is met.
+   *
+   * The loop above stops the moment `threat >= targetThreat`, so a board's
+   * whole character came down to two or three heavy modifiers and most levels
+   * looked like most other levels. This tops the board up to `minCount` with
+   * the cheapest thing still legal, so a board reads as more distinctive
+   * without being priced much harder — the threat it does add is most of the
+   * way compensated in `stipendFor`.
+   *
+   * Cheapest by threat, NOT by absolute threat. Ranking on `Math.abs` put the
+   * -2 and -3 boons at the front of the queue, so every board in the game
+   * picked up Bounty or Riches and the texture pass quietly became a gold
+   * faucet — directly against the balance change it shipped alongside. Boons
+   * are the fallback here, not the default.
+   */
+  guard = 0;
+  while (chosen.length < minCount && guard++ < 24) {
+    const legal = MODIFIER_LIST.filter(
+      (m) =>
+        m.minDepth <= depth &&
+        !chosen.includes(m.id) &&
+        !conflicts(m.id, chosen) &&
+        (m.tag !== 'rule' || rules < maxRules) &&
+        (m.tag !== 'board' || board < maxBoard),
+    );
+    if (legal.length === 0) break;
+    const banes = legal.filter((m) => m.threat > 0);
+    const cands = banes.length ? banes : legal;
+    const cheapest = Math.min(...cands.map((m) => m.threat));
+    const pick = rng.pick(cands.filter((m) => m.threat === cheapest));
+    chosen.push(pick.id);
+    if (pick.tag === 'rule') rules++;
+    if (pick.tag === 'board') board++;
+    threat += pick.threat;
   }
   return chosen;
 }
@@ -278,10 +317,17 @@ export function stageSpec(run: RunState, stage: number): LevelSpec {
   // Every third stage runs hot: worse rules, but a skip worth taking.
   const hot = stage % 3 === 0;
   const target = stage * 1.05 + 1 + (hot ? 5 : 0);
+  const cap = maxModsFor(stage) + (hot ? 1 : 0);
+  // A gauntlet should LOOK like one before it is played. It already carried a
+  // heavier threat target, but threat buys two or three big modifiers and the
+  // board still read like an ordinary one, so the floor is what makes it
+  // distinct. Ordinary boards get a floor too, one lower, because a bare board
+  // at stage 4 is a board with nothing to say.
+  const floor = Math.min(cap, hot ? 3 : 2);
   return {
     stage,
     kind: hot ? 'gauntlet' : 'trial',
-    modifiers: pickModifiers(rng, stage, target, maxModsFor(stage) + (hot ? 1 : 0), !hot && rng.next() < 0.4, maxRulesFor(stage)),
+    modifiers: pickModifiers(rng, stage, target, cap, !hot && rng.next() < 0.4, maxRulesFor(stage), 2, floor),
     seed: subSeed(run.seed, stage, 2),
   };
 }

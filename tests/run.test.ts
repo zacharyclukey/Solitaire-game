@@ -430,3 +430,60 @@ describe('tribute levels', () => {
     }
   });
 });
+
+/**
+ * Boards carry a floor of modifiers so a level has something to say, not just
+ * whatever the threat budget bought. The hazard is what the floor reaches for.
+ */
+describe('the modifier floor', () => {
+  const specs = (seed: number, to = 14) => {
+    const run = newRun(seed);
+    return Array.from({ length: to }, (_, i) => stageSpec(run, i + 1));
+  };
+
+  it('gives ordinary boards something to say past the opening', () => {
+    for (const seed of [20240601, 777, 31337]) {
+      for (const s of specs(seed).slice(2)) {
+        expect(s.modifiers.length, `stage ${s.stage} of seed ${seed} came out bare`).toBeGreaterThan(1);
+      }
+    }
+  });
+
+  it('makes a gauntlet look like one before it is played', () => {
+    for (const seed of [20240601, 777, 31337]) {
+      for (const s of specs(seed).filter((x) => x.kind === 'gauntlet')) {
+        expect(s.modifiers.length).toBeGreaterThan(2);
+      }
+    }
+  });
+
+  it('does not become a gold faucet', () => {
+    // Ranking fill candidates by Math.abs(threat) put the -2 and -3 boons at
+    // the front of the queue, so every board picked up Bounty or Riches and a
+    // texture pass quietly undid the gold cut it shipped beside. Banes first,
+    // boons only when nothing else is legal.
+    let boons = 0;
+    let total = 0;
+    for (const seed of [20240601, 777, 31337, 4242]) {
+      for (const s of specs(seed).slice(2)) {
+        for (const id of s.modifiers) {
+          total++;
+          if (MODIFIERS[id].threat < 0) boons++;
+        }
+      }
+    }
+    expect(total).toBeGreaterThan(20);
+    expect(boons / total).toBeLessThan(0.25);
+  });
+
+  it('still respects the rule and board caps the floor could otherwise blow past', () => {
+    for (const seed of [20240601, 777, 31337, 4242]) {
+      for (const s of specs(seed, 20)) {
+        const rules = s.modifiers.filter((id) => MODIFIERS[id].tag === 'rule').length;
+        const board = s.modifiers.filter((id) => MODIFIERS[id].tag === 'board').length;
+        expect(rules, `stage ${s.stage} of seed ${seed}`).toBeLessThan(4);
+        expect(board, `stage ${s.stage} of seed ${seed}`).toBeLessThan(4);
+      }
+    }
+  });
+});
