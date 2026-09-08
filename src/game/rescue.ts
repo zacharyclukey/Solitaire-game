@@ -12,18 +12,18 @@
  * one that does is the answer.
  *
  * Ordered by measured worth rather than flavour, so the likeliest answer is
- * found before the search budget runs out. Re-measured against honest shuffles
- * over 43 lost boards (`scripts/enchaudit.ts 40`, which clears the >=20 rule
- * the previous 14-board run did not): Anchor 53%, Ember 51%, Twin 40%,
- * Chameleon 30%, Kickback and Featherweight 28%, Bridge and Prism 26%,
- * Torch 21%.
+ * found before the search budget runs out. Re-measured 2026-09-08 over 76 lost
+ * boards (`scripts/enchaudit.ts 60`): Ember 21%, Anchor 18%, Prism 16%,
+ * Bridge 13%, Twin 12%, then Torch, Kickback, Featherweight and Chameleon all
+ * at 9%, Keystone 4%.
  *
- * That re-run moved two things. Twin is clearly ahead of Chameleon rather than
- * tied with it, and Torch is clearly behind Bridge and Prism rather than beside
- * them — so the old order searched a weaker card first. And Kickback and
- * Featherweight rescue more boards than three cards that were being searched,
- * while not being searched at all: they were assumed to be pure economy, but a
- * loss for want of moves is still a loss this screen has to explain.
+ * Every rate roughly HALVED from the 43-board table this replaces (Anchor 53%,
+ * Ember 51%, Twin 40%). That was not noise and not a change to these cards: it
+ * was repricing Loose Weave from a boon to a bane. Modifier selection is
+ * threat-budget driven, so changing one modifier's threat changes which others
+ * fit alongside it, and the audit is now sampling harder boards on which a
+ * single enchantment saves less. The order moved with it — Prism rose from
+ * eighth to third, Chameleon fell from fourth to joint-sixth.
  *
  * Conduit is deliberately absent, and Gilded and Resonance with it. All three
  * measure 0 of 43 — reaching for another enchanted card, or being paid, does
@@ -35,7 +35,7 @@ import { cloneSim, stock, type Sim } from './sim.ts';
 import { cardLabel, makeCardDef, type EnchantId } from './types.ts';
 
 const CANDIDATES: EnchantId[] = [
-  'anchor', 'ember', 'twin', 'wild', 'spring', 'free', 'bridge', 'prism', 'torch',
+  'ember', 'anchor', 'prism', 'bridge', 'twin', 'torch', 'spring', 'free', 'wild',
 ];
 
 export interface Rescue {

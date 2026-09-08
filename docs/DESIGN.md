@@ -580,21 +580,49 @@ counts the ones that turn the loss into a win. 120 boards at stages 4, 8 and 12
 the solver, because a solver extracts value from a card no person would find.
 
 ```
-Anchor         23/43   53%
-Ember          22/43   51%
-Twin           17/43   40%
-Chameleon      13/43   30%
-Kickback       12/43   28%
-Featherweight  12/43   28%
-Bridge         11/43   26%
-Prism          11/43   26%
-Torch           9/43   21%
-Keystone        5/43   12%
-Beacon          1/43    2%
-Gilded          0/43    0%
-Conduit         0/43    0%
-Resonance       0/43    0%
+Ember          16/76   21%
+Anchor         14/76   18%
+Prism          12/76   16%
+Bridge         10/76   13%
+Twin            9/76   12%
+Torch           7/76    9%
+Kickback        7/76    9%
+Featherweight   7/76    9%
+Chameleon       7/76    9%
+Keystone        3/76    4%
+Gilded          0/76    0%
+Beacon          0/76    0%
+Conduit         0/76    0%
+Resonance       0/76    0%
 ```
+
+**Re-measured 2026-09-08 at 180 boards, and every rate roughly halved.** The
+table this replaces read Anchor 53%, Ember 51%, Twin 40%. That was not noise and
+not a change to these cards — it was **repricing Loose Weave from a boon to a
+bane** (§6a). Modifier selection is threat-budget driven, so changing one
+modifier's threat changes which others fit alongside it; the audit now samples
+harder boards, and a single enchantment saves fewer of them. Loss rate rose with
+it, from 36% of dealt boards to 42%.
+
+Two things moved besides the level. Prism went from eighth to third and Chameleon
+from fourth to joint-sixth, so `rescue.ts` was searching in an order that no
+longer matched, and the run-over screen was naming Twin when Prism belongs there.
+Both corrected.
+
+The SET of cards that rescue did not change, which is why the Pays/Saves chips
+still mark exactly the right nine: they land at 9-21%, Keystone at 4%, and four
+cards at a flat 0%. What changed is the claim the chip was making — it promised
+"at least one in five", which was true at the old rates and is not now.
+
+### The process gap this exposed
+
+Nothing re-ran this audit when the constant it depends on changed. The Loose
+Weave reprice and this table were separate commits two days apart, and the
+review notes even listed the audit under "do not redo". A balance change and the
+measurements that justify other decisions are coupled, and nothing in the
+workflow knows that. Worth remembering the next time a threat value moves:
+**anything measured on a population of dealt boards is downstream of every
+modifier's threat.**
 
 This replaces a 14-board run that sat below the >=20 house rule, and the bigger
 sample moved real things rather than just tightening error bars. Twin is clearly

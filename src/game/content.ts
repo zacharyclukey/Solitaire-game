@@ -89,10 +89,18 @@ export const DIG_MOVES = 6;
  * bare deck, Beacon +5.1, Kickback and Featherweight +4.0. Gilded is here for
  * gold rather than moves; it measures +0.0 moves and pays 2 gold a turn.
  *
- * `saves` — turns a board that was going to be lost, at least one in five.
- * From `scripts/enchaudit.ts 40` (43 lost boards): Anchor 53%, Ember 51%,
- * Twin 40%, Chameleon 30%, Kickback and Featherweight 28%, Bridge and Prism
- * 26%, Torch 21%.
+ * `saves` — measurably turns boards that were going to be lost. From
+ * `scripts/enchaudit.ts 60` (76 lost boards, 2026-09-08): Ember 21%, Anchor
+ * 18%, Prism 16%, Bridge 13%, Twin 12%, and Torch, Kickback, Featherweight and
+ * Chameleon at 9%. The cards WITHOUT this flag manage 4% (Keystone) or a flat
+ * 0% (Gilded, Beacon, Conduit, Resonance), so the split the chip draws is a
+ * real gap rather than a threshold picked to suit.
+ *
+ * This used to read "at least one in five", which was true when the same audit
+ * put Anchor at 53% and Ember at 51%. Repricing Loose Weave from boon to bane
+ * changed which modifiers get selected alongside it, the boards got harder, and
+ * every rescue rate roughly halved. The SET of cards that rescue did not
+ * change — only the rate, and therefore the promise the chip was making.
  *
  * The two axes are close to inverse, which is the interesting part: the cards
  * that pay rescue nothing, and the cards that rescue cost about two moves a

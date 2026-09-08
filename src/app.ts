@@ -704,9 +704,9 @@ export class App {
    * The enchantments that measurably turn a lost board around.
    *
    * Named from the audit in `scripts/enchaudit.ts` rather than from flavour.
-   * Re-measured over 43 lost boards, five times the earlier sample: Anchor 53%,
-   * Ember 51%, Twin 40%, Chameleon 30%. The bigger sample demoted Chameleon out
-   * of the top three, which the 14-board run had it tied for. An older line
+   * Re-measured 2026-09-08 over 76 lost boards: Ember 21%, Anchor 18%,
+   * Prism 16%. Rates roughly halved when Loose Weave was repriced and the board
+   * population got harder; Prism rose into the top three and Twin dropped out. An older line
    * offered Beacon, which saves none of them — those losses are structural,
    * not two moves short.
    */
@@ -733,7 +733,7 @@ export class App {
           `You arrived with ${level.bank} banked. This board was lost on the ones before it.`,
         );
       } else {
-        lines.push('Boards like this one turn on an Anchor, an Ember or a Twin — insurance, and it is paid for on every board that was going fine.');
+        lines.push('Boards like this one turn on an Ember, an Anchor or a Prism — insurance, and it is paid for on every board that was going fine.');
       }
     } else if (pm.movesAfterLoss !== null && pm.movesAfterLoss > 3) {
       lines.push('Loaded Dice would have let you take those moves back.');
