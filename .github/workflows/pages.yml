@@ -1,0 +1,58 @@
+# Publishes the built game to GitHub Pages.
+#
+# Without this, Pages serves the repository root, whose index.html is Vite's DEV
+# entry point — `<script type="module" src="/src/main.ts">`. A browser cannot run
+# TypeScript, and that absolute path resolves to the domain root rather than the
+# project subpath, so the page loads and stays blank. `dist/` is gitignored, so
+# there was nothing built for Pages to serve either.
+#
+# The build itself is already subpath-safe and was verified served from a
+# /Solitaire-game/ prefix: `base: './'` in vite.config.ts emits relative asset
+# URLs, and main.ts registers the service worker with
+# `new URL('sw.js', location.href)` rather than an absolute '/sw.js'.
+name: Pages
+
+on:
+  push:
+    branches: ['claude/solitaire-roguelike-game-k408z6']
+  workflow_dispatch:
+
+# Required by actions/deploy-pages; `contents: read` is all the build needs.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Never let two deploys race, but let an in-flight one finish rather than
+# cancelling it half-published.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # Typecheck runs as part of `npm run build`, so a broken build cannot ship.
+      - run: npm run build
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+      - id: deployment
+        uses: actions/deploy-pages@v4
