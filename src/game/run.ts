@@ -490,16 +490,30 @@ function growthRank(deck: DeckCard[], rng: Rng): number {
  */
 const LADDER_FOOTING = 2;
 
-function newCard(run: RunState, rng: Rng, withEnch: boolean): DeckCard {
-  const rank = growthRank(run.deck, rng);
-  const suits = freeSuits(heldPairs(run.deck), rank);
-  const card: DeckCard = {
-    uid: run.nextUid++,
+/**
+ * One card of deck growth, as the game would add it.
+ *
+ * Exported for the measurement harnesses. `scripts/build.ts` and
+ * `scripts/humanrun.ts` each carried their own copy of this under the comment
+ * "Mirrors run.ts's newCard, which is not exported" — and both copies went
+ * stale the moment the growth rule changed, which is how a deck full of exact
+ * duplicates ended up behind two figures in ECONOMY.md. A copy of a rule is a
+ * copy of the rule as it was on the day it was written.
+ */
+export function growCard(deck: DeckCard[], rng: Rng, uid: number): DeckCard {
+  const rank = growthRank(deck, rng);
+  const suits = freeSuits(heldPairs(deck), rank);
+  return {
+    uid,
     rank,
     suit: suits.length > 0 ? rng.pick(suits) : (rng.int(4) as Suit),
     ench: null,
     curse: null,
   };
+}
+
+function newCard(run: RunState, rng: Rng, withEnch: boolean): DeckCard {
+  const card = growCard(run.deck, rng, run.nextUid++);
   if (withEnch) {
     card.ench = rng.weighted(
       ENCHANT_LIST.map((e) => ({ item: e.id, weight: rarityWeight(e.rarity, run.stage) })),

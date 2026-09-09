@@ -11,10 +11,10 @@
  * That is the knob being measured — "build strength" is exactly how often the
  * player converts a reward into permanent power.
  */
-import { dealLevel } from '../src/game/deal.ts';
+import { bankCap, dealLevel } from '../src/game/deal.ts';
 import { CAREFUL, playBot, type BotOptions } from '../src/game/bot.ts';
 import { MODIFIERS, type ModifierId } from '../src/game/content.ts';
-import { MAX_DECK, newRun, stageSpec } from '../src/game/run.ts';
+import { growCard, MAX_DECK, newRun, stageSpec } from '../src/game/run.ts';
 import { Rng } from '../src/game/rng.ts';
 import type { DeckCard, EnchantId, Suit } from '../src/game/types.ts';
 
@@ -56,22 +56,21 @@ function playRun(seed: number, buildEvery: number, o: BotOptions): RunOutcome {
       return { depth: stage - 1, cause, peakBank };
     }
 
-    bank = r.movesLeft;
+    // Capped the way the game caps it. Carrying the whole leftover is the
+    // unbounded ratchet that was fixed on 2026-09-08 — a playtest reached 600+
+    // banked moves — so a harness that still carries it measures a game nobody
+    // plays.
+    bank = Math.min(r.movesLeft, bankCap(level));
     peakBank = Math.max(peakBank, bank);
 
     // The rewards a cleared level would have paid.
-    // Mirrors run.ts's newCard, which is not exported. Uniform ranks 1-13 are
-    // NOT what the game generates, and growing decks that way is one of this
-    // project's four documented harness artifacts: the real generator extends
-    // the rank ladder 65% of the time, because high ranks are the scarce
-    // resource (only they can base a column). Measured, the uniform version
-    // shortens runs by about a quarter. The MAX_DECK cap matters for the same
-    // reason — the game refuses to add past it.
-    if (deck.length < MAX_DECK) {
-      const hi = Math.max(...deck.map((c) => c.rank));
-      const rank = hi < 13 && rng.next() < 0.65 ? hi + 1 : rng.range(1, hi);
-      deck.push({ uid: uid++, rank, suit: rng.int(4) as Suit, ench: null, curse: null });
-    }
+    // Grown by the game's own rule rather than a copy of it. Both this and
+    // humanrun.ts used to mirror newCard by hand, and both copies were left
+    // behind when growth changed on 2026-09-09: they kept adding exact
+    // (rank, suit) duplicates the game no longer generates, and never applied
+    // the ladder footing. That is the fifth harness in this project to bite by
+    // encoding a rule that had moved.
+    if (deck.length < MAX_DECK) deck.push(growCard(deck, rng, uid++));
     if (buildEvery > 0 && stage % buildEvery === 0) {
       const plain = deck.filter((c) => c.ench === null);
       if (plain.length) plain[rng.int(plain.length)].ench = KIT[rng.int(KIT.length)];

@@ -1,6 +1,6 @@
-import { dealLevel } from '../src/game/deal.ts';
+import { bankCap, dealLevel } from '../src/game/deal.ts';
 import { CAREFUL, playBot } from '../src/game/bot.ts';
-import { MAX_DECK, newRun, stageSpec } from '../src/game/run.ts';
+import { growCard, MAX_DECK, newRun, stageSpec } from '../src/game/run.ts';
 import { Rng } from '../src/game/rng.ts';
 import type { DeckCard, EnchantId, Suit } from '../src/game/types.ts';
 
@@ -17,10 +17,12 @@ import type { DeckCard, EnchantId, Suit } from '../src/game/types.ts';
  * labels, because "does a build help" turns out to depend entirely on which
  * build it is.
  */
-// The two classes the shop now labels. Insurance measured NEGATIVE on moves
-// banked (Anchor -1.7, Ember -2.6); income measured positive (Resonance +9.0,
-// Beacon +5.1). If "does a build help" depends on which build, that is the
-// finding rather than "builds are bad".
+// The two classes the shop now labels. Insurance measures NEGATIVE on moves
+// banked (Anchor -2.1, Ember -2.5); income measures positive (Resonance +8.6,
+// Beacon +4.8). If "does a build help" depends on which build, that is the
+// finding rather than "builds are bad". Figures from scripts/worth.ts at 40
+// paired boards, re-run 2026-09-09; the previous comment quoted the 20-board
+// run those numbers superseded.
 const KITS: Record<string, EnchantId[]> = {
   insurance: ['anchor', 'ember', 'twin', 'wild', 'bridge', 'prism'],
   income: ['resonance', 'beacon', 'gild', 'spring', 'free'],
@@ -44,19 +46,18 @@ function run(seed: number, enchants: number, KIT: EnchantId[]): number {
     if (!level.affordable) return stage - 1;
     const res = playBot(level.sim, CAREFUL);
     if (!res.won) return stage - 1;
-    bank = res.movesLeft;
-    // Mirrors run.ts's newCard, which is not exported. Uniform ranks 1-13 are
-    // NOT what the game generates, and growing decks that way is one of this
-    // project's four documented harness artifacts: the real generator extends
-    // the rank ladder 65% of the time, because high ranks are the scarce
-    // resource (only they can base a column). Measured, the uniform version
-    // shortens runs by about a quarter. The MAX_DECK cap matters for the same
-    // reason — the game refuses to add past it.
-    if (deck.length < MAX_DECK) {
-      const hi = Math.max(...deck.map((c) => c.rank));
-      const rank = hi < 13 && rng.next() < 0.65 ? hi + 1 : rng.range(1, hi);
-      deck.push({ uid: uid++, rank, suit: rng.int(4) as Suit, ench: null, curse: null });
-    }
+    // Capped the way the game caps it. Carrying the whole leftover is the
+    // unbounded ratchet that was fixed on 2026-09-08 — a playtest reached 600+
+    // banked moves — so a harness that still carries it measures a game nobody
+    // plays.
+    bank = Math.min(res.movesLeft, bankCap(level));
+    // Grown by the game's own rule rather than a copy of it. Both this and
+    // humanrun.ts used to mirror newCard by hand, and both copies were left
+    // behind when growth changed on 2026-09-09: they kept adding exact
+    // (rank, suit) duplicates the game no longer generates, and never applied
+    // the ladder footing. That is the fifth harness in this project to bite by
+    // encoding a rule that had moved.
+    if (deck.length < MAX_DECK) deck.push(growCard(deck, rng, uid++));
   }
   return MAX_STAGE;
 }

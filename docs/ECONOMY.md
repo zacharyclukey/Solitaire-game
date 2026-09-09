@@ -457,19 +457,53 @@ Full runs with the fallible player, **re-measured on 2026-09-08 after a harness
 artifact was found and fixed** (see the correction note below), 30 runs a build:
 
 ```
-build            median depth   mean   peak bank   bankrupt   out of moves   stuck
-none                        3    3.2          38          1             26       3
-every 4 levels              3    3.1          38          0             26       4
-every 2 levels              4    3.2          38          0             29       1
+build            median  mean   range   peak bank   bankrupt   out of moves   stuck
+none                  2   2.6     0-9          21          0             30       0
+every 4 levels        2   2.5     0-8          21          0             30       0
+every 2 levels        2   2.2     0-7          20          1             28       1
 ```
 
-**Runs still do not end on the economy.** One bankruptcy in 90 runs, a handful
-end stuck with moves in hand, and players bank around 38 moves. The buffer
-exists and works, which was the whole of what the economy was asked to do.
+Re-measured 2026-09-09, 30 runs a build. The table this replaces read median 3,
+mean 3.2, peak bank 38, and 26 of 30 out of moves. It was measured by a harness
+carrying two rules the game has since changed: it grew decks with a hand-copied
+`newCard` that added exact (rank, suit) duplicates the generator no longer
+produces and skipped the ladder footing, and it carried the whole leftover into
+the next level, which was the unbounded bank ratchet. Both harnesses call the
+game's own `growCard` and `bankCap` now, so this class of drift is closed rather
+than patched.
 
-The superseded version of this table read median depth 2 with 32 banked and zero
+**The bank cap does what it was built to do.** Peak bank falls from 38 to 21,
+which is roughly one level's allowance, exactly the buffer it was capped to.
+
+**But the headline claim above it no longer holds.** "Runs still do not end on
+the economy" was true at one bankruptcy in ninety and a handful stuck. It is not
+true now: **30 of 30 runs in the no-build arm end out of moves**, and nothing
+ends stuck at all. Every run in the reference sample now ends on the allowance
+rather than on the board.
+
+That is in direct tension with the standing brief — *"Runs end because boards
+outgrow the player, not because the allowance was quietly throttled"* — and it
+is the predictable arithmetic of doing three things at once: `ratioFor` down
+0.15 a step, the bank capped, and the under-par `bonusMoves` grant removed. Each
+was measured on its own; the combination was not measured against this table
+until now.
+
+Two things to hold in mind before reacting. The reference player is deliberately
+weak and does not use escapes, so median 2 is a floor rather than a typical run.
+And the difficulty pass was asked for: the owner reported 600+ banked moves and a
+game that did not bite. **Whether this is too far is a design call and is left
+open here rather than reversed unilaterally.** What is not in doubt is that the
+sentence above the table is now false, and it is corrected rather than left
+standing.
+
+**Runs now end on the economy, and that is new.** See the note above the table:
+bankruptcy is still almost unheard of, but running out of moves on a board has
+gone from 26 of 30 to 30 of 30, and the stuck cases have vanished.
+
+An earlier version of this table read median depth 2 with 32 banked and zero
 bankruptcies in every arm. It was measured on decks grown with uniform ranks
-1-13, which the game never generates.
+1-13, which the game never generates. That is the first of the three harness
+corrections this table has now been through; the other two are described above.
 
 Runs are short anyway, and the reason is arithmetic rather than balance. At
 stage 1 the stipend pays 1.70x plainPar, which the measured curve puts at about
@@ -590,9 +624,15 @@ deck and no build, which is the no-build lower bound rather than a real run:
 
 | stage | 1 | 3 | 5 | 7 | 9 | 11 | 13 | 15 | 17 | 19 |
 |---|---|---|---|---|---|---|---|---|---|---|
-| winnable at all | 100% | 96% | 100% | 100% | 92% | 96% | 100% | 71% | 63% | 79% |
-| player clears | 83% | 75% | 58% | 50% | 58% | 46% | 38% | 17% | 21% | 4% |
-| gap | 17% | 21% | 42% | 50% | 33% | 50% | 63% | 54% | 42% | 75% |
+| winnable at all | 100% | 100% | 96% | 100% | 92% | 79% | 79% | 71%* | 63%* | 79%* |
+| player clears | 75% | 58% | 54% | 50% | 29% | 21% | 21% | 17%* | 21%* | 4%* |
+| gap | 25% | 42% | 46% | 50% | 63% | 58% | 58% | 54%* | 42%* | 75%* |
+
+Stages 1 to 13 re-measured 2026-09-09 after the difficulty pass. **Starred
+columns are the original 2026-09-06 figures and have NOT been re-measured
+since**, so they are the old, easier game and are kept only because deleting a
+row loses the shape. The mean over the re-measured stages fell from 58% to 44%;
+the full arc is in DESIGN.md §6g.
 
 **The curve is real and it falls.** A bare deck clears five boards in six at the
 start and one in twenty-five by stage 19, which matches the target shape in this
