@@ -472,25 +472,36 @@ feedback, a better reading — not a more generous pile.
 Two questions, deliberately measured apart. `scripts/enchaudit.ts` asks which
 cards turn a losing board around — the claim the run-over screen makes.
 `scripts/worth.ts` asks what a player should buy: expected moves banked across
-20 identical boards, six copies of one card, counting a lost board as zero.
+40 identical boards, six copies of one card, counting a lost board as zero.
+
+Both columns re-measured 2026-09-09, against the generator as it stands after
+this session's difficulty work. The bare deck banks 4.5 and clears 20 of 40.
 
 ```
 card             banked   vs bare      rescues a lost board
-Resonance          14.8    +8.9        (economy card, not audited)
-Beacon             11.2    +5.3         0%
-Kickback            9.8    +3.9        16%
-Featherweight       9.8    +3.9        16%
-Keystone            6.3    +0.4         0%
-Conduit             6.2    +0.3        (new)
-Gilded              5.9     0.0         0%
-Torch               5.7    -0.3        21%
-Bridge              4.7    -1.2        21%
-Prism               4.6    -1.3        26%
-Twin                4.2    -1.8        21%
-Chameleon           3.8    -2.1         5%
-Ember               2.8    -3.2        26%
-Anchor              2.6    -3.3        37%
+Resonance          13.1    +8.6         0%
+Beacon              9.3    +4.8         0%
+Kickback            9.1    +4.6         9%
+Featherweight       9.1    +4.6         9%
+Keystone            5.1    +0.6         4%
+Gilded              4.5    +0.0         0%
+Twin                4.0    -0.5        12%
+Torch               3.7    -0.8         9%
+Chameleon           3.4    -1.1         9%
+Prism               3.4    -1.1        16%
+Conduit             3.0    -1.5         0%
+Anchor              2.4    -2.1        18%
+Bridge              2.3    -2.2        13%
+Ember               2.0    -2.5        21%
 ```
+
+The previous version of this table was stale on both axes and is worth recording
+as a process failure rather than just replacing. Its banked column came from a
+20-board run, below the >=20 house rule's comfort and superseded by a 40-board
+one whose numbers were written into `content.ts` but never back into this table.
+Its rescue column predated the 180-board re-audit that halved every rate, so the
+same document said Keystone rescues 12% here and 4% sixty lines further down.
+**A correction pass that updates one place a number lives is not a correction.**
 
 The two orders are almost reversed, and that is the design working rather than a
 contradiction. **Anchor is the best rescuer in the game and the worst card to
@@ -501,19 +512,20 @@ it; the rest of the time it is a tax.
 
 So there are two classes. **Income**: Resonance and Beacon — they grant or save
 moves, add no legal moves, and rescue nothing once a board has gone wrong.
-Re-measured at 40 paired boards: Resonance +9.0 expected moves over a bare deck,
-Beacon +5.1. Gilded belongs here too, paying in gold rather than moves.
+Re-measured at 40 paired boards: Resonance +8.6 expected moves over a bare deck,
+Beacon +4.8. Gilded belongs here too, paying in gold rather than moves.
 **Insurance**: Anchor, Ember, Twin, Chameleon, Bridge, Prism, Torch — placement
 effects that cost moves in the ordinary case and save the board that would
-otherwise end the run. Insurance has a premium, roughly two moves a board.
+otherwise end the run. Insurance has a premium, one to two moves a board.
 
-**Kickback and Featherweight sit in both**, at +4.0 moves a board and 28% of
+**Kickback and Featherweight sit in both**, at +4.6 moves a board and 9% of
 lost boards saved. They make a move cheaper, which is income when the board is
 going well and a rescue when the last move is unaffordable. They are the best
 cards in the set and nothing else does both jobs.
 
-**Two cards measure as doing neither**, on the larger samples: Keystone (+0.3
-moves, rescues 12%) and Conduit (+0.0 moves, rescues 0%). Conduit had been
+**Two cards measure as doing neither**, on the larger samples: Keystone (+0.6
+moves, rescues 4%) and Conduit (-1.5 moves, rescues 0%) — Conduit now measuring
+actively worse than owning nothing rather than merely level with it. Conduit had been
 described as one of the strongest cards to own, which the paired measurement
 does not support. That is a balance question rather than a labelling one and is
 left open here; nothing is claimed for either card in the UI.

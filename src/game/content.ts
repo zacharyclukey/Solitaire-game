@@ -85,9 +85,13 @@ export const DIG_MOVES = 6;
  * shop can say which trade it is offering.
  *
  * `pays` — banks moves or gold on an ordinary board. From `scripts/worth.ts`
- * (40 paired boards, stage 8, six copies): Resonance +9.0 expected moves over a
- * bare deck, Beacon +5.1, Kickback and Featherweight +4.0. Gilded is here for
- * gold rather than moves; it measures +0.0 moves and pays 2 gold a turn.
+ * (40 paired boards, stage 8, six copies, re-run 2026-09-09 against the
+ * generator as it stands after the difficulty pass): Resonance +8.6 expected
+ * moves over a bare deck, Beacon +4.8, Kickback and Featherweight +4.6. Gilded
+ * is here for gold rather than moves; it measures +0.0 moves and pays 2 gold a
+ * turn. The re-run was ordered because repricing Loose Weave changed which
+ * modifiers get selected and had already invalidated the rescue audit: the set
+ * and the order both held, and no chip changed hands.
  *
  * `saves` — measurably turns boards that were going to be lost. From
  * `scripts/enchaudit.ts 60` (76 lost boards, 2026-09-08): Ember 21%, Anchor
@@ -108,8 +112,9 @@ export const DIG_MOVES = 6;
  * because making a move cheaper is income on a board going well and a rescue
  * when the last move is unaffordable.
  *
- * Keystone (+0.3, 12%) and Conduit (+0.0, 0%) carry neither flag: they did not
- * measure as doing either job. That is a balance question, not a labelling one,
+ * Keystone (+0.6, 4%) and Conduit (-1.5, 0%) carry neither flag: they did not
+ * measure as doing either job, and Conduit now measures actively worse than
+ * owning nothing rather than merely level with it. That is a balance question, not a labelling one,
  * so nothing is claimed for them here.
  */
 export interface EnchantDef {
