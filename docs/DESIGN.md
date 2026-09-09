@@ -1448,6 +1448,54 @@ valid as the assumption that the generator is a pure function of what was
 saved**. It is not, and it never will be while boards are selected on
 affordability. The fingerprint fixes the class.
 
+## 6h-quater. Keystone and Locksmith, re-audited against a gate
+
+Both had measured as doing nothing, and both for the same reason: their whole
+effect is bypassing empty-column restrictions, and until Royal Gates was wired
+there were none in the game to bypass. Keystone sat at +0.6 moves and 4% of lost
+boards; Locksmith set `RuleSet.empty` to the value it already had.
+
+The question is conditional, so `scripts/gates.ts` measures it that way — one
+board, the gate flipped on a clone, at an unlimited budget so only structure is
+under test. 120 boards, stage 10:
+
+| board | no Keystone | with Keystone | Keystone is worth |
+|---|---|---|---|
+| plain | 70% | 64% | **-6pp** |
+| Royal Gates | 48% | 57% | **+10pp** |
+
+Keystone helped where there was a gate and **hurt where there was not**, which
+named the culprit. It had been given a second effect — entering an empty column
+free — precisely because it had nothing to bypass, "to give it something to do
+on every board rather than only under Royal Gates". Entering an empty column is
+usually a bad move, since it spends the only true sink in the game, and pricing
+it at nothing is what got the player to make it. The same shape as Anchor: an
+effect that adds legal moves is a rescue on a dead board and a tax the rest of
+the time.
+
+Re-run with that half removed, so the card is legality and not price:
+
+| board | no Keystone | with Keystone | Keystone is worth |
+|---|---|---|---|
+| plain | 70% | 70% | **+0pp** |
+| Royal Gates | 46% | 54% | **+8pp** |
+
+The penalty is gone exactly and the benefit survives, so the free-entry half is
+cut. (The gated baseline moving 48% to 46% between the two runs is the
+documented wall-clock board-set drift, not the change.)
+
+Royal Gates lands on 10.1% of all boards and 18.0% of boards from stage 8 up,
+where it is legal. So Keystone is worth about **+1.4pp across a run** — real,
+but far too thin to promise, and it keeps no chip. It is no longer a trap, which
+is the actual result: the card was net **negative** to own before this.
+
+**Locksmith needs no arm of its own.** On a gated board the charm sets `empty`
+back to `'any'`, which is exactly the ungated column of the table, so it
+recovers the whole 22-point Royal Gates penalty on the boards that carry one —
+about +4pp expected across deep boards. That is a narrow effect and it is the
+first one the charm has ever had. Its 60 gold buys a hedge against one modifier,
+which is worth revisiting if Royal Gates stays this rare.
+
 ## 6i. Two checks that came back clean
 
 Recorded because a negative result nobody wrote down gets re-run forever.

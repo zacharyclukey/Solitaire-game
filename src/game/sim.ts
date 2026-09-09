@@ -171,12 +171,24 @@ export function moveCost(s: Sim, headId: number, toCol: number): number {
   if (d.heavy) cost += 1;
   const intoEmpty = toCol >= 0 && toCol < s.tableau && s.cols[toCol].length === 0;
   if (intoEmpty) {
-    // Keystone sets the base for nothing. Bypassing the empty-column rules was
-    // its whole effect, and under standard rules there are none to bypass —
-    // measured, it saved 0 of 19 lost boards. Making the move itself free gives
-    // it something to do on every board rather than only under Royal Gates,
-    // Sealed Vaults or Tithe.
-    if (d.key) return 0;
+    // Keystone once made this move free as well as legal. That was added when
+    // nothing in the game restricted empty columns, to give the card something
+    // to do on every board rather than only under a gate — and measured now
+    // that a gate exists, the free half was the harmful half.
+    //
+    // `scripts/gates.ts`, 120 boards, stage 10, gate flipped in place on a
+    // clone, unlimited budget so only structure is under test:
+    //
+    //                  with free entry     bypass only
+    //   plain board       -6pp               +0pp
+    //   Royal Gates      +10pp               +8pp
+    //
+    // Entering an empty column is usually a bad move — it spends the only true
+    // sink in the game — and pricing it at nothing is what got the player to
+    // make it. Dropping that half removes the penalty on the 82% of deep boards
+    // with no gate and keeps the benefit on the 18% that have one, which is the
+    // same shape as the Anchor finding: an effect that adds legal moves is a
+    // rescue when the board is dead and a tax the rest of the time.
     cost += s.rules.emptyCost;
   }
   if (d.spring) cost -= 1;

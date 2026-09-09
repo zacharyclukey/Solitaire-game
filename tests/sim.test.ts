@@ -90,8 +90,10 @@ describe('empty column rules', () => {
   const keyed = makeCardDef(card(2, 0, 'key'));
   const rooted = makeCardDef(card(2, 0, null, 'stuck'));
 
-  // No modifier currently sets `empty: 'top'` — Royal Gates was cut for
-  // throttling the game's only sink — but the rule itself still works.
+  // `empty: 'top'` is Royal Gates, wired 2026-09-08 at gateWidth 4. The comment
+  // here used to say Royal Gates had been cut for throttling the game's only
+  // sink; what was cut is Sealed Vaults (`empty: 'none'`) and Rust, at -92pp
+  // and -84pp.
   it("the 'top rank only' empty rule admits the ranks nearest the base", () => {
     const R = { ...DEFAULT_RULES, empty: 'top' as const, baseRank: 13 };
     expect(canPlaceEmpty(k, R)).toBe(true);
@@ -99,6 +101,8 @@ describe('empty column rules', () => {
     expect(canPlaceEmpty(keyed, R)).toBe(true);
   });
 
+  // No modifier sets this: Sealed Vaults was cut on measurement. The rule stays
+  // because it is what Keystone is measured against at the extreme.
   it('sealed ground admits nothing but a Keystone', () => {
     const R = { ...DEFAULT_RULES, empty: 'none' as const };
     expect(canPlaceEmpty(k, R)).toBe(false);
@@ -196,7 +200,7 @@ describe('move costs', () => {
     expect(moves.find((m) => m.from === 2)!.cost).toBe(2);
   });
 
-  it('Tithe taxes empty columns and Keystone enters one for free', () => {
+  it('Tithe taxes empty columns, and Keystone pays the tax like anything else', () => {
     const R = { ...DEFAULT_RULES, emptyCost: 2 };
     const s = build(
       [[card(9, 1), card(8, 0)], [], [card(6, 1), card(4, 0, 'key')]],
@@ -205,9 +209,21 @@ describe('move costs', () => {
     );
     const toEmpty = legalMoves(s).filter((m) => m.to === 1);
     expect(toEmpty.find((m) => m.from === 0)!.cost).toBe(3);
-    // Keystone no longer merely dodges the tax: setting the base is free, so it
-    // has an effect under standard rules too, where there is no tax to dodge.
-    expect(toEmpty.find((m) => m.from === 2)!.cost).toBe(0);
+    // Keystone used to enter for free, and that half of it measured as the
+    // harmful half once there was a gate to test it against: -6pp on an ungated
+    // board, because entering an empty column is usually a bad move and pricing
+    // it at nothing is what got it played. Its effect is legality now, not
+    // price, so it pays Tithe exactly like any other card.
+    expect(toEmpty.find((m) => m.from === 2)!.cost).toBe(3);
+  });
+
+  it('Keystone opens an empty column the rules would otherwise close', () => {
+    // The half that measured as worth keeping: +8pp on a gated board. Under
+    // Royal Gates only the ranks nearest the base may open a column, and this
+    // is the whole reason the card exists.
+    const R = { ...DEFAULT_RULES, empty: 'top' as const, baseRank: 13, gateWidth: 4 };
+    expect(canPlaceEmpty(makeCardDef({ uid: 1, rank: 4, suit: 0, ench: null, curse: null }), R)).toBe(false);
+    expect(canPlaceEmpty(makeCardDef({ uid: 2, rank: 4, suit: 0, ench: 'key', curse: null }), R)).toBe(true);
   });
 
   it('Kickback refunds a move', () => {

@@ -114,7 +114,15 @@ export const DIG_MOVES = 6;
  *
  * Keystone (+0.6, 4%) and Conduit (-1.5, 0%) carry neither flag: they did not
  * measure as doing either job, and Conduit now measures actively worse than
- * owning nothing rather than merely level with it. That is a balance question, not a labelling one,
+ * owning nothing rather than merely level with it.
+ *
+ * Keystone is the conditional case and is deliberately left unchipped rather
+ * than labelled. It is now a real card on a board that restricts empty columns
+ * — +8pp there — and does nothing at all on one that does not, which is about
+ * 82% of deep boards. Expected across a run that is roughly +1.4pp, too thin to
+ * promise anything, but it is no longer the trap it was: until Royal Gates
+ * existed it had nothing to bypass, and the free-entry half it was given to
+ * compensate measured at -6pp on ungated boards. See `scripts/gates.ts`. That is a balance question, not a labelling one,
  * so nothing is claimed for them here.
  */
 export interface EnchantDef {
@@ -182,7 +190,7 @@ export const ENCHANTS: Record<EnchantId, EnchantDef> = {
     id: 'key',
     name: 'Keystone',
     glyph: '⚿',
-    text: 'Always allowed into an empty column, and moving it into one is free.',
+    text: 'Always allowed into an empty column, whatever the board says.',
     rarity: 'common',
     price: 24,
   },
