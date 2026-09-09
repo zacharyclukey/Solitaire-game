@@ -35,6 +35,15 @@ const COPIES = 6;
  * move cannot show above that floor. The question here is whether Keystone
  * opens columns the gate closed, which is a question about the board rather
  * than about the purse.
+ *
+ * Worth knowing what that costs, since it is a harness assumption. `dealLevel`
+ * picks its layout by win chance against the allowance, so an unlimited bank
+ * does not merely fund these boards, it CHANGES which boards are dealt — the
+ * selector aims at a band, and a huge purse moves the band. The comparison
+ * stays sound because all four cells run on the same boards, but the sample is
+ * the set the selector picks for a generous allowance rather than the set a
+ * real stage-10 run would face. Read the gaps between cells, never the absolute
+ * clear rates against the difficulty curve.
  */
 const BANK = 9999;
 
@@ -55,7 +64,6 @@ function gated(base: Sim, on: boolean): Sim {
   s.rules = { ...s.rules, empty: on ? 'top' : 'any' };
   return s;
 }
-
 
 const boards: Sim[] = [];
 for (let i = 0; i < PER; i++) {
