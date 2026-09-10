@@ -525,7 +525,33 @@ cards in the set and nothing else does both jobs.
 
 **Two cards measure as doing neither**, on the larger samples: Keystone (+0.6
 moves, rescues 4%) and Conduit (-1.5 moves, rescues 0%) — Conduit now measuring
-actively worse than owning nothing rather than merely level with it. Conduit had been
+actively worse than owning nothing rather than merely level with it.
+
+Keystone has since been fixed (§6h-quater). Conduit was re-examined on
+2026-09-10 and deliberately left alone, but the note on its definition was
+rewritten because the reason it had been kept was **false in the load-bearing
+part**: it claimed "the player model sees every face-down card", and the bot
+does not — `legalMoves` never offers one. The true version is narrower and still
+supports keeping it: the heuristic is `remaining + 0.5 x blockers`, both blind to
+card identity, so knowing *which* card is down cannot change a 3-ply bot's play
+while a person plans around it.
+
+A second explanation was tested and refuted rather than recorded as fact — that
+revealing a buried card makes the heuristic look worse, since `blockers` counts
+the overburden of the topmost face-down card and revealing one exposes a deeper
+card with more on top. Measured directly, revealing takes a sample column from
+3.0 to 2.5: `hidden` falls by one and outweighs the blockers rise. **Revealing is
+not penalised**, and the -1.5 is real. Its mechanism is Anchor's — more reveals
+means more legal moves, and a width-limited player picks worse from a wider menu,
+which costs a fallible human too.
+
+That sharpens the question instead of settling it. **Conduit pays an insurance
+premium and rescues nothing** — Anchor's -2.1 buys back 18% of lost boards,
+Conduit's -1.5 buys 0% — and "insurance that never pays out" is the strongest
+case for cutting it, resting on the rescue audit rather than on the
+blind-instrument argument. Against it: early information is precisely what these
+instruments cannot value. Three passes have now agreed on the number and none of
+them can see the thing in dispute, so a fourth is not what this needs. Conduit had been
 described as one of the strongest cards to own, which the paired measurement
 does not support. That is a balance question rather than a labelling one and is
 left open here; nothing is claimed for either card in the UI.

@@ -256,10 +256,34 @@ export const ENCHANTS: Record<EnchantId, EnchantDef> = {
     // nothing: turning a card that stays under a pile grants no legal move.
     // So the mechanic is left alone and only the price moves.
     //
-    // Not cut, because one part of its value is invisible here — the player
-    // model sees every face-down card, so early information is worth exactly
-    // nothing to it, exactly as with Dig. Priced as a rare rather than sold as
-    // an epic until a person can say whether knowing early is worth anything.
+    // Re-examined 2026-09-10 and the justification below was rewritten, because
+    // the one it replaces was FALSE in the load-bearing part. It said "the
+    // player model sees every face-down card". It does not: `legalMoves` never
+    // offers a face-down card and the bot cannot read one. What is true is
+    // narrower — the heuristic is `remaining + 0.5 x blockers`, both blind to a
+    // card's identity, and the bot looks 3 plies ahead. So knowing WHICH card
+    // is down cannot change its play, while a person plans around it. Same
+    // shape as Dig, which is kept on the same reasoning.
+    //
+    // A tempting second explanation was tested and refuted rather than written
+    // down as fact: that revealing a buried card makes the heuristic look
+    // worse, since `blockers` counts the overburden of the topmost face-down
+    // card and revealing one exposes a deeper card with more on top. Measured
+    // directly, revealing takes a sample column from 3.0 to 2.5 — `hidden`
+    // falls by one and outweighs the blockers rise. Revealing is not penalised.
+    //
+    // So the -1.5 is real and its mechanism is Anchor's: more reveals means
+    // more legal moves, and a width-limited player picks worse from a wider
+    // menu. That is a genuine cost to a fallible human too, not only to the
+    // bot.
+    //
+    // Which sharpens the open question rather than settling it. Conduit pays an
+    // insurance premium — Anchor's -2.1 buys 18% of lost boards back — and
+    // rescues 0%. Insurance that never pays out is the strongest case for
+    // cutting it, and it does not depend on the blind-instrument argument at
+    // all. Against that: information early is exactly what these instruments
+    // cannot value. That needs a person to answer, not a fourth measurement
+    // pass; three have now agreed and none can see the thing in dispute.
     text: 'When turned, also turns the nearest face-down enchanted card.',
     rarity: 'rare',
     price: 28,
