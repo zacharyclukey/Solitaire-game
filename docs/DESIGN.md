@@ -1535,6 +1535,33 @@ moves `humanrun.ts` measures as peak bank since the cap, where the control sits
 at 61% and off both walls. `scripts/gates.ts` now warns when a control lands
 within 5% of either wall.
 
+## 6h-quinquies. The curve did not move, measured rather than argued
+
+Three changes landed after the difficulty arc was last measured: the Keystone
+free-entry cut, the modifier floor being held back to stage 4, and the Locksmith
+Tithe waiver. Two reviews flagged that nobody had re-run the spine against them.
+Re-run 2026-09-10, same 24 boards a stage, bare deck, no build:
+
+| stage | 1 | 3 | 5 | 7 | 9 | 11 | 13 | mean |
+|---|---|---|---|---|---|---|---|---|
+| baseline (2026-09-09) | 75% | 58% | 54% | 50% | 29% | 21% | 21% | 44.0% |
+| after all three | 75% | 58% | 50% | 50% | 33% | 17% | 21% | 43.4% |
+
+Four stages identical, three moved by exactly **one board in twenty-four**, which
+is the wall-clock deal drift this document already warns about. `winnable` is
+identical at every stage: 100/100/96/100/92/79/79 both times.
+
+So the answer is nothing moved, and it was predictable from the code — Keystone
+diverges only on `d.key`, which is `ench === 'key'`, and this curve deals a bare
+`starterDeck` where every card has `ench: null`; Locksmith needs the charm, which
+this curve does not carry; and the floor was already in the baseline. That
+argument was made in a review two days ago and recorded as *a proof from the
+code, not a measurement*. This is the measurement, and it agrees.
+
+Worth keeping the distinction. The argument was sound and would have been worth
+acting on, but it was cheap to check and the project has been wrong four times
+about instruments it reasoned about instead of running.
+
 ## 6i. Two checks that came back clean
 
 Recorded because a negative result nobody wrote down gets re-run forever.
