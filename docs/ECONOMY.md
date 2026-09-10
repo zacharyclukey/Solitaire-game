@@ -496,6 +496,42 @@ open here rather than reversed unilaterally.** What is not in doubt is that the
 sentence above the table is now false, and it is corrected rather than left
 standing.
 
+### Loosening the allowance back does not buy depth
+
+The obvious response to "every run ends out of moves" is to give some allowance
+back. Measured, that does nothing. `scripts/ratiolab.ts`, 20 runs an arm, no
+build, no charms, no escapes, with the current game run **twice, first and last,
+as a control**:
+
+```
+ratio delta   median  mean   peak bank   out of moves   stuck   bankrupt
+current            4   3.4          27             20       0          0
++0.05              4   3.5          31             20       0          0
++0.075             4   3.5          33             20       0          0
++0.15              3   3.0          34             20       0          0
+current            4   3.4          27             20       0          0
+```
+
+The two control arms come out **identical**, so the instrument resolves what it
+is being asked and the rows between them are real. And they say: restoring the
+whole 0.15 that was taken away in the difficulty pass leaves median depth where
+it was, moves mean depth *down* rather than up, and still ends 20 of 20 runs out
+of moves. What it does buy is peak bank back up from 27 to 34 — the exact
+problem the pass was asked to fix.
+
+**The reason is structural, and it is the same mechanism behind every "nothing
+moves the ceiling" result in this document.** Boards are selected on estimated
+win chance against a band for the stage. A richer purse does not buy an easier
+level; it buys a *harder board at the same win chance*, because that is what the
+selector is for. The allowance is self-neutralising by construction, which is
+why `ratioFor` is a poor difficulty lever in both directions and why the pass
+that tightened it moved the per-board curve far less than it moved the feel.
+
+So "runs end on the economy" is not a thing more allowance fixes. If the depth
+is wrong, the levers are the board side — the modifier floor, deck growth, the
+threat budget — or the escapes, which are the one thing measured to move the
+ceiling at all.
+
 **Runs now end on the economy, and that is new.** See the note above the table:
 bankruptcy is still almost unheard of, but running out of moves on a board has
 gone from 26 of 30 to 30 of 30, and the stuck cases have vanished.
