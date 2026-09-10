@@ -1492,9 +1492,48 @@ is the actual result: the card was net **negative** to own before this.
 **Locksmith needs no arm of its own.** On a gated board the charm sets `empty`
 back to `'any'`, which is exactly the ungated column of the table, so it
 recovers the whole 22-point Royal Gates penalty on the boards that carry one —
-about +4pp expected across deep boards. That is a narrow effect and it is the
-first one the charm has ever had. Its 60 gold buys a hedge against one modifier,
-which is worth revisiting if Royal Gates stays this rare.
+about +4pp expected across deep boards.
+
+### And it waives Tithe, which its text always promised
+
+At 18.0% of deep boards and 60 gold — the top of the rare band — a hedge against
+one modifier was not worth its price. The answer was not to cut the price. The
+charm's text is *"Empty-column restrictions never apply to you"*, and Tithe, a
+two-move tax on entering one, is a restriction; it simply never applied it.
+Covering Tithe as well takes the charm from 18.0% of deep boards to **32.0%**.
+
+Measured on 120 paired Tithe boards: **61% cleared paying the tax, 93% with it
+waived, +32pp.** Larger than the 22 points it recovers under Royal Gates, and
+that is the right way round — against a tight allowance, saving moves beats
+restoring legality. Expected across deep boards the two halves come to roughly
++9pp, which a 60-gold rare can carry.
+
+**This is not the mistake Keystone made,** and the distinction is the whole
+reason it measures positive. Keystone entered empty columns *free* on every
+board, including the ones with no restriction at all, and measured -6pp because
+entering an empty column is usually a bad move and pricing it at nothing is what
+got it played. Locksmith only ever restores the *ordinary* price. There is a test
+asserting it never goes below it.
+
+### An instrument note, because this one nearly produced nonsense
+
+The two halves need different regimes, and using one for both would have been
+confidently wrong in either direction.
+
+Royal Gates changes what is **legal**, so it is measured at an unlimited budget
+where only structure shows. Tithe changes what things **cost**, and at an
+unlimited budget a cost is invisible by construction — the arms come out
+identical and the honest reading of that is "no effect", which is the instrument
+talking rather than a fact about the charm.
+
+The first Tithe pass hit the other wall. At bank 0 the control cleared **1 of
+120** — a deep Warden with no carry is already dead — and against a control
+pinned at zero any move-saving effect measures enormous. It read +32pp, the same
+number the sound run later produced, and it would have been right by accident.
+The regime that matters is the one a player is actually in: arriving with the 21
+moves `humanrun.ts` measures as peak bank since the cap, where the control sits
+at 61% and off both walls. `scripts/gates.ts` now warns when a control lands
+within 5% of either wall.
 
 ## 6i. Two checks that came back clean
 

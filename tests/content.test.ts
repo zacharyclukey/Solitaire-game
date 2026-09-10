@@ -60,6 +60,23 @@ describe('the rule charms actually change the rules', () => {
     expect(buildRules(['royalGates'], ['locksmith'], ranks).empty).toBe('any');
   });
 
+  it('Locksmith waives the Tithe tax too, which its text has always promised', () => {
+    // Measured at +32pp on 120 paired Tithe boards, which is larger than the
+    // 22pp it recovers under Royal Gates. Both halves are the same effect —
+    // "empty-column restrictions never apply to you" — and a two-move tax on
+    // entering one is a restriction.
+    expect(buildRules(['tithe'], [], ranks).emptyCost).toBe(2);
+    expect(buildRules(['tithe'], ['locksmith'], ranks).emptyCost).toBe(0);
+  });
+
+  it('never prices an empty column BELOW the ordinary move, the way Keystone did', () => {
+    // Keystone entered free on every board and measured -6pp where there was
+    // no restriction, because entering an empty column is usually a bad move
+    // and pricing it at nothing is what got it played. Locksmith only ever
+    // restores the ordinary price.
+    expect(buildRules([], ['locksmith'], ranks).emptyCost).toBe(DEFAULT_RULES.emptyCost);
+  });
+
   it('Sorter lifts the group-size cap that Gridlock imposes', () => {
     expect(buildRules(['gridlock'], [], ranks).maxGroup).toBe(3);
     expect(buildRules(['gridlock'], ['sorter'], ranks).maxGroup).toBe(0);

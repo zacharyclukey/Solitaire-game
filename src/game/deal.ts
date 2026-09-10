@@ -118,10 +118,28 @@ export function buildRules(mods: ModifierId[], charms: CharmId[], ranks: number[
   if (has(mods, 'draw3')) r.drawCount = 3;
   if (has(mods, 'royalGates')) r.empty = 'top';
   if (has(mods, 'onepass')) r.passes = 0;
-  // Last, so it beats the two rules above rather than being beaten by them.
-  // This is the charm's entire effect and until Royal Gates and Sealed Vaults
-  // existed it set `empty` to the value it already had.
-  if (charms.includes('locksmith')) r.empty = 'any';
+  // Last, so it beats the rules above rather than being beaten by them. This is
+  // the charm's entire effect and until Royal Gates existed it set `empty` to
+  // the value it already had, making a 60-gold rare a literal no-op.
+  //
+  // It waives Tithe as well, which its text has always promised — "empty-column
+  // restrictions never apply to you", and a two-move tax on entering one is a
+  // restriction. Measured (scripts/gates.ts, 120 paired boards, arriving with
+  // the 21 moves a player actually carries): 61% cleared paying the tax, 93%
+  // with it waived, +32pp. That is larger than the 22pp it recovers under Royal
+  // Gates, which is the right way round — against a tight allowance, saving
+  // moves beats restoring legality — and it takes the charm from 18.0% of deep
+  // boards to 32.0%.
+  //
+  // Not the mistake Keystone made. Keystone entered empty columns FREE on every
+  // board, including the ones with no restriction at all, and measured -6pp
+  // because entering an empty column is usually a bad move and pricing it at
+  // nothing is what got it played. This only ever restores the ordinary price;
+  // it never goes below it.
+  if (charms.includes('locksmith')) {
+    r.empty = 'any';
+    r.emptyCost = 0;
+  }
   if (charms.includes('sorter')) r.maxGroup = 0;
   return r;
 }
