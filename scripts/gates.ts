@@ -93,3 +93,71 @@ for (const [label, gate] of [['plain', false], ['Royal Gates', true]] as const) 
     `${pp >= 0 ? '+' : ''}${pp.toFixed(0)}pp`,
   );
 }
+
+/*
+ * ---------------------------------------------------------------------------
+ * Second question: should Locksmith cover Tithe as well?
+ *
+ * Its text says "Empty-column restrictions never apply to you", and Tithe — two
+ * extra moves to enter an empty column — is one. Covering it would take the
+ * charm from 18.0% of deep boards to 32.0%, near enough double.
+ *
+ * This needs a DIFFERENT instrument from the measurement above, and getting
+ * that wrong would produce confident nonsense. Royal Gates changes what is
+ * LEGAL, so it is measured at an unlimited budget where only structure shows.
+ * Tithe changes what things COST, and at an unlimited budget a cost is
+ * invisible by construction — the arms would come out identical and the honest
+ * reading of that would be "no effect", which would be an artifact of the
+ * instrument rather than a fact about the charm. So this runs at the real
+ * allowance, on boards dealt WITH Tithe, so the stipend has already paid for
+ * the threat exactly as it would in a run.
+ *
+ * The result is not assumed. Keystone's free entry looked like a pure gift and
+ * measured at -6pp, because entering an empty column is usually a bad move and
+ * making it cheap is what gets it played. Waiving Tithe is the same shape of
+ * change.
+ *
+ * BANK, and why it is not zero. A first pass ran this at bank 0 and the control
+ * cleared 1 of 120. That is not a finding, it is a floor: at zero carry on a
+ * deep Warden a bare deck is already dead, and against a control pinned at zero
+ * ANY move-saving effect measures enormous — it read +32pp, which says nothing
+ * about Tithe and everything about the regime. It is the mirror of the failure
+ * the Keystone pass hit from the other side, where a control at 9 of 40 was too
+ * low for a fractional effect to clear the noise.
+ *
+ * So it runs with the bank a player actually arrives holding. `humanrun.ts`
+ * measures peak bank at 21 after the cap, so that is the number, and the arms
+ * are only worth reading while the control sits somewhere measurable rather
+ * than against either wall.
+ */
+const REAL_BANK = 21;
+const TITHE_PER = Number(process.argv[3] ?? PER);
+const titheBoards: { sim: Sim }[] = [];
+for (let i = 0; i < TITHE_PER; i++) {
+  const run = newRun((77003 + i * 104729) >>> 0);
+  run.stage = STAGE;
+  const spec = { ...stageSpec(run, STAGE), modifiers: ['tithe' as const] };
+  titheBoards.push({
+    sim: dealLevel({ deck: run.deck, charms: [], spec, bonusMoves: 0, bonusCells: 0, bank: REAL_BANK }).sim,
+  });
+}
+
+function titheScore(waived: boolean): number {
+  let won = 0;
+  for (const b of titheBoards) {
+    const s = cloneSim(b.sim);
+    s.rules = { ...s.rules, emptyCost: waived ? 0 : 2 };
+    if (playBot(s, CAREFUL).won) won++;
+  }
+  return won;
+}
+
+const tOff = titheScore(false);
+const tOn = titheScore(true);
+console.log(`\nTithe boards, ${TITHE_PER} boards, arriving with ${REAL_BANK} banked`);
+console.log(`  paying the tax   ${tOff}/${TITHE_PER} (${((tOff / TITHE_PER) * 100).toFixed(0)}%)`);
+console.log(`  Locksmith waives ${tOn}/${TITHE_PER} (${((tOn / TITHE_PER) * 100).toFixed(0)}%)`);
+console.log(`  worth ${(((tOn - tOff) / TITHE_PER) * 100).toFixed(0)}pp`);
+if (tOff <= TITHE_PER * 0.05 || tOff >= TITHE_PER * 0.95) {
+  console.log('  !! control is against a wall — this number is the regime, not the charm');
+}
