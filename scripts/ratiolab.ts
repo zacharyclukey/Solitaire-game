@@ -61,7 +61,16 @@ function playRun(seed: number, delta: number): { depth: number; cause: Cause; pe
 
 const RUNS = Number(process.argv[2] ?? 20);
 // 0 is the game as it stands; +0.15 restores the pre-tightening ratio exactly.
-const DELTAS = [0, 0.05, 0.075, 0.15];
+// 0 appears TWICE, deliberately and first and last. `dealLevel` sizes
+// allowances against wall-clock solver budgets, so it is not deterministic, and
+// a run is a CHAIN — one different board at stage 2 changes everything after
+// it, which amplifies per-board jitter far beyond the "one or two boards" it
+// shows in a single-board sweep. Arms here cannot be paired, because changing
+// the allowance changes which board is dealt (that is the point). So the only
+// honest control is to run the same arm twice: if the two zeroes differ by as
+// much as the deltas do, this instrument cannot resolve the effect and no row
+// below it means anything.
+const DELTAS = [0, 0.05, 0.075, 0.15, 0];
 
 console.log(`${RUNS} runs an arm, no build, no charms, no escapes\n`);
 console.log('ratio delta   median  mean   peak bank   out of moves   stuck   bankrupt');
