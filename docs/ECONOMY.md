@@ -593,65 +593,66 @@ Identical at the stages where the failures actually live. An earlier n=20 run at
 stage 8 alone had hinted depth 4 was better; it was noise, and was flagged
 inconclusive at the time rather than banked.
 
-**Most of them are dead — but far fewer than this section used to claim.**
+**Most of them are dead — but the share has moved, and the story needs both
+measurements to make sense.**
 
-Re-measured 2026-09-11 after a harness fix, because the figure that stood here
-could not be reproduced. `winnable()` passed a *millisecond* budget to
-`findSolution` under a parameter named `nodes` and a comment calling it a
-generous node cap, in a file whose own header warns about exactly that trap. So
-how hard the solver searched depended on how busy the container was, and no run
-could be checked against another. It is node-bounded now.
+There were two probes. The first, `winnable()` in `deadboards.ts`, passed a
+*millisecond* budget to `findSolution` under a parameter named `nodes`, in a
+file whose own header warns about that trap. Its numbers were never
+reproducible — how hard it searched depended on how busy the container was — and
+they are withdrawn rather than restated. The second drove `solve` directly at
+1,000,000 nodes, which is the honest version, and that one stands.
 
-At **1,000,000 nodes**, 24 boards a stage, with the control clean at **24/24**:
+`winnable()` is node-bounded now, so both probes finally agree on method. What
+they do not share is the game they measured.
 
-| stage | bot lost | of those, solvable |
-|---|---|---|
-| 12 | 9 | 5 |
-| 18 | 15 | 5 |
+**Before this week's difficulty work** (`solve`, 1M nodes, 24 boards a stage):
 
-**10 of 24 lost boards — 42% — have a line.** The figure this replaces was one
-in six. The node cap has to be quoted with the number: at 200,000 nodes the
-control was only 22/24, and a control that misses boards the *bot* cleared
-cannot certify anything, since the bot is far weaker than the solver. It closes
-at 1,000,000.
-
-Read carefully what that does and does not overturn. **It does not mean those
-boards are humanly winnable.** A 1,000,000-node weighted A* is not a person, and
-the depth and width sweeps above — which are about the player model — still move
-nothing. What it does mean is that the gap between "no line exists" and "no line
-a player will find" is **much wider than recorded**, so the ceiling is less a
-fact about honest shuffles than this section claimed. The boards that are
-genuinely lineless are 14 of 48 at these depths, not the ~20 of 24 losses the
-old number implied.
-
-Whether that changes anything is a design question and is left open. If it does,
-the lever is legibility and escapes rather than the allowance, which is measured
-to be self-neutralising.
-
-That first pass raised `findSolution`'s budget from 2s to 50s and nothing
-changed — but note what that argument is. `findSolution(sim, budgetMs)` takes
-**milliseconds**, and every pass inside it is *also* capped at 9k-22k nodes, so
-past a certain point extra time buys no extra search and the 25x was mostly
-vacuous. Driving `solve` directly at 1,000,000 nodes — about 45x the largest of
-those caps — is the honest version, and it does recover a little more:
-
-| stage | bot lost | solvable at 1M | control: bot won | solvable at 1M |
+| stage | bot lost | solvable at 1M | control: bot won | solvable |
 |---|---|---|---|---|
 | 12 | 7 | 1 | 17 | 17 |
 | 18 | 11 | 2 | 13 | 12 |
 
-So roughly **85% of the bot's losses have no line that any search tried can
-find**, and a 45x deeper search converts about one board in eighteen. The fifth
-is overwhelmingly a fact about the shuffle, not a limit of the player model —
-which is exactly what "losable by default, honest shuffles" was chosen to mean.
-It is not a bug, and no amount of skill or money converts it.
+**After it** (2026-09-11, same method, control clean at 24/24):
 
-Two honest caveats on the counts. The deep configuration is not uniformly
-stronger — it missed one board at stage 18 that the bot itself cleared, so
-"solvable at 1M" is not a superset of "clearable". And `dealLevel` sizes its
-allowance with wall-clock solver budgets, so the exact boards dealt shift a
-little between runs: the same sweep gave 6 and then 7 losses at stage 12. Read
-these to the nearest board, not exactly.
+| stage | bot lost | solvable at 1M | control: bot won | solvable |
+|---|---|---|---|---|
+| 12 | 9 | 5 | 15 | 15 |
+| 18 | 15 | 5 | 9 | 9 |
+
+3 of 18 became 10 of 24 — **17% to 42%**. The denominators are the clue: the bot
+now loses 24 of 48 boards where it lost 18, and both sweeps deal with `bank:
+9999`, so the allowance is not what changed. The modifier floor and the three
+wired variations made boards structurally harder for a width-limited player
+**without making them lineless**. The extra losses are boards a searcher still
+solves.
+
+That is a real effect of this week's work and it was not the intent, so it is
+worth stating plainly: the difficulty pass moved the game toward *harder to
+play* rather than *deader to deal*. Whether that is better is a design question.
+
+The node cap must be quoted with any of these figures. At 200,000 nodes the
+control was 22/24 — it missed boards the **bot** had cleared — and a control
+that does that cannot certify anything, since the bot is far weaker than the
+solver. It closes at 1,000,000.
+
+**What none of this shows is that those boards are humanly winnable.** A
+1,000,000-node weighted A* is not a person, and the depth and width sweeps above
+— which are about the player model — still move nothing. What it means is that
+the gap between "no line exists" and "no line a player will find" is wider than
+this document recorded, so the ceiling is less purely a fact about honest
+shuffles than the old heading claimed. Genuinely lineless boards are 14 of 48 at
+these depths.
+
+Two honest caveats carried over from the earlier sweep, both still true. The
+deep configuration is not uniformly stronger — it once missed a board at stage
+18 that the bot itself cleared, so "solvable at 1M" is not strictly a superset
+of "clearable". And `dealLevel` sizes its allowance with wall-clock solver
+budgets, so the boards dealt shift a little between runs: the same sweep gave 6
+then 7 losses at stage 12. Read these to the nearest board.
+
+If depth is ever judged too short, the lever is legibility and escapes rather
+than the allowance, which is measured to be self-neutralising.
 
 ### Which makes legibility the thing that has to hold
 

@@ -176,8 +176,11 @@ Two consequences worth stating plainly:
   used to be impossible by construction — every board was certified clearable
   inside `bank + stipend` and eased until it was — and that contract is
   **retired**. Deals are honest shuffles now, selected on estimated win chance
-  rather than proven winnable, and roughly a fifth of boards have no line at
-  all — measured, not assumed (`docs/ECONOMY.md`, "unwinnable, not unfound").
+  rather than proven winnable, and a large share of boards have no line at all
+  — measured, not assumed (`docs/ECONOMY.md`, "the unfindable fifth"). How
+  large was overstated until 2026-09-11: 42% of the boards a fallible player
+  loses do have a line, so the lineless share is smaller than this bullet used
+  to imply, though still the reason the ceiling exists.
   Bankruptcy survives only as a floor: a board with
   essentially no chance is not dealt at all.
 - **Undo is unlimited and priced in moves, not rationed by a counter.** It used
@@ -1628,8 +1631,10 @@ do not follow the others.
 - **There is no clearability guarantee any more, on purpose.** It was retired
   when deals became honest shuffles. The number that replaced it is the
   estimated win chance in `src/game/odds.ts`, and about a fifth of boards are
-  lost whatever the allowance — those are dead shuffles rather than missed
-  lines, and `rescue.ts` still names a winning card on 24 of 25 of them.
+  lost whatever the allowance. Calling those "dead shuffles rather than missed
+  lines" was too strong and is corrected: re-measured with a real node bound and
+  a clean control, 42% of them do have a line, though not one shown to be
+  findable by a person. `rescue.ts` still names a winning card on 24 of 25.
   The claim that used to close this bullet — six-column boards the sharpest
   edge at 76% against 91% for seven — **does not reproduce and is withdrawn.**
   Re-measured over 194 boards at stages 2-14 at each level's own budget, six

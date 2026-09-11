@@ -17,12 +17,26 @@
 
 /**
  * The ceiling. However many moves are handed over, about a fifth of boards are
- * lost anyway. That was assumed to be bounded lookahead missing a narrow line;
- * it is not. Handed the bot's failures at unlimited budget, the solver finds a
- * line on only about one in six of them even when driven at 1,000,000 nodes,
- * some 45x its shipping cap — while on the boards the bot clears it finds one
- * almost every time. So these are dead shuffles rather than missed lines, and
- * no allowance and no better play recovers them (`scripts/deadboards.ts`).
+ * lost anyway, and no allowance recovers them — the allowance is measured to be
+ * self-neutralising, because a richer purse buys a harder board at the same win
+ * chance rather than an easier level.
+ *
+ * WHY they are lost is less settled than this comment used to claim. It said
+ * the solver finds a line on "only about one in six of them even when driven at
+ * 1,000,000 nodes, some 45x its shipping cap". That measurement was not what it
+ * said: `deadboards.ts` passed a MILLISECOND budget under a parameter named
+ * `nodes`, so the search depended on machine load and nothing was ever driven
+ * at 1,000,000 nodes. Re-measured 2026-09-11 with a real node bound and the
+ * control clean at 24/24, the solver finds a line on **10 of 24** boards the
+ * bot lost — 42%, not one in six.
+ *
+ * So a large minority of these are missed lines rather than dead shuffles. That
+ * does NOT make them humanly winnable: a 1,000,000-node weighted A* is not a
+ * person, and neither deeper nor wider bot lookahead recovers any of them. What
+ * it means is that the gap between "no line exists" and "no line a player will
+ * find" is much wider than was recorded, which makes legibility and the escapes
+ * a live lever where this comment used to say none existed.
+ * (`scripts/deadboards.ts`, and docs/ECONOMY.md for the full table.)
  */
 export const FINDABLE = 0.78;
 
