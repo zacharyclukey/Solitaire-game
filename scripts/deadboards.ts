@@ -19,24 +19,40 @@
  *             that would have won? A dead board is only fair if it is legible.
  *
  * The result as measured: neither width nor depth moves it, the solver clears
- * everything the bot clears and about 15% of what it doesn't (even driven at
- * 1,000,000 nodes, well past the caps inside `findSolution`), and rescue names
- * a card on 22 of 23 lost boards. The fifth is unwinnable, not unfound.
+ * nearly everything the bot clears and a minority of what it doesn't, and
+ * rescue names a card on 22 of 23 lost boards. The fifth is unwinnable, not
+ * unfound.
+ *
+ * THE NUMBERS THAT USED TO SIT HERE WERE NOT REPRODUCIBLE and have been
+ * removed rather than restated. This header claimed "about 15% of what it
+ * doesn't (even driven at 1,000,000 nodes)" — see `winnable` below, which never
+ * drove anything at 1,000,000 nodes; it passed a millisecond budget, so the
+ * search depth depended on how busy the container was. Re-running the old code
+ * on 2026-09-11 gave 34%, which looked like the game had drifted and was far
+ * more likely to be a quicker machine. `winnable` is node-bounded now, so a
+ * figure measured today can be checked tomorrow. Quote one only from a run made
+ * after this fix, and say what NODE_CAP it used.
  *
  * Note that `findSolution`'s second argument is MILLISECONDS, and its passes
  * are separately capped at 9k-22k nodes — so raising that budget is not the
- * same as searching harder. `solve` takes `maxNodes` for that.
+ * same as searching harder. `solve` takes `maxNodes` for that, and `maxMs` has
+ * to be raised with it or its own 900ms default binds first. This file
+ * documented that trap in this very paragraph and then committed it one
+ * function below, which is the whole reason the warning is not enough on its
+ * own.
  */
 import { dealLevel } from '../src/game/deal.ts';
 import { CAREFUL, playBot, type BotOptions } from '../src/game/bot.ts';
 import { newRun, stageSpec } from '../src/game/run.ts';
-import { findSolution } from '../src/game/solver.ts';
+import { solve } from '../src/game/solver.ts';
 import { findRescue } from '../src/game/rescue.ts';
 import { cloneSim, type Sim } from '../src/game/sim.ts';
 
 const UNLIMITED = Number.MAX_SAFE_INTEGER / 4;
 const N = Number(process.argv[3] ?? 24);
 const mode = process.argv[2] ?? 'dead';
+/** Node budget for "is this winnable at all". Deterministic, unlike a clock. */
+const NODE_CAP = Number(process.argv[4] ?? 200_000);
 
 /** A board as the player meets it, with the bank taken out of the question. */
 function board(stage: number, i: number): Sim {
@@ -48,11 +64,32 @@ function board(stage: number, i: number): Sim {
   }).sim;
 }
 
-/** Winnable at all, by anyone? Node cap is deliberately generous. */
-function winnable(s: Sim, nodes = 50000): boolean {
+/**
+ * Winnable at all, by anyone?
+ *
+ * This function used to be the trap the header above warns about, which is the
+ * most embarrassing place for it to have been. It read
+ * `findSolution(probe, nodes)` with `nodes = 50000` and a comment calling it a
+ * generous node cap — but `findSolution`'s second argument is MILLISECONDS, so
+ * it was a fifty-second wall-clock budget governed internally by the 9k-22k
+ * per-pass node caps, and the file's own claim of "driving the solver at
+ * 1,000,000 nodes" was never what this code did.
+ *
+ * The damage is not the depth of search, it is REPRODUCIBILITY. A wall-clock
+ * budget searches further on an idle machine than a loaded one, so two runs of
+ * this script on different days are not comparable, and the "one lost board in
+ * six is really winnable" figure could not be checked against a later run.
+ * Measured after the fix on 2026-09-11, a re-run of the old code gave 34% where
+ * the docs recorded 17% — which looked like a real drift in the game and is far
+ * more likely to have been the container being quicker.
+ *
+ * `maxMs` has to be raised alongside `maxNodes` or `solve`'s own 900ms default
+ * becomes the binding constraint and the wall clock is back.
+ */
+function winnable(s: Sim, maxNodes = NODE_CAP): boolean {
   const probe = cloneSim(s);
   probe.movesLeft = UNLIMITED;
-  return findSolution(probe, nodes) !== null;
+  return solve(probe, { maxNodes, maxMs: 600_000 }) !== null;
 }
 
 if (mode === 'depth') {
