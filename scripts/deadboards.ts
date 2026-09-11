@@ -23,6 +23,11 @@
  * rescue names a card on 22 of 23 lost boards. The fifth is unwinnable, not
  * unfound.
  *
+ * Measured after the fix, 2026-09-11, NODE_CAP 1,000,000, 24 boards a stage,
+ * control clean at 24/24: the solver finds a line on 10 of the 24 boards the
+ * bot lost, 42%. At NODE_CAP 200,000 the control was 22/24 — it missed boards
+ * the BOT had cleared — so quote the cap with the number or it means nothing.
+ *
  * THE NUMBERS THAT USED TO SIT HERE WERE NOT REPRODUCIBLE and have been
  * removed rather than restated. This header claimed "about 15% of what it
  * doesn't (even driven at 1,000,000 nodes)" — see `winnable` below, which never

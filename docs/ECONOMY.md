@@ -567,7 +567,7 @@ so the bounded-lookahead bot (task #11) is now a prerequisite, not a nice-to-hav
 Target shape, to check against: a bare deck dies around stage 8-10, a good build reaches
 15-20, and nothing reliably reaches 30.
 
-## The unfindable fifth is unwinnable, not unfound
+## The unfindable fifth: mostly unwinnable, but less so than recorded
 
 This was carried for a long time as "boards the bot cannot find a line on",
 with a standing warning not to treat 22% as a human number because it was the
@@ -593,11 +593,40 @@ Identical at the stages where the failures actually live. An earlier n=20 run at
 stage 8 alone had hinted depth 4 was better; it was noise, and was flagged
 inconclusive at the time rather than banked.
 
-**The boards are dead.** Hand the bot's failures to the solver at unlimited
-budget and it finds a line on 1 of 6 at stage 12 and 1 of 11 at stage 18. The
-control that makes that mean anything: on the boards the bot *cleared*, the
-same solver found a line 18/18 and 13/13. The solver is not blind at these
-stages, so its silence is evidence rather than absence.
+**Most of them are dead — but far fewer than this section used to claim.**
+
+Re-measured 2026-09-11 after a harness fix, because the figure that stood here
+could not be reproduced. `winnable()` passed a *millisecond* budget to
+`findSolution` under a parameter named `nodes` and a comment calling it a
+generous node cap, in a file whose own header warns about exactly that trap. So
+how hard the solver searched depended on how busy the container was, and no run
+could be checked against another. It is node-bounded now.
+
+At **1,000,000 nodes**, 24 boards a stage, with the control clean at **24/24**:
+
+| stage | bot lost | of those, solvable |
+|---|---|---|
+| 12 | 9 | 5 |
+| 18 | 15 | 5 |
+
+**10 of 24 lost boards — 42% — have a line.** The figure this replaces was one
+in six. The node cap has to be quoted with the number: at 200,000 nodes the
+control was only 22/24, and a control that misses boards the *bot* cleared
+cannot certify anything, since the bot is far weaker than the solver. It closes
+at 1,000,000.
+
+Read carefully what that does and does not overturn. **It does not mean those
+boards are humanly winnable.** A 1,000,000-node weighted A* is not a person, and
+the depth and width sweeps above — which are about the player model — still move
+nothing. What it does mean is that the gap between "no line exists" and "no line
+a player will find" is **much wider than recorded**, so the ceiling is less a
+fact about honest shuffles than this section claimed. The boards that are
+genuinely lineless are 14 of 48 at these depths, not the ~20 of 24 losses the
+old number implied.
+
+Whether that changes anything is a design question and is left open. If it does,
+the lever is legibility and escapes rather than the allowance, which is measured
+to be self-neutralising.
 
 That first pass raised `findSolution`'s budget from 2s to 50s and nothing
 changed — but note what that argument is. `findSolution(sim, budgetMs)` takes
