@@ -644,39 +644,56 @@ counts the ones that turn the loss into a win. 120 boards at stages 4, 8 and 12
 the solver, because a solver extracts value from a card no person would find.
 
 ```
-Ember          16/76   21%
-Anchor         14/76   18%
-Prism          12/76   16%
-Bridge         10/76   13%
-Twin            9/76   12%
-Torch           7/76    9%
-Kickback        7/76    9%
-Featherweight   7/76    9%
-Chameleon       7/76    9%
-Keystone        3/76    4%
-Gilded          0/76    0%
-Beacon          0/76    0%
-Conduit         0/76    0%
-Resonance       0/76    0%
+Anchor         27/39   69%
+Ember          21/39   54%
+Bridge         16/39   41%
+Prism          14/39   36%
+Twin           12/39   31%
+Chameleon      11/39   28%
+Torch          10/39   26%
+Kickback        5/39   13%
+Featherweight   5/39   13%
+Keystone        1/39    3%
+Beacon          1/39    3%
+Gilded          0/39    0%
+Conduit         0/39    0%
+Resonance       0/39    0%
 ```
 
-**Re-measured 2026-09-08 at 180 boards, and every rate roughly halved.** The
-table this replaces read Anchor 53%, Ember 51%, Twin 40%. That was not noise and
-not a change to these cards — it was **repricing Loose Weave from a boon to a
-bane** (§6a). Modifier selection is threat-budget driven, so changing one
-modifier's threat changes which others fit alongside it; the audit now samples
-harder boards, and a single enchantment saves fewer of them. Loss rate rose with
-it, from 36% of dealt boards to 42%.
+**Re-measured 2026-09-11, and every rate roughly TRIPLED.** The table this
+replaces read Ember 21%, Anchor 18%, Prism 16% — itself a halving of a 43-board
+table before it, caused by repricing Loose Weave. This time **no enchantment was
+touched at all.** What moved is the boards: the modifier floor and the three
+wired rule variations changed which modifiers get dealt, and the loss rate fell
+with it, from 42% of dealt boards to 33%.
 
-Two things moved besides the level. Prism went from eighth to third and Chameleon
-from fourth to joint-sixth, so `rescue.ts` was searching in an order that no
-longer matched, and the run-over screen was naming Twin when Prism belongs there.
-Both corrected.
+Fewer losses and far more of them rescuable is one finding, not two.
+`scripts/deadboards.ts` says the same thing from a completely different angle:
+the share of lost boards a searcher can still solve went from 17% to 42%. **This
+week's difficulty work made boards harder to PLAY without making them deader to
+DEAL**, so what a player loses is much more often a recoverable position than a
+dead shuffle — and one enchantment turns a recoverable position far more often
+than it turns a dead one.
+
+That is twice now that modifier selection has invalidated this audit, and the
+second time it happened without anyone touching an enchantment. **Re-run it
+whenever the modifier pool or the threat budget moves**, not only when a card
+changes.
+
+`rescue.ts` was searching in an order that no longer matched. Only two positions
+were load-bearing at this sample: Anchor to the front, a real 15-point gap over
+Ember, and Chameleon up from **last** — it was searched ninth at 28%, behind two
+cards measuring 13%, which is the one way that list can actively mislead, since
+the search returns the first hit inside its deadline. The middle ordering sits
+inside the noise at 39 lost boards. Corrected.
 
 The SET of cards that rescue did not change, which is why the Pays/Saves chips
-still mark exactly the right nine: they land at 9-21%, Keystone at 4%, and four
-cards at a flat 0%. What changed is the claim the chip was making — it promised
-"at least one in five", which was true at the old rates and is not now.
+still mark exactly the right nine: they land at 13-69%, with Keystone and Beacon
+at 3% and three cards at a flat 0%. The gap the chip draws is wider than it has
+ever been. Its old promise of "at least one in five" is true again at these
+rates, but the copy no longer makes a numeric promise and should not go back to
+making one — the number has now moved by a factor of three in each direction
+without a single card changing.
 
 ### The process gap this exposed
 

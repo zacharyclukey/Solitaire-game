@@ -12,18 +12,32 @@
  * one that does is the answer.
  *
  * Ordered by measured worth rather than flavour, so the likeliest answer is
- * found before the search budget runs out. Re-measured 2026-09-08 over 76 lost
- * boards (`scripts/enchaudit.ts 60`): Ember 21%, Anchor 18%, Prism 16%,
- * Bridge 13%, Twin 12%, then Torch, Kickback, Featherweight and Chameleon all
- * at 9%, Keystone 4%.
+ * found before the search budget runs out. Re-measured 2026-09-11 over 39 lost
+ * boards from 120 dealt (`scripts/enchaudit.ts 40`): Anchor 69%, Ember 54%,
+ * Bridge 41%, Prism 36%, Twin 31%, Chameleon 28%, Torch 26%, Kickback and
+ * Featherweight 13%, Keystone and Beacon 3%.
  *
- * Every rate roughly HALVED from the 43-board table this replaces (Anchor 53%,
- * Ember 51%, Twin 40%). That was not noise and not a change to these cards: it
- * was repricing Loose Weave from a boon to a bane. Modifier selection is
- * threat-budget driven, so changing one modifier's threat changes which others
- * fit alongside it, and the audit is now sampling harder boards on which a
- * single enchantment saves less. The order moved with it — Prism rose from
- * eighth to third, Chameleon fell from fourth to joint-sixth.
+ * Every rate roughly TRIPLED against the 2026-09-08 table (Ember 21%, Anchor
+ * 18%, Prism 16%), and the loss rate fell from 42% of dealt boards to 33%. The
+ * two move together for one reason: this week's modifier floor and the three
+ * wired rule variations made boards harder to PLAY without making them deader
+ * to DEAL. `scripts/deadboards.ts` says the same thing independently — the
+ * share of lost boards a searcher can still solve went from 17% to 42%. Fewer
+ * losses, and far more of them recoverable positions rather than dead shuffles,
+ * so one enchantment turns them much more often.
+ *
+ * This is the second time modifier selection has invalidated this audit. The
+ * first was repricing Loose Weave; this one never touched an enchantment at
+ * all. Anything that changes which modifiers get dealt changes what a rescue is
+ * worth, so re-run this whenever the modifier pool or the threat budget moves.
+ *
+ * On the ORDER: only two positions are load-bearing at this sample. Anchor to
+ * the front is a real 15-point gap over Ember, and Chameleon had to come up
+ * from LAST — it was searched ninth at 28% behind two cards measuring 13%,
+ * which is the one way this list can actively mislead, since the search returns
+ * the first hit inside its deadline. The middle ordering (Bridge against Prism,
+ * Torch against Chameleon) sits inside the noise at 39 lost boards and is not
+ * worth churning on the next re-run.
  *
  * Conduit is deliberately absent, and Gilded and Resonance with it. All three
  * measure 0 of 43 — reaching for another enchanted card, or being paid, does
@@ -35,7 +49,7 @@ import { cloneSim, stock, type Sim } from './sim.ts';
 import { cardLabel, makeCardDef, type EnchantId } from './types.ts';
 
 const CANDIDATES: EnchantId[] = [
-  'ember', 'anchor', 'prism', 'bridge', 'twin', 'torch', 'spring', 'free', 'wild',
+  'anchor', 'ember', 'bridge', 'prism', 'twin', 'wild', 'torch', 'spring', 'free',
 ];
 
 export interface Rescue {
