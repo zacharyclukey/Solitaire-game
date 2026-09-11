@@ -7,7 +7,7 @@ import {
   TUTORIAL_BUDGET,
 } from '../src/game/tutorial.ts';
 import { applyMove, isWon, legalMoves, stock } from '../src/game/sim.ts';
-import { findSolution } from '../src/game/solver.ts';
+import { solve } from '../src/game/solver.ts';
 import { RANK_LABEL, SUIT_GLYPH } from '../src/game/types.ts';
 
 const label = (sim: ReturnType<typeof buildTutorialLevel>['sim'], id: number): string =>
@@ -16,7 +16,13 @@ const label = (sim: ReturnType<typeof buildTutorialLevel>['sim'], id: number): s
 describe('the guided first level', () => {
   it('is winnable well inside its allowance', () => {
     const level = buildTutorialLevel();
-    const solution = findSolution(level.sim, 900);
+    // Node-bounded, not clock-bounded. This read `findSolution(level.sim, 900)`,
+    // and that second argument is MILLISECONDS — so the assertion was partly
+    // about how busy the CI runner was rather than about the board. The margin
+    // was large enough that it probably never flaked, but a test that can fail
+    // for a reason unrelated to its subject is worth nothing when it does.
+    // Measured, the board wants 45 nodes and about 3ms.
+    const solution = solve(level.sim, { maxNodes: 25_000, maxMs: 60_000 });
     expect(solution).not.toBeNull();
     expect(solution!.cost).toBeLessThanOrEqual(TUTORIAL_BUDGET);
     for (const mv of solution!.moves) applyMove(level.sim, mv, null);
