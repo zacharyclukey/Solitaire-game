@@ -163,8 +163,54 @@ if (process.argv[2] === 'curve') {
   process.exit(0);
 }
 
+/**
+ * How much of a board's identity is the allowance?
+ *
+ * A resumed level stores its `LevelSpec` and its moves, re-deals from the spec
+ * and replays the moves in. That is only sound while one spec deals one board,
+ * and it does not: selection compares the realised spend ratio against the
+ * stage's target, so the allowance is part of what gets dealt. This reports how
+ * often changing only the allowance changes the layout.
+ *
+ * docs/DESIGN.md 6h-ter carried "68 of 240 boards (28%)" for this, measured ad
+ * hoc against the old stage-blind curve with an unrecorded delta. This exists so
+ * the figure can be re-run instead of inherited.
+ *
+ * `delta` is in moves, and 6 is roughly what the 2026-09-08 `ratioFor`
+ * tightening was worth against a 40-move plainPar.
+ */
+async function identity(per: number, delta: number, seed: number): Promise<void> {
+  const { simKey } = await import('../src/game/sim.ts');
+  const STAGES_HERE = [1, 2, 4, 6, 8, 10, 14, 18];
+  console.log(`same spec and seed, allowance +${delta} moves, ${per} boards per stage`);
+  console.log('stage   differing');
+  let diff = 0;
+  let n = 0;
+  for (const stage of STAGES_HERE) {
+    let d = 0;
+    for (let i = 0; i < per; i++) {
+      const run = newRun((seed + i * 104729) >>> 0);
+      run.stage = stage;
+      const spec = stageSpec(run, stage);
+      const at = (bonusMoves: number) => dealLevel({
+        deck: run.deck, charms: [], spec, bonusMoves, bonusCells: 0, bank: 0,
+      });
+      if (simKey(at(0).sim) !== simKey(at(delta).sim)) d++;
+      n++;
+    }
+    diff += d;
+    console.log(`${String(stage).padStart(5)}   ${String(d).padStart(3)}/${per}  ${(d / per * 100).toFixed(0)}%`);
+  }
+  console.log(`\npooled: ${diff}/${n} = ${(diff / n * 100).toFixed(0)}%`);
+}
+
 if (process.argv[2] === 'band') {
   await band(Number(process.argv[3] ?? 20), Number(process.argv[4] ?? 606061));
+  process.exit(0);
+}
+
+if (process.argv[2] === 'identity') {
+  await identity(Number(process.argv[3] ?? 30), Number(process.argv[4] ?? 6), Number(process.argv[5] ?? 414143));
   process.exit(0);
 }
 

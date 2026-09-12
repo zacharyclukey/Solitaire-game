@@ -128,10 +128,14 @@ card passed over in the shop could ever turn out to have been the one you
 needed.
 
 Deals are honest shuffles now. The solver is a measurement rather than a gate,
-boards are selected on estimated win chance against a band for the stage, and
-roughly a fifth of them have no line at all — not merely none a player finds
-(measured below). What survives is a floor: a board with essentially no chance
-is not dealt.
+boards are selected against a band for the stage, and a large minority of them
+have no line at all — not merely none a player finds (measured below). How large
+depends on the depth: 1 board in 8 at stages 1 and 6, 3 in 8 at stage 12, more
+than half at stage 18. What survives is a floor, and it is a floor on what the
+money can buy rather than on the odds: a board costing more than about 1.005x
+the allowance is not dealt (`AFFORDABLE_AT`). Gating on the odds instead would
+end runs with a bankruptcy screen for the crime of being deep, which no purse
+can fix — and that was a real bug once.
 
 Two things were meant to carry the fairness that the invariant used to. Only one
 of them does, and it is worth being exact about which:
@@ -520,10 +524,12 @@ of moves. What it does buy is peak bank back up from 27 to 34 — the exact
 problem the pass was asked to fix.
 
 **The reason is structural, and it is the same mechanism behind every "nothing
-moves the ceiling" result in this document.** Boards are selected on estimated
-win chance against a band for the stage. A richer purse does not buy an easier
-level; it buys a *harder board at the same win chance*, because that is what the
-selector is for. The allowance is self-neutralising by construction, which is
+moves the ceiling" result in this document.** Boards are selected against a band
+for the stage — since 2026-09-12 on the realised spend ratio, `spendAt(stipend /
+plainPar)` against `spendAt(ratioFor(stage))`, which is the same comparison in a
+space that does not conflate the purse with the depth. A richer purse does not
+buy an easier level; it buys a *board that needs more spending*, because that is
+what the selector is for. The allowance is self-neutralising by construction, which is
 why `ratioFor` is a poor difficulty lever in both directions and why the pass
 that tightened it moved the per-board curve far less than it moved the feel.
 

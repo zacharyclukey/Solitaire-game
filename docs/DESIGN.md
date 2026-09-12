@@ -1464,16 +1464,37 @@ A resumed level does not store its board. It stores the `LevelSpec` and the
 moves played, re-deals from the spec, and replays the moves into the result.
 That is only sound while the same spec deals the same board.
 
-It does not. `dealLevel` chooses its layout by estimated win chance against the
-**allowance** — `winChance(stipendBase, thisPlainPar, ...)` — so the allowance is
-part of the board's identity. Dealing one spec at two allowances gives two
-different boards, and **every balance pass moves the allowance**. This session
-alone moved it three times: `ratioFor`, the bank cap, and under-par no longer
-granting `bonusMoves`.
+It does not. `dealLevel` chooses its layout against the **allowance** —
+`spendAt(stipendBase / thisPlainPar)` compared with the stage's target — so the
+allowance is part of the board's identity. Dealing one spec at two allowances can
+give two different boards, and **every balance pass moves the allowance**. One
+session alone moved it three times: `ratioFor`, the bank cap, and under-par no
+longer granting `bonusMoves`. (The call was `winChance(stipendBase,
+thisPlainPar, ...)` until the 2026-09-12 split; selection compares the spend term
+alone now, and this paragraph was stale on it for one commit.)
 
 Measured: holding the spec and seed fixed and changing only the allowance by
-the size of this session's tightening, the layout differs on **68 of 240
+the size of one session's tightening, the layout differs on **68 of 240
 boards (28%)**.
+
+Re-measured 2026-09-12 after the `odds.ts` split, with a script this time
+(`scripts/odds.ts identity 30 6`, +6 moves across stages 1 to 18): **69 of 240,
+29%**. The figure holds. It was previously an ad-hoc measurement with an
+unrecorded delta, which is why it now has a mode of its own.
+
+The per-stage breakdown is new, and it corroborates the band's shape from a third
+angle:
+
+| stage | 1 | 2 | 4 | 6 | 8 | 10 | 14 | 18 |
+|---|---|---|---|---|---|---|---|---|
+| layout differs | 27% | 10% | 13% | 23% | 50% | 67% | 33% | 7% |
+
+The allowance is most load-bearing at stages 8 to 10 and least at 18. That is
+what the spend curve predicts: stages 8 to 10 aim at 1.25x and 1.10x, on the
+steepest part of the curve, where a few moves move the estimate a long way and
+push a board out of the band. Stage 18 aims below 1.0x where the curve is
+flat and almost nothing shifts it — which is the same reason board selection is
+not a lever at depth.
 
 `applyMove` checks nothing. So a player who quit mid-level under an older build
 and came back under a newer one had their old moves applied to a new layout —
