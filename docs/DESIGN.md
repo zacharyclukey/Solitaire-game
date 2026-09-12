@@ -680,6 +680,46 @@ second time it happened without anyone touching an enchantment. **Re-run it
 whenever the modifier pool or the threat budget moves**, not only when a card
 changes.
 
+**Re-run again 2026-09-13**, because the band's new upper edge (`OVER_MARGIN`)
+moved the board population, which is exactly the trigger above. Every rate rose
+once more, on 28 lost boards of 120:
+
+```
+Anchor         24/28   86%      Torch           9/28   32%
+Ember          18/28   64%      Kickback        6/28   21%
+Bridge         14/28   50%      Featherweight   6/28   21%
+Prism          13/28   46%      Beacon          2/28    7%
+Chameleon      12/28   43%      Keystone        1/28    4%
+Twin           11/28   39%      Gilded / Conduit / Resonance  0%
+```
+
+**No reorder this time.** The only inversion against `rescue.ts` is Chameleon at
+43% above Twin at 39% — one board, 0.27 sd. Reordering on that would be tuning
+against noise, and the top four are in order with wide gaps.
+
+**The loss rate has now fallen three audits running: 42%, then 32%, then 23% of
+120 dealt boards.** The latest step is 1.6 sd and this instrument cannot resolve
+it; cumulatively 42% to 23% is 3.1 sd and is real. That sits in tension with
+`deadboards.ts` (bot losses up, 18 to 24 of 48) and with the band edge, which
+`odds.ts tail` measured as making stages 4/6/8 marginally HARDER, and the tension
+is not resolved here.
+
+Part of it is explained, though, and the explanation is measured. `OVER_MARGIN`
+**only binds at stages 1 to 6**:
+
+| stage | 1-2 | 4-6 | 8 | 10-12 | 14 | 18 |
+|---|---|---|---|---|---|---|
+| spend band's own upper edge | 2.56x | 2.11x | 1.36x | 1.19x | 1.05x | 1.04x |
+| `ratioFor + OVER_MARGIN` | 1.85x | 1.70x | 1.55x | 1.40x | 1.25x | 1.22x |
+| which one binds | margin | margin | band | band | band | band |
+
+From stage 8 down, the spend band is already tighter than the margin, so the
+margin is slack and does nothing — it is a backstop for the flat top of the
+curve, which is the only place the band goes slack. This audit samples stages 4,
+8 and 12, so **two of its three stages are untouched by the band edge**, and its
+loss rate should not be read as that change's effect. Do not "fix" `OVER_MARGIN`
+at depth on the assumption that it applies there.
+
 `rescue.ts` was searching in an order that no longer matched. Only two positions
 were load-bearing at this sample: Anchor to the front, a real 15-point gap over
 Ember, and Chameleon up from **last** — it was searched ninth at 28%, behind two
