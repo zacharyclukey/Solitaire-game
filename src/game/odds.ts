@@ -11,13 +11,19 @@
  *   P(win) = P(a line is findable at all) x P(spend fits the budget | findable)
  *
  * Splitting them matters because moves only fix the second. A board with no
- * line a player can find does not become winnable by handing over more moves,
- * and roughly one board in seven is that board.
+ * line a player can find does not become winnable by handing over more moves.
+ *
+ * How often that is the board depends on the stage, which this file does not
+ * know — see the note on FINDABLE. Measured 2026-09-12 at a budget large enough
+ * never to bind, it is 1 board in 8 at stage 1 and 6, but 3 in 8 at stage 12 and
+ * more than half at stage 18. This comment used to say "roughly one board in
+ * seven", full stop; that is the shallow end only.
  */
 
 /**
  * The ceiling. However many moves are handed over, about a fifth of boards are
- * lost anyway, and no allowance recovers them — the allowance is measured to be
+ * lost anyway — pooled across stages; see the per-stage breakdown below, which
+ * is the number that matters — and no allowance recovers them — the allowance is measured to be
  * self-neutralising, because a richer purse buys a harder board at the same win
  * chance rather than an easier level.
  *
@@ -37,6 +43,17 @@
  * find" is much wider than was recorded, which makes legibility and the escapes
  * a live lever where this comment used to say none existed.
  * (`scripts/deadboards.ts`, and docs/ECONOMY.md for the full table.)
+ *
+ * AND IT IS NOT ONE NUMBER. Re-measured 2026-09-12 (`scripts/odds.ts curve 20`,
+ * two independent seeds, 40 boards per stage per point), the share of boards
+ * cleared at a budget so large it never binds is **88% at stage 1, 88% at
+ * stage 6, 62% at stage 12 and 45% at stage 18**. 0.78 is the average over
+ * that mix, not a property of a board, and it flatters depth badly.
+ *
+ * This constant has no consumer outside its own test. It is the `P(findable)`
+ * term of the decomposition at the top of this file, which was never wired up
+ * — `winChance` returns `coverAt` alone. Wiring it up means making it take the
+ * stage, and the measurement above is what it should return. See task #45.
  */
 export const FINDABLE = 0.78;
 
@@ -53,6 +70,31 @@ export const FINDABLE = 0.78;
  * it re-budgets boards that already exist rather than inferring a budget from a
  * spend distribution, which made it independent of how those boards were
  * chosen.
+ *
+ * IT DID NOT SURVIVE THE DIFFICULTY PASS. Re-measured 2026-09-12 on 160 boards
+ * a point (two independent seeds, stages 1/6/12/18 as before), the bottom half
+ * holds and the top half does not:
+ *
+ *     multiple   here   measured   delta
+ *        0.9-1.2  as below  within 1.5pt   -- holds
+ *        1.4       0.68      0.556        -12.4  (3.4 sd)
+ *        1.6       0.71      0.619         -9.1  (2.5 sd)
+ *        2.0       0.78      0.656        -12.4  (3.8 sd)
+ *        2.6       0.78      0.706         -7.4  (2.3 sd)
+ *
+ * The numbers below are DELIBERATELY LEFT AS THEY WERE, because the error is
+ * not a vertical drift and re-fitting them would trade one wrong answer for
+ * another. Broken out by stage, the plateau is 88/88/62/45 for stages
+ * 1/6/12/18 — the pooled top half fell because the deep stages fell, and this
+ * function is blind to the stage. Normalised by each stage's own plateau the
+ * shape is near stage-invariant (spread 0.14 or less from 1.6x up), so the
+ * shape here is right and the ceiling is what is wrong.
+ *
+ * Checked against `scripts/odds.ts validate 25`, which plays at a real bank:
+ * the current numbers predict 78% at stage 1 with a 30-move bank against an
+ * actual 84%, and 67% at stage 12 against an actual 60%. Lowering the plateau
+ * to the pooled 0.71 would fix the second and break the first. The fix is a
+ * stage-aware ceiling, not a re-fit. See task #45.
  *
  * An earlier version derived this from a spend distribution gathered at an
  * unlimited bank and it was wrong in both directions — 72% predicted against

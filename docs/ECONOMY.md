@@ -542,15 +542,35 @@ bankruptcies in every arm. It was measured on decks grown with uniform ranks
 corrections this table has now been through; the other two are described above.
 
 Runs are short anyway, and the reason is arithmetic rather than balance. At
-stage 1 the stipend pays 1.70x plainPar, which the measured curve puts at about
+stage 1 the stipend pays 1.55x plainPar, which the measured curve puts at about
 74% per level, and 0.74^5 is 22% — a mean depth of about 3, which is what is
 observed. To reach a median depth of 8 a player needs about 92% per level.
+(This paragraph said 1.70x, which `ratioFor` stopped paying on 2026-09-08. The
+74% survives the correction by coincidence and is now measured rather than
+inferred: re-measured 2026-09-12 at stage 1 alone, 62% clear at 1.4x and 78% at
+1.6x, which interpolates to 74% at 1.55x.)
 
-**The curve tops out at 78%.** Roughly a fifth of boards are not cleared at any
-budget, so 78% is the per-level ceiling however much money is thrown at it, and
-that caps median depth at under three. No economy — no refund, no interest, no
-free readings — can move a number that is bounded by whether a line gets found
-at all.
+**The curve does not top out at one number, and that is new.** This section said
+78%, taken as a per-level ceiling however much money is thrown at the board.
+Re-measured 2026-09-12 (`scripts/odds.ts curve 20`, two independent seeds, 40
+boards per stage per point) at a budget of 2.6x plainPar — large enough that it
+essentially never binds — the ceiling is:
+
+| stage | cleared at 2.6x plainPar | n |
+|---|---|---|
+| 1 | 88% | 40 |
+| 6 | 88% | 40 |
+| 12 | 62% | 40 |
+| 18 | 45% | 40 |
+
+Pooled, that is **71%**, not 78%, and the two sweeps agree to a point (71% and
+70%). So the old figure was an average over a stage mix rather than a property
+of a board, and it flattered depth badly: at stage 18 more than half of boards
+are not cleared at any budget.
+
+The conclusion the old number supported still stands and gets stronger. No
+economy can move a ceiling set by whether a line gets found at all — and the
+ceiling at depth is lower than anyone recorded.
 
 So the economy is finished as a lever. The remaining one is that fifth — and it
 turns out not to be a search failure at all. See the next section.

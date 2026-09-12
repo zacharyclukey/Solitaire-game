@@ -1641,14 +1641,17 @@ do not follow the others.
   leaderboard is a small addition later.
 - No localisation pass; all copy is English and hard-coded.
 - Difficulty at the shallow end is set by `ratioFor`, not by search quality (see
-  the measurement in §2). Whether stage 1 at 1.70 is the right welcome is a
+  the measurement in §2). Whether stage 1 at 1.55 is the right welcome is a
   judgement call that wants real players, not more telemetry. (This bullet said
-  1.30 until the 2026-09-05 review; that was the old curve, and `ratioFor` has
-  opened at 1.70 since.)
+  1.30 until the 2026-09-05 review, then 1.70; `ratioFor` has opened at **1.55**
+  since the 2026-09-08 difficulty pass and this bullet was stale on it until
+  2026-09-12. Measured at that ratio, stage 1 clears about 74% per level.)
 - **There is no clearability guarantee any more, on purpose.** It was retired
   when deals became honest shuffles. The number that replaced it is the
   estimated win chance in `src/game/odds.ts`, and about a fifth of boards are
-  lost whatever the allowance. Calling those "dead shuffles rather than missed
+  lost whatever the allowance — pooled. Re-measured per stage on 2026-09-12 that
+  fifth is 1 board in 8 at stages 1 and 6, 3 in 8 at stage 12 and more than half
+  at stage 18. Calling those "dead shuffles rather than missed
   lines" was too strong and is corrected: re-measured with a real node bound and
   a clean control, 42% of them do have a line, though not one shown to be
   findable by a person. `rescue.ts` still names a winning card on 24 of 25.
@@ -1662,11 +1665,30 @@ do not follow the others.
   stipend then compensates, and the stages are not evenly spread across the
   arms. Answering it properly means holding stage and threat fixed and varying
   only the column count.
-- **The win curve in `odds.ts` was re-measured after the pivot and held.** It
-  was originally taken on a generator that eased boards until they fit, so it
-  was the most load-bearing possibly-stale number in the project; a second sweep
-  on honest shuffles moved every point by 5 points or less, inside the noise at
-  40 samples. The two sweeps are pooled, so it now rests on 80 boards a point.
+- **The win curve in `odds.ts` survived the pivot to honest shuffles and did NOT
+  survive the difficulty pass.** It was originally taken on a generator that
+  eased boards until they fit, so it was the most load-bearing possibly-stale
+  number in the project. A second sweep on honest shuffles moved every point by
+  5 points or less. Re-measured 2026-09-12 on 160 boards a point from two
+  genuinely independent seeds, the bottom half still holds (0.9x to 1.2x within
+  1.5 points) and the top half does not: 1.4x measures 56% against a recorded
+  68%, 2.0x measures 66% against 78%, and the plateau measures 71% against 78%.
+  Those are 2.3 to 3.8 standard deviations, and the two sweeps agree to a point
+  at the plateau.
+  **The numbers in the file were deliberately left alone**, because the error is
+  not a vertical drift: broken out by stage the plateau is 88/88/62/45 for
+  stages 1/6/12/18, so the pooled top half fell because the deep stages fell,
+  while `winChance` is blind to the stage. Normalised by each stage's own
+  plateau the shape is near stage-invariant, so the shape is right and the
+  ceiling is what is wrong. `scripts/odds.ts validate 25` confirms a re-fit
+  would not help: the current numbers predict 78% at stage 1 against an actual
+  84% and 67% at stage 12 against an actual 60%, so lowering the plateau fixes
+  one and breaks the other. The fix is a stage-aware ceiling — the `P(findable)`
+  term the module's own header describes and never wired up. Task #45.
+  Note also that the earlier "two independent sweeps, pooled to 80 boards a
+  point" was weaker than it read: both sweeps drew from a hardcoded seed base,
+  so they differed only by the one or two boards that shift because `dealLevel`
+  races a wall clock. `scripts/odds.ts` now takes a seed base.
 - **The economy is tuned against the wrong player.** A shallow player needs a
   median 1.0-1.7x par while `ratioFor` pays 1.25x plainPar at stage 10 and falls
   geometrically past 17, so full runs with that player end around stage 2-3

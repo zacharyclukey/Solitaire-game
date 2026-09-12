@@ -97,8 +97,74 @@ async function curve(per: number, seed: number): Promise<void> {
   }
 }
 
+/**
+ * What the stage's acceptance band actually accepts.
+ *
+ * `dealLevel` takes the first board whose estimated chance is within
+ * TOLERANCE of `coverAt(ratioFor(stage))`, so the band lives in probability
+ * space. The win curve saturates at its top point, which means that above
+ * some stage-dependent ratio the estimate cannot tell two boards apart. This
+ * reports the realised ratio of the boards actually dealt against the ratio
+ * the stage was designed around, so the band can be checked rather than
+ * reasoned about.
+ *
+ * It was written to check a prediction, and the prediction was half wrong. Above
+ * stage 6 the target falls far enough that the band is two-sided and there is no
+ * loose tail at all. Below it, `coverAt(ratioFor(stage)) + TOLERANCE` exceeds the
+ * curve's maximum, so no board can be rejected for being too EASY — and at
+ * stages 4 and 6 that shows up, 8-16% of boards landing more than 0.3 above the
+ * ratio the stage was designed around and reaching 1.96x against a 1.40x design
+ * point. At stages 1 and 2 the same one-sidedness is harmless, because the
+ * board population there is too narrow to reach that far. Measured 2026-09-12,
+ * `band 25` on seeds 606061 and 313171, which agree.
+ *
+ * The fallback column is why this matters to anyone changing the band. A
+ * two-sided test rejects more shuffles, and `dealLevel` races a deadline: past
+ * it, selection gives up and hands out a shallow standard board. Baseline that
+ * column before and after, or a harder band will quietly buy easier levels.
+ */
+async function band(per: number, seed: number): Promise<void> {
+  const { ratioFor } = await import('../src/game/deal.ts');
+  const { coverAt } = await import('../src/game/odds.ts');
+  console.log('stage  ratioFor  target   solved  fallbk   realised ratio (stipend/plainPar)');
+  console.log('                                          median    p90     max   share>+0.3');
+  for (const stage of [1, 2, 4, 6, 8, 10, 14, 18]) {
+    const ratios: number[] = [];
+    let solved = 0;
+    let fell = 0;
+    for (let i = 0; i < per; i++) {
+      const run = newRun((seed + i * 104729) >>> 0);
+      run.stage = stage;
+      const l = dealLevel({
+        deck: run.deck, charms: [], spec: stageSpec(run, stage),
+        bonusMoves: 0, bonusCells: 0, bank: 0,
+      });
+      if (l.plainSolved) solved++;
+      if (l.fallback) fell++;
+      if (l.plainPar > 0) ratios.push(l.stipend / l.plainPar);
+    }
+    ratios.sort((a, b) => a - b);
+    const at = (q: number) => ratios[Math.min(ratios.length - 1, Math.floor(q * ratios.length))];
+    const want = ratioFor(stage);
+    const loose = ratios.filter((r) => r > want + 0.3).length / ratios.length;
+    console.log(
+      `${String(stage).padStart(5)}  ${want.toFixed(2).padStart(8)}  ` +
+      `${(coverAt(want) * 100).toFixed(0).padStart(5)}%  ` +
+      `${(solved / per * 100).toFixed(0).padStart(5)}%  ` +
+      `${(fell / per * 100).toFixed(0).padStart(5)}%   ` +
+      `${at(0.5).toFixed(2).padStart(7)} ${at(0.9).toFixed(2).padStart(6)} ` +
+      `${ratios[ratios.length - 1].toFixed(2).padStart(7)}  ${(loose * 100).toFixed(0).padStart(8)}%`,
+    );
+  }
+}
+
 if (process.argv[2] === 'curve') {
   await curve(Number(process.argv[3] ?? 10), Number(process.argv[4] ?? 51001));
+  process.exit(0);
+}
+
+if (process.argv[2] === 'band') {
+  await band(Number(process.argv[3] ?? 20), Number(process.argv[4] ?? 606061));
   process.exit(0);
 }
 
