@@ -91,12 +91,33 @@ describe('resuming a level saved by an older build', () => {
   const deal = (bonusMoves: number) =>
     dealLevel({ deck: starterDeck(), charms: [], spec, bonusMoves, bonusCells: 0, bank: 0 });
 
+  const deepSpec: LevelSpec = { stage: 10, kind: 'trial', modifiers: ['narrow'], seed: 0x1234 };
+  const deep = (bonusMoves: number) =>
+    dealLevel({ deck: starterDeck(), charms: [], spec: deepSpec, bonusMoves, bonusCells: 0, bank: 0 });
+
   it('deals a different board for the same spec once the allowance moves', () => {
     // The whole reason the fingerprint has to exist: the spec does not
-    // determine the board, because the layout is chosen by win chance against
-    // the allowance. If this ever stops being true the guard becomes redundant
-    // rather than wrong.
-    expect(simKey(deal(0).sim)).not.toBe(simKey(deal(5).sim));
+    // determine the board, because the layout is chosen against the allowance.
+    // If this ever stops being true the guard becomes redundant rather than
+    // wrong.
+    //
+    // Stage 10, not stage 6, and the difference is the point. The band is a
+    // fixed width on the spend curve, so how much allowance it takes to leave it
+    // depends on how steep the curve is at the stage's target. Stage 10 aims at
+    // 1.10x, on the steep part, and six moves are enough. This test used to use
+    // stage 6 and a five-move bump; that stopped moving the board when the curve
+    // was re-fitted on 2026-09-12, because stage 6 aims at 1.40x where the curve
+    // is flattening out.
+    expect(simKey(deep(0).sim)).not.toBe(simKey(deep(6).sim));
+  });
+
+  it('can leave the board alone when the allowance moves inside the band', () => {
+    // The flip side, pinned because it is easy to mistake for the guard being
+    // unnecessary. At stage 6 twenty extra moves — 1.31x plainPar up to 1.79x —
+    // buy the same board, because the band's upper reach is wide where the spend
+    // curve flattens. The fingerprint is still required: which of these two
+    // cases a given spec falls into is not something a save can know.
+    expect(simKey(deal(0).sim)).toBe(simKey(deal(20).sim));
   });
 
   it('gives a save written before the field a fingerprint that cannot match', async () => {

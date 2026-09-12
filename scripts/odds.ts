@@ -43,7 +43,7 @@ async function validate(per: number, seed: number): Promise<void> {
           deck: run.deck, charms: [], spec: stageSpec(run, stage),
           bonusMoves: 0, bonusCells: 0, bank,
         });
-        pred += winChance(l.budget, l.plainPar);
+        pred += winChance(l.budget, l.plainPar, stage);
         if (playBot(l.sim, CAREFUL).won) won++;
       }
       console.log(
@@ -100,18 +100,18 @@ async function curve(per: number, seed: number): Promise<void> {
 /**
  * What the stage's acceptance band actually accepts.
  *
- * `dealLevel` takes the first board whose estimated chance is within
- * TOLERANCE of `coverAt(ratioFor(stage))`, so the band lives in probability
- * space. The win curve saturates at its top point, which means that above
- * some stage-dependent ratio the estimate cannot tell two boards apart. This
+ * `dealLevel` takes the first board whose estimated spend share is within
+ * TOLERANCE of `spendAt(ratioFor(stage))`. Wherever that curve saturates, the
+ * estimate cannot tell two boards apart, and nothing above the saturation point
+ * can be rejected for being too easy. This
  * reports the realised ratio of the boards actually dealt against the ratio
  * the stage was designed around, so the band can be checked rather than
  * reasoned about.
  *
  * It was written to check a prediction, and the prediction was half wrong. Above
  * stage 6 the target falls far enough that the band is two-sided and there is no
- * loose tail at all. Below it, `coverAt(ratioFor(stage)) + TOLERANCE` exceeds the
- * curve's maximum, so no board can be rejected for being too EASY — and at
+ * loose tail at all. Below it, target + TOLERANCE reached the curve's maximum,
+ * so no board could be rejected for being too EASY — and at
  * stages 4 and 6 that shows up, 8-16% of boards landing more than 0.3 above the
  * ratio the stage was designed around and reaching 1.96x against a 1.40x design
  * point. At stages 1 and 2 the same one-sidedness is harmless, because the
@@ -125,8 +125,8 @@ async function curve(per: number, seed: number): Promise<void> {
  */
 async function band(per: number, seed: number): Promise<void> {
   const { ratioFor } = await import('../src/game/deal.ts');
-  const { coverAt } = await import('../src/game/odds.ts');
-  console.log('stage  ratioFor  target   solved  fallbk   realised ratio (stipend/plainPar)');
+  const { spendAt } = await import('../src/game/odds.ts');
+  console.log('stage  ratioFor  spend@   solved  fallbk   realised ratio (stipend/plainPar)');
   console.log('                                          median    p90     max   share>+0.3');
   for (const stage of [1, 2, 4, 6, 8, 10, 14, 18]) {
     const ratios: number[] = [];
@@ -149,7 +149,7 @@ async function band(per: number, seed: number): Promise<void> {
     const loose = ratios.filter((r) => r > want + 0.3).length / ratios.length;
     console.log(
       `${String(stage).padStart(5)}  ${want.toFixed(2).padStart(8)}  ` +
-      `${(coverAt(want) * 100).toFixed(0).padStart(5)}%  ` +
+      `${(spendAt(want) * 100).toFixed(0).padStart(5)}%  ` +
       `${(solved / per * 100).toFixed(0).padStart(5)}%  ` +
       `${(fell / per * 100).toFixed(0).padStart(5)}%   ` +
       `${at(0.5).toFixed(2).padStart(7)} ${at(0.9).toFixed(2).padStart(6)} ` +

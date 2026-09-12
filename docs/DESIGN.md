@@ -1675,16 +1675,35 @@ do not follow the others.
   68%, 2.0x measures 66% against 78%, and the plateau measures 71% against 78%.
   Those are 2.3 to 3.8 standard deviations, and the two sweeps agree to a point
   at the plateau.
-  **The numbers in the file were deliberately left alone**, because the error is
-  not a vertical drift: broken out by stage the plateau is 88/88/62/45 for
-  stages 1/6/12/18, so the pooled top half fell because the deep stages fell,
-  while `winChance` is blind to the stage. Normalised by each stage's own
-  plateau the shape is near stage-invariant, so the shape is right and the
-  ceiling is what is wrong. `scripts/odds.ts validate 25` confirms a re-fit
-  would not help: the current numbers predict 78% at stage 1 against an actual
-  84% and 67% at stage 12 against an actual 60%, so lowering the plateau fixes
-  one and breaks the other. The fix is a stage-aware ceiling — the `P(findable)`
-  term the module's own header describes and never wired up. Task #45.
+  A vertical re-fit was the wrong answer, because the error is not a vertical
+  drift: broken out by stage the plateau is 88/88/62/45 for stages 1/6/12/18, so
+  the pooled top half fell because the deep stages fell, while the estimate was
+  blind to the stage. Normalised by each stage's own plateau the shape is near
+  stage-invariant, so the shape was right and the ceiling was what was wrong.
+  **`odds.ts` was split in two on 2026-09-12** into the decomposition its own
+  header had described since it was written and never implemented:
+  `ceilingFor(stage)` x `spendAt(multiple)`. `FINDABLE = 0.78`, which held the
+  pooled average and had no consumer but its own test, is gone.
+  Board selection compares SPEND, not win chance — scaling the comparison by the
+  ceiling would mean rejecting boards for being deep, which is the one thing no
+  allowance fixes. The `TOLERANCE` was re-expressed from 0.12 of the old 0.78
+  plateau to 0.154 of the spend curve, the same band width in the space it now
+  compares in, and the affordability floor became an explicit ratio
+  (`AFFORDABLE_AT = 1.005` x par) rather than a probability threshold.
+  **Three controls, run before and after on the same seeds, all closed:**
+  `odds.ts band 25` on two seeds returned the same realised board population
+  (medians within 0.01 at six of eight stages, and no change at all in the loose
+  tail or the fallback count); `economy.ts` reported 0 of 20 unaffordable in
+  every cell both times; `humanrun.ts 20` returned identical median, mean, range
+  and peak bank across all three build arms. The restructure is behaviour-neutral
+  by measurement, not by argument.
+  **What it did NOT buy, stated plainly: any demonstrated gain in predictive
+  accuracy.** On `validate 25` the mean absolute error across six cells went from
+  6 points to 9 — but that instrument cannot resolve a difference of that size.
+  Its own "actual" column moved by up to 8 points between two runs on the same
+  seeds (`dealLevel` races a wall clock, so the boards shift), and it disagrees
+  with the `curve` sweep by around 24 points at stage 6. That disagreement is the
+  live question now, not the refactor. Task #47.
   Note also that the earlier "two independent sweeps, pooled to 80 boards a
   point" was weaker than it read: both sweeps drew from a hardcoded seed base,
   so they differed only by the one or two boards that shift because `dealLevel`

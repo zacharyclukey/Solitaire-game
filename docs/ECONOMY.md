@@ -572,6 +572,29 @@ The conclusion the old number supported still stands and gets stronger. No
 economy can move a ceiling set by whether a line gets found at all — and the
 ceiling at depth is lower than anyone recorded.
 
+Those four numbers are now in the code rather than only in this table.
+`src/game/odds.ts` was split on 2026-09-12 into `ceilingFor(stage)` — the table
+above, interpolated, with an explicitly unmeasured geometric tail past stage 18
+— times `spendAt(multiple)`, the spend curve normalised to each stage's own
+plateau. `winChance` requires the stage, so the shallow answer can no longer be
+read for a deep board by omission. Board selection deliberately compares only
+the spend term, because the ceiling is not something an allowance can move and
+selecting against it would mean rejecting boards for being deep.
+
+The split was checked for neutrality rather than assumed: `odds.ts band 25` on
+two seeds, this table's own script, and `humanrun.ts 20` were all run before and
+after, and the realised board population, the unaffordable count (0 of 20 in
+every cell) and the depth distribution were unchanged.
+
+**One instrument disagreement is open, and it bears on the four numbers above.**
+`curve` puts stage 6 at 78% cleared at 1.4x plainPar and 85% at 2.0x.
+`validate`, which plays boards at a real bank instead of re-budgeting them,
+reports about 54% at a comparable ratio and 64% at a higher one. Both samples
+are small (40 and 25) and the seeds differ, so this may be nothing — but if
+`validate` is right, the stage-6 ceiling is nearer 0.70 than 0.88. The two can
+now be pointed at the same boards, because both modes take a seed base as of
+this week; nobody has done it.
+
 So the economy is finished as a lever. The remaining one is that fifth — and it
 turns out not to be a search failure at all. See the next section.
 

@@ -8,7 +8,7 @@
  */
 import { CHARMS, MODIFIERS, type CharmId, type ModifierId } from './content.ts';
 import { Rng } from './rng.ts';
-import { coverAt, winChance } from './odds.ts';
+import { affordableAt, spendAt, winChance } from './odds.ts';
 import { findSolution } from './solver.ts';
 import { createSim, type Sim } from './sim.ts';
 import { DEFAULT_RULES, makeCardDef, type CardDef, type CurseId, type DeckCard, type Move, type RuleSet, type Suit } from './types.ts';
@@ -549,12 +549,36 @@ export function dealLevel(opts: DealOptions): Level {
    * What the stage is aiming for, and how far a deal may miss it.
    *
    * The target is what the ratio was designed to deliver, read off the measured
-   * win curve. The band is what makes an honest shuffle usable: a deal far
+   * spend curve. The band is what makes an honest shuffle usable: a deal far
    * below it is a run ended by the deck rather than by the player, and one far
    * above is a level that may as well not have been dealt.
+   *
+   * This compares SPEND, not win chance. The win chance also carries the
+   * stage's findability ceiling, and selecting against that would mean
+   * rejecting boards for being deep — the one thing no allowance fixes and the
+   * thing "losable by default" declines to protect against. Spend is what the
+   * allowance actually controls, so spend is what a board is chosen on.
+   *
+   * TOLERANCE was 0.12 against the old stage-blind win curve, whose plateau was
+   * 0.78; 0.12/0.78 is 0.154, which is the same band HALF-WIDTH re-expressed in
+   * the space this now compares in.
+   *
+   * The band width is preserved; its EDGES are not, and that is measured rather
+   * than argued. Mapping a fixed width back into ratio terms depends on the
+   * curve's slope, and the curve was re-fitted, so the edges moved a little: at
+   * stage 6 a board at 1.31x plainPar used to fall just outside the band and now
+   * falls just inside it. `scripts/odds.ts band 25` on two seeds says the
+   * realised population is unchanged at six of eight stages with no change to
+   * the loose tail or the fallback count, so the shift is small — but it is not
+   * nothing, and `tests/storage.test.ts` pins what it does to board identity.
+   *
+   * Note how differently the band bites by stage, because the spend curve is
+   * steep in the middle and flat near the top. At stage 10, whose target sits on
+   * the steep part, six extra moves change which board is dealt. At stage 6,
+   * whose target sits where the curve is flattening, twenty do not.
    */
-  const target = coverAt(ratioFor(spec.stage));
-  const TOLERANCE = 0.12;
+  const target = spendAt(ratioFor(spec.stage));
+  const TOLERANCE = 0.154;
 
   let bestGap = Infinity;
   let candPlainPar = 0;
@@ -588,7 +612,7 @@ export function dealLevel(opts: DealOptions): Level {
     const plainSol = findSolution(plainProbe, plainSolveMsFor(boardSize));
     const thisPlainPar = plainSol ? plainSol.cost : Math.round(boardSize * PLAIN_PAR_PER_CARD * 1.6);
 
-    const chance = winChance(stipendBase, thisPlainPar, plainSol !== null);
+    const chance = spendAt(stipendBase / (thisPlainPar || 1));
     const gap = Math.abs(chance - target);
     if (gap < bestGap) {
       bestGap = gap;
@@ -671,7 +695,7 @@ export function dealLevel(opts: DealOptions): Level {
   // Estimated even when nothing was solved. An unseen board is not a hopeless
   // one — it is a board the generator could not measure, and the player still
   // has to be given something to play.
-  const chance = winChance(budget, par, true);
+  const chance = winChance(budget, par, spec.stage, true);
 
   /** True when a standard deck could not have afforded this board. */
   const needsBuild = plainPar > budget;
@@ -684,7 +708,9 @@ export function dealLevel(opts: DealOptions): Level {
    * is losable by default — so this is a backstop against dealing something
    * hopeless, not the economic wall it used to be.
    */
-  const affordable = chance > 0.02;
+  // A floor on what the money can buy, not on the odds — see `affordableAt`,
+  // which also records why it is a ratio and not a probability.
+  const affordable = affordableAt(budget, par);
   const surplus = budget - par;
 
   const sim = createSim(cand.defs, cand.cols, cand.stock, cand.up, rules, budget);
