@@ -592,6 +592,56 @@ two seeds, this table's own script, and `humanrun.ts 20` were all run before and
 after, and the realised board population, the unaffordable count (0 of 20 in
 every cell) and the depth distribution were unchanged.
 
+## The band had no upper edge, and the boards that slipped through were easy
+
+Selection accepts the first board whose spend share is within `TOLERANCE` of the
+stage's target. That band is a fixed width in SPEND units, and a fixed width
+there maps to an enormous range of ratios wherever the spend curve is flat: at
+stage 4 or 6, aiming at 1.40x plainPar, it reached past **2.1x**. Nothing could
+reject a board for being too easy.
+
+Whether that mattered was a real question, because the band is widest exactly
+where the curve is flattest — and a flat curve is precisely the statement that
+extra moves stop buying wins up there. So it was measured before it was changed
+(`scripts/odds.ts tail 180`, two independent seeds, 1080 boards, dealt at each
+stage's own allowance and played by the bot):
+
+| | share of deals | cleared |
+|---|---|---|
+| more than 0.3 above the stage's ratio | 8.3% (90) | **71.1%** |
+| the rest | 91.7% (990) | 49.2% |
+
+**+21.9 points at 4.4 sd.** Stage 2 produced no such board in 360 deals, so this
+was stages 4 to 8 and not the whole shallow end. Note `band 25` had reported no
+tail at stage 8 — at n=25 it cannot see a 5% one, which is worth remembering
+before reading a zero off that probe.
+
+One caveat on the mechanism, since it changes what the fix is doing. A high ratio
+means an unusually SHORT plain solution for the board's size, not a bigger purse
+— `stipend` is board-size driven. So what slipped through may be intrinsically
+easier boards rather than over-funded ones. The rule is the same either way, and
+it is the one the band always stated: a deal far above the stage's mark may as
+well not have been dealt.
+
+`OVER_MARGIN = 0.3` now demotes an overshooting board behind every other
+candidate. It demotes rather than rejects, deliberately: spend is bounded by 1,
+so adding 1 puts an overshooting board out of reach of the early accept while
+keeping it eligible, and a stage that can only produce overshooting boards still
+gets the best of them instead of falling through to the shallow fallback board.
+
+**The result, and its honest size.** The loose share fell 8.3% to **2.6%**, and
+the overall clear rate at stages 4/6/8 went 51.0% to **50.2%** — eight tenths of
+a point. The residual loose boards are still easier (+25.5pt on 28 boards), since
+they are the ones where the search found nothing better inside its deadline. So
+this closes a class of board the design says should not be dealt, and it is not
+by itself an answer to "not hard enough".
+
+It costs nothing measurable: fallbacks stayed at 0 on both seeds at every stage,
+`dealMs` did not move (300-360 either side), the unaffordable count stayed 0 of
+20 in all 18 cells, and `humanrun 20` was identical across all three build arms.
+That last one is an instrument limit rather than a result — median depth is 4 and
+this tail lives at stages 4 to 8, so those runs mostly end before reaching it.
+
 **One instrument disagreement is open, and it bears on the four numbers above.**
 `curve` puts stage 6 at 78% cleared at 1.4x plainPar and 85% at 2.0x.
 `validate`, which plays boards at a real bank instead of re-budgeting them,

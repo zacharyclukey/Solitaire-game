@@ -204,8 +204,64 @@ async function identity(per: number, delta: number, seed: number): Promise<void>
   console.log(`\npooled: ${diff}/${n} = ${(diff / n * 100).toFixed(0)}%`);
 }
 
+/**
+ * Are the loose boards actually easier?
+ *
+ * `band` found that 8-16% of boards at stages 4 and 6 land more than 0.3 above
+ * the ratio their stage was designed around, because the acceptance band has no
+ * upper edge where the spend curve flattens out. That is a fact about the band.
+ * Whether it MATTERS is a different question, and it is the one that decides
+ * whether the band is worth changing.
+ *
+ * The reason to doubt it: the band is widest exactly where the curve is
+ * flattest, and the curve being flat is precisely the statement that extra moves
+ * stop buying wins up there. So a board at 1.96x may be barely easier than one
+ * at 1.40x, in which case closing the band would be tuning against noise.
+ *
+ * This deals at the stage's real allowance, plays each board with the fallible
+ * bot, and splits the clear rate by whether the board came out loose. Stages 2
+ * and 8 are controls: `band` says they have no tail, so they should show no
+ * split worth reading.
+ */
+async function tail(per: number, seed: number): Promise<void> {
+  const { ratioFor } = await import('../src/game/deal.ts');
+  console.log(`${per} boards per stage, dealt at the stage's own allowance, played by the bot`);
+  console.log('stage  ratioFor   loose boards            tight boards           gap');
+  for (const stage of [2, 4, 6, 8]) {
+    const want = ratioFor(stage);
+    let looseN = 0, looseWon = 0, tightN = 0, tightWon = 0;
+    for (let i = 0; i < per; i++) {
+      const run = newRun((seed + i * 104729) >>> 0);
+      run.stage = stage;
+      const l = dealLevel({
+        deck: run.deck, charms: [], spec: stageSpec(run, stage),
+        bonusMoves: 0, bonusCells: 0, bank: 0,
+      });
+      if (l.plainPar <= 0) continue;
+      const loose = l.stipend / l.plainPar > want + 0.3;
+      const won = playBot(l.sim, CAREFUL).won;
+      if (loose) { looseN++; if (won) looseWon++; } else { tightN++; if (won) tightWon++; }
+    }
+    const pct = (w: number, n: number) => (n === 0 ? '  n/a' : `${(w / n * 100).toFixed(0).padStart(3)}%`);
+    const gap = looseN === 0 || tightN === 0
+      ? '   n/a'
+      : `${((looseWon / looseN - tightWon / tightN) * 100).toFixed(0).padStart(4)}pt`;
+    console.log(
+      `${String(stage).padStart(5)}  ${want.toFixed(2).padStart(8)}   ` +
+      `${pct(looseWon, looseN)} (${String(looseWon).padStart(2)}/${String(looseN).padStart(3)})` +
+      `           ${pct(tightWon, tightN)} (${String(tightWon).padStart(3)}/${String(tightN).padStart(3)})` +
+      `      ${gap}`,
+    );
+  }
+}
+
 if (process.argv[2] === 'band') {
   await band(Number(process.argv[3] ?? 20), Number(process.argv[4] ?? 606061));
+  process.exit(0);
+}
+
+if (process.argv[2] === 'tail') {
+  await tail(Number(process.argv[3] ?? 120), Number(process.argv[4] ?? 828283));
   process.exit(0);
 }
 

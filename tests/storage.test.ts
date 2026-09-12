@@ -12,7 +12,7 @@
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { newRun, starterDeck, type RunState } from '../src/game/run.ts';
-import { dealLevel, type LevelSpec } from '../src/game/deal.ts';
+import { dealLevel, OVER_MARGIN, ratioFor, type LevelSpec } from '../src/game/deal.ts';
 import { simKey } from '../src/game/sim.ts';
 
 /** The test environment is node; storage.ts wants the browser's localStorage. */
@@ -113,11 +113,23 @@ describe('resuming a level saved by an older build', () => {
 
   it('can leave the board alone when the allowance moves inside the band', () => {
     // The flip side, pinned because it is easy to mistake for the guard being
-    // unnecessary. At stage 6 twenty extra moves — 1.31x plainPar up to 1.79x —
-    // buy the same board, because the band's upper reach is wide where the spend
-    // curve flattens. The fingerprint is still required: which of these two
-    // cases a given spec falls into is not something a save can know.
-    expect(simKey(deal(0).sim)).toBe(simKey(deal(20).sim));
+    // unnecessary. At stage 6 sixteen extra moves take this board from 1.31x
+    // plainPar to 1.69x and buy the same board. The fingerprint is still
+    // required: which of these two cases a given spec falls into is not
+    // something a save can know.
+    expect(simKey(deal(0).sim)).toBe(simKey(deal(16).sim));
+  });
+
+  it('stops leaving it alone once the allowance clears the band\'s upper edge', () => {
+    // 1.70x is stage 6's edge — `ratioFor(6)` plus `OVER_MARGIN`. At +16 the
+    // board sits at 1.69x and is kept; at +20 it would sit at 1.79x, so
+    // selection goes and finds a different board that fits (1.56x) rather than
+    // dealing the overshooting one. This assertion read `.toBe` until the edge
+    // was added on 2026-09-12 and was right both times, which is the point: the
+    // allowance decides the board and the rule deciding it moves.
+    expect(ratioFor(6) + OVER_MARGIN).toBeCloseTo(1.7);
+    expect(simKey(deal(0).sim)).not.toBe(simKey(deal(20).sim));
+    expect(deal(20).fallback).toBe(false);
   });
 
   it('gives a save written before the field a fingerprint that cannot match', async () => {

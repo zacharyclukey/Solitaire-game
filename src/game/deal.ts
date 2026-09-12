@@ -267,6 +267,25 @@ export function ratioFor(stage: number): number {
  */
 export const PLAIN_PAR_PER_CARD = 1.36;
 
+/**
+ * How far above its stage's design ratio a board may be dealt.
+ *
+ * The acceptance band lives in spend units, and a fixed width there maps to a
+ * very wide range of ratios wherever the spend curve is flat — past 2.0x
+ * plainPar on a level designed for 1.4x. That left a class of boards nothing
+ * could reject for being too easy, and they measured easy: 8.3% of deals, cleared
+ * 71% against 49% for the rest (`scripts/odds.ts tail 180`, two seeds, 1080
+ * boards, +21.9 points at 4.4 sd).
+ *
+ * 0.3 is the threshold the gap was measured at rather than a chosen aesthetic.
+ * What it removes is not over-funding as such: a high ratio means an unusually
+ * SHORT plain solution for the board's size, and a short solution is plausibly an
+ * easier board whatever it is paid. Either way the rule is the same one the band
+ * always intended — a deal far above the stage's mark may as well not have been
+ * dealt.
+ */
+export const OVER_MARGIN = 0.3;
+
 /** Gold paid per move finished under par. See the note at its use in app.ts. */
 export const UNDER_PAR_GOLD = 1;
 
@@ -612,8 +631,32 @@ export function dealLevel(opts: DealOptions): Level {
     const plainSol = findSolution(plainProbe, plainSolveMsFor(boardSize));
     const thisPlainPar = plainSol ? plainSol.cost : Math.round(boardSize * PLAIN_PAR_PER_CARD * 1.6);
 
-    const chance = spendAt(stipendBase / (thisPlainPar || 1));
-    const gap = Math.abs(chance - target);
+    /**
+     * The upper edge, which the spend band does not supply.
+     *
+     * A fixed width in spend units maps to an enormous range of ratios where the
+     * curve is flat, so at stage 4 or 6 the band reaches past 2.0x plainPar on a
+     * level designed for 1.4x. Measured 2026-09-12 (`scripts/odds.ts tail 180`,
+     * two seeds, 1080 boards): boards landing more than 0.3 above their stage's
+     * ratio are 8.3% of deals and the bot clears **71% of them against 49%** of
+     * the rest — +21.9 points at 4.4 sd. Stage 2 produced no such board in 360,
+     * so this is stages 4 to 8, not the whole shallow end.
+     *
+     * Adding 1 rather than rejecting outright matters. Spend is bounded by 1, so
+     * this sorts every overshooting board strictly behind every other one and
+     * puts it out of reach of the early accept below — but it stays eligible. If
+     * a deck and a stage between them can only produce overshooting boards, the
+     * best of them is still dealt, and the run does not fall through to the
+     * shallow standard fallback board.
+     *
+     * Note it compares the RATIO, not the estimate. The estimate cannot tell 1.6x
+     * from 3.0x apart, which is the whole reason this edge has to exist
+     * separately.
+     */
+    const ratio = stipendBase / (thisPlainPar || 1);
+    const overshoot = ratio > ratioFor(spec.stage) + OVER_MARGIN;
+    const chance = spendAt(ratio);
+    const gap = Math.abs(chance - target) + (overshoot ? 1 : 0);
     if (gap < bestGap) {
       bestGap = gap;
       cand = trial;
