@@ -11,6 +11,11 @@
  * Played at an unlimited bank so the budget is never the constraint, which is
  * what makes the spend distribution a property of the player rather than of the
  * allowance it happened to be given.
+ *
+ * `curve` and `validate` both take an optional seed base as the last argument,
+ * so a second sweep draws genuinely different boards. Two invocations at the
+ * same seed are NOT independent: they differ only by the one or two boards that
+ * shift because `dealLevel` sizes allowances against a wall clock.
  */
 import { dealLevel } from '../src/game/deal.ts';
 import { CAREFUL, playBot } from '../src/game/bot.ts';
@@ -24,7 +29,7 @@ const STAGES = [1, 4, 8, 12, 16, 20];
  * model's number against what the player actually does. Run before trusting
  * the estimate to gate anything.
  */
-async function validate(per: number): Promise<void> {
+async function validate(per: number, seed: number): Promise<void> {
   const { winChance } = await import('../src/game/odds.ts');
   console.log('stage  bank   predicted   actual');
   for (const stage of [1, 6, 12]) {
@@ -32,7 +37,7 @@ async function validate(per: number): Promise<void> {
       let won = 0;
       let pred = 0;
       for (let i = 0; i < per; i++) {
-        const run = newRun((77003 + i * 104729) >>> 0);
+        const run = newRun((seed + i * 104729) >>> 0);
         run.stage = stage;
         const l = dealLevel({
           deck: run.deck, charms: [], spec: stageSpec(run, stage),
@@ -59,15 +64,19 @@ async function validate(per: number): Promise<void> {
  * being optimistic where budgets are tight (17% against a real 0% at stage 12).
  * A win rate has to be measured under the pressure it is meant to describe.
  */
-async function curve(per: number): Promise<void> {
+async function curve(per: number, seed: number): Promise<void> {
   const MULTIPLES = [0.9, 1.0, 1.1, 1.2, 1.4, 1.6, 2.0, 2.6];
-  console.log('multiple  cleared   (budget = multiple x plainPar, no bank)');
+  const STAGES_HERE = [1, 6, 12, 18];
+  console.log(`seed ${seed}, ${per} boards per stage per point (budget = multiple x plainPar, no bank)`);
+  console.log(`multiple  pooled   ${STAGES_HERE.map((s) => `st${s}`.padStart(6)).join('')}`);
   for (const m of MULTIPLES) {
     let won = 0;
     let n = 0;
-    for (const stage of [1, 6, 12, 18]) {
+    const perStage: string[] = [];
+    for (const stage of STAGES_HERE) {
+      let sWon = 0;
       for (let i = 0; i < per; i++) {
-        const run = newRun((51001 + i * 104729) >>> 0);
+        const run = newRun((seed + i * 104729) >>> 0);
         run.stage = stage;
         const l = dealLevel({
           deck: run.deck, charms: [], spec: stageSpec(run, stage),
@@ -77,20 +86,24 @@ async function curve(per: number): Promise<void> {
         l.sim.movesLeft = Math.round(m * l.plainPar);
         l.sim.movesUsed = 0;
         n++;
-        if (playBot(l.sim, CAREFUL).won) won++;
+        if (playBot(l.sim, CAREFUL).won) { won++; sWon++; }
       }
+      perStage.push(`${sWon}/${per}`.padStart(6));
     }
-    console.log(`${m.toFixed(1).padStart(8)}  ${(won / n * 100).toFixed(0).padStart(6)}%   (${won}/${n})`);
+    console.log(
+      `${m.toFixed(1).padStart(8)}  ${(won / n * 100).toFixed(0).padStart(4)}%` +
+      ` (${won}/${n})${perStage.join('')}`,
+    );
   }
 }
 
 if (process.argv[2] === 'curve') {
-  await curve(Number(process.argv[3] ?? 10));
+  await curve(Number(process.argv[3] ?? 10), Number(process.argv[4] ?? 51001));
   process.exit(0);
 }
 
 if (process.argv[2] === 'validate') {
-  await validate(Number(process.argv[3] ?? 14));
+  await validate(Number(process.argv[3] ?? 14), Number(process.argv[4] ?? 77003));
   process.exit(0);
 }
 
